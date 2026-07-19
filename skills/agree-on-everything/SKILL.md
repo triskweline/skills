@@ -8,10 +8,17 @@ Keep a table of open decisions, which you update and extend as the discussion pr
 Give each decision a unique number (`1`, `2`, `3`). Sometimes decisions will split into sub-decisions during our discussion, number those like `2a`, `2b`, `2c`.
 Print the whole table whenever there's a change, then ask the next open question *below* the table so the user doesn't need to scroll up.
 
-Only record a change when you both agree explicitly. When you make a counter-proposal to the human's input, or answer the human's question, ask again whether you both agree.
+Discuss each item separately.
+Start with the decisions that appear key to our requirements, e.g when many other decisions depend on or follow from it.
+Avoid batching questions. Only batch small items that are closely related, or where a single answer will likely resolve them.
+
+Only lock a decision when you both agree explicitly.
+When you make a counter-proposal to the human's input, or answer the human's question, ask again whether you both agree.
 Be patient and allow a full discussion, don't push the human into an uninformed decision.
 
-Start with the decisions that appear key to our requirements, e.g when many other decisions depend on or follow from it.
+When you ask the human for a decision, also make a recommendation.
+For simple decisions, a single recommendation is enough.
+For non-trivial decisions with significant trade-offs, propose at least 2 approaches. E.g. one approach that requires the least changes to existing code, and another that is more work, but also more correct, performant or flexible.
 
 When everything is agreed and no open question or edge case remains:
 - Print the final table
