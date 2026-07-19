@@ -1,5 +1,6 @@
 ---
 name: self-review
+description: Have a sub-agent review your changes against the original requirements — checking correctness, simplicity, modularity, readability, regressions, and test coverage — then reconcile its findings with your own judgment and apply the valid ones. Use after implementing a change and before handing off to the human.
 ---
 
 Ask a sub-agent to review your work, briefing it with our requirements only. Leave out technical details that you discovered during the implementation.

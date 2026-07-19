@@ -1,10 +1,11 @@
 ---
 name: implement-autonomously
+description: End-to-end workflow for implementing a full set of requirements autonomously with minimal supervision. Confirms requirements, works in a feature branch, adds tests, verifies with the full test suite, self-reviews via a sub-agent, then hands off to the human with a recap and open questions. Use when asked to implement a feature or task on your own.
 ---
 
 Ensure that you understand your requirements completely, using the `/agree-on-everything` skill (unless you already used it on your current requirements).
 
-Prefer working in a feature branch, using the `/work-in-branch` kill.
+Prefer working in a feature branch, using the `/work-in-branch` skill.
 
 Implement your entire requirements autonomously. Avoid stopping for user input if possible. You might encounter new questions while implementing, try to answer and decide for yourself first. Only ask the user when you encounter true showstoppers, or when choosing wrong on a hard decision would waste a large portion of follow-up work.
 
