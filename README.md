@@ -2,7 +2,7 @@
 
 A personal collection of [Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) for use with Claude Code and other agent tools.
 
-Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow — how to implement a feature autonomously, how to write effective tests, how to run the test suite, and so on. Skills are maintained here and made available to Claude Code either by installing them with `npx skills` or by symlinking them into `~/.claude/skills`.
+Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow.
 
 ## Available skills
 
@@ -37,7 +37,8 @@ You can also install a single skill by pointing at its directory:
 npx skills add https://github.com/triskweline/skills/tree/main/skills/effective-tests
 ```
 
-By default skills install into the current project. Consult `npx skills --help` for installing globally or for a specific agent.
+By default skills install into the current project.\
+Install skills globally using `--global`.
 
 ## Installing all skills for your user (symlink)
 
@@ -52,8 +53,9 @@ This creates one symlink per `skills/*` folder inside `~/.claude/skills/`. It is
 To link into a different directory:
 
 ```bash
-SKILLS_DIR=/path/to/skills bin/link-all.sh
+SKILLS_DIR=~/.codex/skills bin/link-all.sh
 ```
+
 
 ## Adding a new skill
 
