@@ -3,11 +3,14 @@ name: implement-autonomously
 description: Carry a set of requirements all the way to a tested, self-reviewed implementation that's ready to hand back, deciding open questions on your own and only interrupting for true showstoppers. Use when the user asks you to implement a feature, task, or ticket autonomously, end-to-end, or with minimal supervision — e.g. "build this on your own", "implement the whole thing", "go ahead and ship it".
 ---
 
-Ensure that you understand your requirements completely, using the `/agree-on-everything` skill (unless you already used it on your current requirements).
+Ensure your requirements are complete. There must be no undecided questions that would block you from implementing the requirements without further user input.
+If you just ran the `/agree-on-everything` skill, you already know everything you will need for an autonomous implementation.
+If you are still unsure about anything, use the `/agree-on-everything` skill to fully align with your human.
 
 Prefer working in a feature branch, using the `/work-in-branch` skill.
 
-Implement your entire requirements autonomously. Avoid stopping for user input if possible. You might encounter new questions while implementing, try to answer and decide for yourself first. Only ask the user when you encounter true showstoppers, or when choosing wrong on a hard decision would waste a large portion of follow-up work.
+Implement your entire requirements autonomously. Avoid stopping for user input if possible.
+You might encounter new questions while implementing, try to answer and decide for yourself first. Only ask the user when you encounter true showstoppers, or when choosing wrong on a hard decision would waste a large portion of follow-up work.
 
 Add tests for everything you do or change. For Ruby on Rails apps, use the `/effective-rails-test` skill.
 Also fix existing tests that broke because of behavior changes.
