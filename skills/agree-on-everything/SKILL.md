@@ -12,6 +12,9 @@ Print the initial table as soon as you start the discussion, using colors or emo
 Re-print the whole table whenever there's a change.
 Always print the table *first*, then recaps and follow-up questions *after* the table. Assume any text you print *before* a table scrolls out of view and will easily be overlooked by the human.
 
+When writing ordered lists into the chat, and you're not talking about decision numbers, avoid using integer-numbered bullets. The human will confuse your list items with the numbers from the decision table.
+For enumerations in prose text, prefer lower-cased letters (`a.`, `b.`, `c.`) or unordered lists instead.
+
 Discuss each item separately.
 Avoid batching questions. Only batch small items that are closely related, or where a single answer will likely resolve them all.
 Start with the decisions that appear key to the requirements, e.g. when many other decisions depend on it or follow from it.
