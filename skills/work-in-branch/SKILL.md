@@ -1,6 +1,6 @@
 ---
 name: work-in-branch
-description: Make sure your work lands on a suitable, well-named feature branch instead of a protected one like main or master, following the repo's naming convention. Use before you start making changes for a task, or whenever you notice you're about to commit work directly onto a protected branch.
+description: Make sure your work lands on a private feature branch and avoid breaking a protected branch like `main` or `master`. Use before you start making changes for a non-trivial task, or whenever you notice you're about to commit unreviewed work directly onto a protected branch.
 ---
 
 Ensure that you are on a feature branch, not `master`, `main`, `dev` or `production`. If not, ask the user to make one.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Symlink every skill under dev/* into ~/.claude/skills/ so they are
+# Symlink every skill under skills/* into ~/.claude/skills/ so they are
 # available in all Claude Code sessions.
 #
 # Usage:
@@ -18,7 +18,7 @@ done
 bin_dir="$(cd "$(dirname "$script_path")" && pwd)"
 repo_root="$(cd "$bin_dir/.." && pwd)"
 
-source_dir="$repo_root/dev"
+source_dir="$repo_root/skills"
 skills_dir="${SKILLS_DIR:-$HOME/.claude/skills}"
 
 if [ ! -d "$source_dir" ]; then
