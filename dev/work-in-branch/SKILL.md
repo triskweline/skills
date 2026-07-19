@@ -1,6 +1,6 @@
 ---
 name: work-in-branch
-description: Ensure work happens on a properly named feature branch rather than a protected branch (master, main, dev, production). Follows the repo's branch naming convention (default `initials/ticket-slug`), proposes a name for confirmation, and optionally pushes to the remote. Use before starting implementation work.
+description: Make sure your work lands on a suitable, well-named feature branch instead of a protected one like main or master, following the repo's naming convention. Use before you start making changes for a task, or whenever you notice you're about to commit work directly onto a protected branch.
 ---
 
 Ensure that you are on a feature branch, not `master`, `main`, `dev` or `production`. If not, ask the user to make one.

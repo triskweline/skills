@@ -1,6 +1,6 @@
 ---
 name: run-all-tests
-description: Run the full test suite for the current repo and address failures autonomously. Covers local runs, speeding up large suites with parallel_tests, and monitoring CI on GitHub (gh) or GitLab (glab). Use to verify a non-trivial change before considering it complete.
+description: Confirm a change hasn't broken anything by getting the repo's entire test suite green, picking the fastest route (local, parallel, or CI) and fixing failures yourself. Use after a non-trivial change before considering it done, or when the user asks you to run the tests, run the suite, or check that nothing is broken.
 ---
 
 Run the full test suite for the current repo.

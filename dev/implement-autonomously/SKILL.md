@@ -1,6 +1,6 @@
 ---
 name: implement-autonomously
-description: End-to-end workflow for implementing a full set of requirements autonomously with minimal supervision. Confirms requirements, works in a feature branch, adds tests, verifies with the full test suite, self-reviews via a sub-agent, then hands off to the human with a recap and open questions. Use when asked to implement a feature or task on your own.
+description: Carry a set of requirements all the way to a tested, self-reviewed implementation that's ready to hand back, deciding open questions on your own and only interrupting for true showstoppers. Use when the user asks you to implement a feature, task, or ticket autonomously, end-to-end, or with minimal supervision — e.g. "build this on your own", "implement the whole thing", "go ahead and ship it".
 ---
 
 Ensure that you understand your requirements completely, using the `/agree-on-everything` skill (unless you already used it on your current requirements).

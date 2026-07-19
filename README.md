@@ -8,6 +8,7 @@ Each skill lives in `dev/<name>/SKILL.md` and encodes a reusable workflow — ho
 
 | Skill | What it does |
 | --- | --- |
+| [`agree-on-everything`](dev/agree-on-everything/SKILL.md) | Turn requirements into an autonomously executable plan by resolving every open decision with the user before any code is written. |
 | [`implement-autonomously`](dev/implement-autonomously/SKILL.md) | End-to-end workflow for implementing a full set of requirements on your own: confirm requirements, branch, test, verify, self-review, then hand off. |
 | [`work-in-branch`](dev/work-in-branch/SKILL.md) | Make sure work happens on a properly named feature branch, following the repo's naming convention. |
 | [`effective-tests`](dev/effective-tests/SKILL.md) | Default testing strategy — unit tests for logic, a few E2E specs for frontend behavior, request specs for APIs. |

@@ -1,6 +1,6 @@
 ---
 name: self-review
-description: Have a sub-agent review your changes against the original requirements — checking correctness, simplicity, modularity, readability, regressions, and test coverage — then reconcile its findings with your own judgment and apply the valid ones. Use after implementing a change and before handing off to the human.
+description: Get an independent second opinion on the code you just wrote — an outside pass for correctness, simplicity, regressions, and missing tests that you're too close to the work to catch — and fold the valid feedback back in. Use after implementing a change and before handing it to the user, or whenever you want to double-check your own work before calling it done.
 ---
 
 Ask a sub-agent to review your work, briefing it with our requirements only. Leave out technical details that you discovered during the implementation.
