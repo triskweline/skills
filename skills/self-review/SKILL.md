@@ -20,4 +20,4 @@ Sometimes these goals are trade-offs. It's OK to accept deviations in one goal w
 Analyze any issues the sub-agent reports and reconcile them with your own knowledge and opinions.
 When you agree with a clear issue or obvious improvement, implement it directly, without asking the human.
 Dismiss a sub-agent review item that is clearly invalid, or that you strongly disagree with.
-Flag to the humans when decisions are truly hard or would have huge impact.
+Flag to the human when decisions are truly hard or would have huge impact.
