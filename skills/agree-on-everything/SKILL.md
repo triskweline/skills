@@ -9,7 +9,8 @@ Then talk to the human until you agree on every single decision.
 Keep a table of open decisions, which you update and extend as the discussion progresses.
 Give each decision a unique number (`1`, `2`, `3`). Sometimes decisions will split into sub-decisions during your discussion, number those like `2.1`, `2.2`, `2.3`.
 Print the initial table as soon as you start the discussion, using colors or emojis to differentiate the resolution state of each decision.
-Re-print the whole table whenever there's a change, then ask the next open question *below* the table so the user doesn't need to scroll up.
+Re-print the whole table whenever there's a change.
+Always print the table *first*, then recaps and follow-up questions *after* the table. Assume any text you print *before* a table scrolls out of view and will easily be overlooked by the human.
 
 Discuss each item separately.
 Avoid batching questions. Only batch small items that are closely related, or where a single answer will likely resolve them all.
@@ -23,6 +24,7 @@ When you ask the human for a decision, also make a recommendation.
 For simple decisions, a single recommendation is enough.
 For non-trivial decisions with significant trade-offs, propose at least 2 approaches. E.g. one approach that requires the least changes to existing code, and another that is more work, but also more correct, flexible, performant or canonical.
 Give each recommendation a shorthand code for quick human choices, e.g. 3A and 3B for two recommendations for decision 3.
+Also assign a shorthand code when you only propose a single recommendation, e.g. 5A.
 Explain to the human that they can freely choose any other approach by typing prose into chat.
 
 Keep this a free-form discussion in prose. Do not present decisions through a multiple-choice UI (no `AskUserQuestion`-style widget).
