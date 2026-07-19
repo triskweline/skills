@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 #
-# Symlink every skill under skills/* into ~/.claude/skills/ so they are
-# available in all Claude Code sessions.
+# Sync every skill under skills/* into ~/.claude/skills/ so they are
+# available in all Claude Code sessions. This mirrors the repo: it links
+# current skills AND prunes stale links for skills that were renamed or
+# removed. Only symlinks that point back into this repo's skills/ directory
+# are ever removed; unrelated files and links are left untouched.
 #
 # Usage:
-#   bin/link-all.sh            # link into ~/.claude/skills
-#   SKILLS_DIR=/path bin/link-all.sh   # link into a custom skills directory
+#   bin/link-all.sh            # sync into ~/.claude/skills
+#   SKILLS_DIR=/path bin/link-all.sh   # sync into a custom skills directory
 #
 set -euo pipefail
 
@@ -52,4 +55,28 @@ for skill_path in "$source_dir"/*/; do
   linked=$((linked + 1))
 done
 
-echo "Done. Linked/updated $linked skill(s) into $skills_dir"
+# Prune stale links: any symlink in the skills dir that points back into this
+# repo's skills/ directory but no longer resolves (skill renamed or removed).
+# We deliberately only touch links whose target is inside our source_dir, so
+# links to other skill repos or unrelated files are never removed.
+pruned=0
+for target in "$skills_dir"/*; do
+  # Guard against the glob matching nothing (no entries in the dir).
+  [ -e "$target" ] || [ -L "$target" ] || continue
+  [ -L "$target" ] || continue
+
+  link_target="$(readlink "$target")"
+  case "$link_target" in
+    "$source_dir"/*) ;;   # points into our repo — a candidate for pruning
+    *) continue ;;        # points elsewhere — leave it alone
+  esac
+
+  # Keep it if it still resolves to an existing skill directory.
+  [ -d "$target" ] && continue
+
+  rm -f "$target"
+  echo "- $(basename "$target") (pruned: $link_target no longer exists)"
+  pruned=$((pruned + 1))
+done
+
+echo "Done. Linked/updated $linked skill(s), pruned $pruned stale link(s) in $skills_dir"

@@ -11,7 +11,7 @@ Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow.
 | [`agree-on-everything`](skills/agree-on-everything/SKILL.md) | Turn requirements into an autonomously executable plan by resolving every open decision with the user before any code is written. |
 | [`implement-autonomously`](skills/implement-autonomously/SKILL.md) | End-to-end workflow for implementing a full set of requirements on your own: confirm requirements, branch, test, verify, self-review, then hand off. |
 | [`work-in-branch`](skills/work-in-branch/SKILL.md) | Make sure work happens on a properly named feature branch, following the repo's naming convention. |
-| [`effective-tests`](skills/effective-tests/SKILL.md) | Default testing strategy — unit tests for logic, a few E2E specs for frontend behavior, request specs for APIs. |
+| [`effective-rails-test`](skills/effective-rails-test/SKILL.md) | Default testing strategy for Ruby on Rails apps — unit specs for logic, a few E2E feature specs for frontend behavior, request specs for APIs. |
 | [`run-all-tests`](skills/run-all-tests/SKILL.md) | Run the full test suite (locally, in parallel, or via CI) and address failures autonomously. |
 | [`self-review`](skills/self-review/SKILL.md) | Have a sub-agent review your changes against the requirements, then reconcile and apply valid feedback. |
 
@@ -48,7 +48,7 @@ If you maintain this repo locally and want every skill available in **all** your
 bin/link-all.sh
 ```
 
-This creates one symlink per `skills/*` folder inside `~/.claude/skills/`. It is safe to re-run: existing correct links are left alone, and it refuses to overwrite anything that isn't one of its own symlinks. Because the skills are symlinked (not copied), edits in this repo take effect immediately.
+This syncs `~/.claude/skills/` to mirror this repo: it creates one symlink per `skills/*` folder, and it prunes stale links for skills that were renamed or removed. It is safe to re-run: existing correct links are left alone, it refuses to overwrite anything that isn't one of its own symlinks, and pruning only ever removes broken links that point back into this repo's `skills/` directory — links to other repos or unrelated files are never touched. Because the skills are symlinked (not copied), edits in this repo take effect immediately.
 
 To link into a different directory:
 

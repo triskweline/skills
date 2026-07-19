@@ -24,6 +24,9 @@ For non-trivial decisions with significant trade-offs, propose at least 2 approa
 Give each recommendation a shorthand code for quick human choices, e.g. 3A and 3B for two recommendations for decision 3.
 Explain to the human that they can freely choose any other approach by typing prose into chat.
 
+Keep this a free-form discussion in prose. Do not present decisions through a multiple-choice UI (no `AskUserQuestion`-style widget).
+The shorthand codes are a convenience for quick replies, not a wizard: the human should always feel free to think out loud, push back, or propose something you didn't list.
+
 When everything is agreed and no open question or edge case remains:
 - Print the final table
 - Ask whether to write a detailed execution plan. If yes, put it where the project keeps plans (e.g. `doc/plans`, or `plans/`)

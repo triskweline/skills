@@ -5,6 +5,9 @@ description: Confirm a change hasn't broken anything by getting the repo's entir
 
 Run the full test suite for the current repo.
 
+First figure out the test runner. Look for a test directory (usually `features`, `spec` or `test`), a config or dependency manifest (e.g. `Gemfile`, `package.json`, `pyproject.toml`, `go.mod`), and any test scripts or CI config. Match the runner to the toolchain rather than assuming one.
+For Ruby on Rails apps this is usually RSpec, sometimes Cucumber, sometimes Minitest, and sometimes a combination of these.
+
 Check the size of the test suite, usually in the features, spec or test folders.
 
 Small test suites can be run locally.
