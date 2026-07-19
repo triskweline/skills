@@ -12,7 +12,7 @@ Prefer working in a feature branch, using the `/work-in-branch` skill.
 Implement your entire requirements autonomously. Avoid stopping for user input if possible.
 You might encounter new questions while implementing, try to answer and decide for yourself first. Only ask the user when you encounter true showstoppers, or when choosing wrong on a hard decision would waste a large portion of follow-up work.
 
-Add tests for everything you do or change. For Ruby on Rails apps, use the `/effective-rails-test` skill.
+Add tests for everything you do or change. For Ruby on Rails apps, use the `/effective-rails-testing` skill.
 Also fix existing tests that broke because of behavior changes.
   
 Any non-trivial change must be verified by running the full test suite. Use the `/run-all-tests` skill.

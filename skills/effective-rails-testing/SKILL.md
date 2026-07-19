@@ -1,5 +1,5 @@
 ---
-name: effective-rails-test
+name: effective-rails-testing
 description: Decide what kind of test to write for a change in a Ruby on Rails app so you get solid coverage without redundant or needlessly slow tests. Assumes RSpec/Capybara conventions (feature specs, request specs, unit specs). Use whenever you're about to add or change tests in a Rails project and neither the repo nor your instructions already prescribe a testing style, or when you're unsure whether some behavior warrants a unit test or an end-to-end test.
 ---
 
