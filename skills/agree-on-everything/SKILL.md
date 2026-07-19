@@ -8,7 +8,8 @@ Then talk to the human until you agree on every single decision.
 
 Keep a table of open decisions, which you update and extend as the discussion progresses.
 Give each decision a unique number (`1`, `2`, `3`). Sometimes decisions will split into sub-decisions during your discussion, number those like `2.1`, `2.2`, `2.3`.
-Print the whole table whenever there's a change, then ask the next open question *below* the table so the user doesn't need to scroll up.
+Print the initial table as soon as you start the discussion, using colors or emojis to differentiate the resolution state of each decision.
+Re-print the whole table whenever there's a change, then ask the next open question *below* the table so the user doesn't need to scroll up.
 
 Discuss each item separately.
 Avoid batching questions. Only batch small items that are closely related, or where a single answer will likely resolve them all.
