@@ -67,8 +67,10 @@ Explain to the human that they can freely choose any other approach by typing pr
 
 When everything is agreed and no open question or edge case remains:
 - Print the final table
-- Ask whether to write a detailed execution plan. If yes, put it where the project keeps plans (e.g. `doc/plans`, or `plans/`)
-- Ask whether the human wants you to fully implement the requirements, now that you are in full alignment. If yes, use `/implement-autonomously`.
+- Ask whether to write a detailed execution plan.
+  If yes, put it where the project keeps plans (e.g. `doc/plans`, or `plans/`)
+- Ask whether the human wants you to fully and autonomously implement the requirements, now that you are in full alignment.
+  If yes, use the `/implement-autonomously` skill.
 
 ## Begin your work
 
