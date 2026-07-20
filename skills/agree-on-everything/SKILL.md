@@ -7,14 +7,15 @@ description: Turn software requirements into an autonomously executable implemen
 
 The human wants to plan a major change that may affect many parts of the codebase.
 Analyze the code base to discover any question, blocker or decision required to later implement the requirements autonomously without further human input.
+
 To discover the required decisions, walk through the future implementation in your mind and imagine the required steps, such as:
 
-- Changes to models and classes that encapsulate business logic and guarantee data integrity
-- Changes to the database schema
-- Changes to frontend screens (often view templates that render HTML, either server-side or client-side)
-- Reuse or change of the frontend component library (e.g. buttons, cards)
-- Changes to the routing and controllers (that find and call the model)
-- Tensions with existing functionality that would be affected by this change
+- Changing models and classes that encapsulate business logic and guarantee data integrity
+- Changing routes and controllers (that find and call the model)
+- Changing the database schema
+- Changing frontend screens (often involving view templates that render HTML, or JSON API endpoints)
+- Reusing or changing the frontend component library (e.g. buttons, cards)
+- Resolving tensions with existing functionality that would be affected by this change
 
 Then talk to the human until you agree on every single decision.
 
