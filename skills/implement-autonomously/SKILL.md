@@ -13,6 +13,9 @@ Before you begin changing code, there is a small window where you can still acce
 Use this window to pull everything you need from the human, so you can work independently later.
 After the preparatory window, the human will be away for a long time. When the human returns, they expect you to be ready to hand-off a high-quality implementation with no major issues.
 
+First, ensure you have access to all the slash-command skills mentioned in this document, especially the `/agree-on-everything` skill.
+If any required skill is missing, ask the human to install it or provide alternatives. For example, the project's `AGENTS.md` might contain instructions for running tests.
+
 The most important preparation is ensuring your requirements are complete. There must be no undecided questions that would block you from implementing the requirements without further user input.
 If you just ran the `/agree-on-everything` skill, you already know everything you will need for an autonomous implementation.
 If you are still unsure about anything, use the `/agree-on-everything` skill to fully align with your human.
@@ -27,8 +30,9 @@ Only ask the user when you encounter true showstoppers, or when choosing wrong o
 
 ## Verify with tests
 
-Most projects will come heavily tested. Tests are a great way to check if new code fulfills requirements, or if you broke existing functionality.
-Assume that the test suite was passing before you started your changes. 
+Most projects will come heavily tested and linted. Tests are a great way to check if new code fulfills requirements, or if you broke existing functionality.
+If you are unsure what testing and linting tools are used in this project, use the `/find-verification-tools` skill.
+Assume all checks were passing before you started your changes.
 
 Verify *any* change by running possibly related tests (e.g. tests that mention the code identifiers, screens or UI elements you worked with). If you're unsure if a test is related, run it.
 Tests can be useful before your implementation is complete. Consider verifying incremental work by getting quick feedback from individual test files, or even individual test cases (test with line number, e.g. `foo_spec:23`).
@@ -40,6 +44,8 @@ Any non-trivial change must *additionally* be verified by running the *full* tes
 The full test suite is slow. Only run the full test suite *after* possibly related tests (fast) already pass.
 
 ## Self-review
+
+A review pass can meaningfully improve the quality of code that was generated autonomously, reducing the burden on a human code review to find all faults.
 
 Review your work using a sub-agent, using the `/self-review` skill.
 

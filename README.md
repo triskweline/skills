@@ -12,7 +12,8 @@ Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow.
 | [`implement-autonomously`](skills/implement-autonomously/SKILL.md) | End-to-end workflow for implementing a full set of requirements on your own: confirm requirements, branch, test, verify, self-review, then hand off. |
 | [`work-in-branch`](skills/work-in-branch/SKILL.md) | Make sure work happens on a properly named feature branch, following the repo's naming convention. |
 | [`effective-rails-testing`](skills/effective-rails-testing/SKILL.md) | Default testing strategy for Ruby on Rails apps — unit specs for logic, a few E2E feature specs for frontend behavior, request specs for APIs. |
-| [`run-all-tests`](skills/run-all-tests/SKILL.md) | Run the full test suite (locally, in parallel, or via CI) and address failures autonomously. |
+| [`find-verification-tools`](skills/find-verification-tools/SKILL.md) | Discover which test runners and linters a project uses, and the exact CLI commands to run them. |
+| [`run-all-tests`](skills/run-all-tests/SKILL.md) | Run the full test suite (locally, in parallel, or via CI), fix failures autonomously, then run any linters. |
 | [`self-review`](skills/self-review/SKILL.md) | Have a sub-agent review your changes against the requirements, then reconcile and apply valid feedback. |
 
 ## Installing individual skills
@@ -34,7 +35,7 @@ npx skills add triskweline/skills
 You can also install a single skill by pointing at its directory:
 
 ```bash
-npx skills add https://github.com/triskweline/skills/tree/main/skills/effective-tests
+npx skills add https://github.com/triskweline/skills/tree/main/skills/effective-rails-testing
 ```
 
 By default skills install into the current project.\
