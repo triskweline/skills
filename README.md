@@ -13,7 +13,7 @@ Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow.
 | [`work-in-branch`](skills/work-in-branch/SKILL.md) | Make sure work happens on a properly named feature branch, following the repo's naming convention. |
 | [`effective-rails-testing`](skills/effective-rails-testing/SKILL.md) | Default testing strategy for Ruby on Rails apps — unit specs for logic, a few E2E feature specs for frontend behavior, request specs for APIs. |
 | [`find-verification-tools`](skills/find-verification-tools/SKILL.md) | Discover which test runners and linters a project uses, and the exact CLI commands to run them. |
-| [`run-all-tests`](skills/run-all-tests/SKILL.md) | Run the full test suite (locally, in parallel, or via CI), fix failures autonomously, then run any linters. |
+| [`full-verification`](skills/full-verification/SKILL.md) | Run the entire test suite and all linters (locally, in parallel, or via CI) and fix every failure — the slow, exhaustive check across current and past features. |
 | [`self-review`](skills/self-review/SKILL.md) | Have a sub-agent review your changes against the requirements, then reconcile and apply valid feedback. |
 
 ## Installing individual skills

@@ -1,11 +1,11 @@
 ---
-name: run-all-tests
-description: Confirm a change hasn't broken anything by getting the repo's entire test suite green, picking the fastest route (local, parallel, or CI) and fixing failures yourself. Use after a non-trivial change before considering it done, or when the user asks you to run the tests, run the suite, or check that nothing is broken.
+name: full-verification
+description: Confirm a change hasn't broken any current or past feature by running the repo's entire test suite and all linters, picking the fastest route (local, parallel, or CI) and fixing failures yourself. This is the slow, exhaustive check for the whole codebase. Use after a non-trivial change before considering it done, or when the user asks you to run the tests, run the suite, run linters, or check that nothing is broken.
 ---
 
-# Run all tests
+# Full verification
 
-Run the full test suite for the current repo and fix any failures. This is often a slow process, so you must be smart about choosing the fastest method to start tests.
+Run the repo's entire test suite and all linters, and fix any failures. This is a full, exhaustive check of the whole codebase — covering current and past features, not just what you changed — so it is often slow. Be smart about choosing the fastest method to start tests.
 
 ## Check which tools are available
 

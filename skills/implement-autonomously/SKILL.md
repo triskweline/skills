@@ -40,7 +40,7 @@ Tests can be useful before your implementation is complete. Consider verifying i
 Add tests for everything you do or change. For Ruby on Rails apps, use the `/effective-rails-testing` skill.
 Also fix existing tests that broke because of behavior changes.
 
-Any non-trivial change must *additionally* be verified by running the *full* test suite and linters. Use the `/run-all-tests` skill.
+Any non-trivial change must *additionally* be verified by running the *full* test suite and linters. Use the `/full-verification` skill.
 The full test suite is slow. Only run the full test suite *after* possibly related tests (fast) already pass.
 
 ## Self-review
