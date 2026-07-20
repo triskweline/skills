@@ -3,6 +3,8 @@ name: effective-rails-testing
 description: Decide what kind of test to write for a change in a Ruby on Rails app so you get solid coverage without redundant or needlessly slow tests. Assumes RSpec/Capybara conventions (feature specs, request specs, unit specs). Use whenever you're about to add or change tests in a Rails project and neither the repo nor your instructions already prescribe a testing style, or when you're unsure whether some behavior warrants a unit test or an end-to-end test.
 ---
 
+# Effective Rails testing
+
 When you don't see a clear preference for testing style in your instructions or repo, here is an effective default strategy that gives you solid coverage with little code:
 
 Prefer implementing logic in models or classes where they can be tested effectively with short unit tests. Avoid fat controllers and controller tests when possible.
