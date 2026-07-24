@@ -98,7 +98,7 @@ Start with the decisions that appear key to the requirements, e.g. when many oth
 ## Free discussion, not multiple-choice
 
 Keep this a free-form discussion in prose. Do not present decisions through a multiple-choice UI (no `AskUserQuestion`-style widget).
-The shorthand codes are a convenience for quick replies, not a wizard: the human should always feel free to think out loud, push back, or propose something you didn't list.
+The shorthand codes (or option slugs) are a convenience for quick replies, not a wizard: the human should always feel free to think out loud, push back, or propose something you didn't list.
 Explain to the human that they can freely choose any other approach by typing prose into chat.
 
 ## Finishing up
