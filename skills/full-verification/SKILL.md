@@ -39,6 +39,8 @@ Luckily, there are ways to shorten the wait:
 - If the repo is hosted on GitHub, you may be able to create a pull request and monitor CI there. Check `git remote -v` for a github.com remote. CI config is usually in `.github/workflows/`. Also check if the `gh` CLI tool is configured to work with the remote (using `gh pr list`).
 - If the repo is hosted on GitLab, you may be able to create a merge request and monitor CI there. Check `git remote -v` for a gitlab.com or code.makandra.de (self-hosted GitLab) remote. CI config is usually in `.gitlab-ci.yml`. Check if the `glab` CLI tool is configured to work with the remote (using `glab mr list`).
 
+Running a large, full test suite via CI is generally favorable over using `parallel_tests`.
+
 ### Start the test run
 
 Now start the full test suite, using the fastest route you discovered earlier (local, parallel, or CI).
