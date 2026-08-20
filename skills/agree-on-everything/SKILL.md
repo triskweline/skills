@@ -64,6 +64,8 @@ For enumerations in prose text, prefer lower-cased letters (`a.`, `b.`, `c.`) or
 When you ask the human for a decision, also recommend at least two options for possible approaches.
 E.g. one approach that requires the least changes to existing code, and another that is more work, but also more correct, clean, flexible, performant, or canonical.
 When a decision involves major trade-offs, or has major consequences for the later implementation, you can provide up to four options.
+Always add one additional option "Something else", where the human can propose any approach of their own in prose.
+If you think one option is clearly superior in many dimensions, you can recommend it, but do so weakly. Acknowledge that the human may always choose a different trade-off.
 The goal is to make the human think about the solution space, and make a deliberate decision. Don't pressure the human into blindly accepting the first option.
 
 The human will have trouble keeping options apart. We can help by clearly identifying each option:
@@ -72,6 +74,7 @@ The human will have trouble keeping options apart. We can help by clearly identi
 - Also give each option a slug (1-2 words, like `allow-html`) that distinguishes it from other options for the same decision.\
   The option slug only serves to contrast options, and does not need to also re-identify the decision.
   E.g. when the decision slug is `xss-protection`, the option slug could just be `sanitize` or `escape-everything`.
+- The "Something else" option always gets the letter `X`, e.g. `3X (something-else)`.
 
 Always include option codes and slugs when referring to an option.\
 You can omit the slug if the shorthand code is immediately followed by a long-form description, e.g. `Option 3A: Sanitize HTML using a strict allow-list of tags and attributes`.
@@ -79,7 +82,7 @@ You can omit the slug if the shorthand code is immediately followed by a long-fo
 When you print an option code or slug, use *italic* formatting, e.g. `*3B (escape-everything)*`.
 
 When the human accepts an option with minor refinements or amendments, suffix a `+` to the option code, e.g. `3B+`.\
-When the human makes a decision that is fundamentally different from the options you recommended, assign a new shorthand code and slug, e.g. `3X (trust-csp)`.
+When the human makes a decision that is fundamentally different from the options you recommended, they are effectively choosing option `X`. Keep the `X` code and replace the `something-else` slug with one describing their choice, e.g. `3X (trust-csp)`.
 
 ## Explicit agreement
 
