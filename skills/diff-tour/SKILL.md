@@ -69,17 +69,14 @@ Modes (how the diff reaches you — see "Presenting the diff"):
   Otherwise: HTML-capable sessions use html; terminal sessions ask you.
 
 Flags:
-  --all         Print every cluster at once, no pausing
-  --full        Show full hunks with no context trimming
-
-  Both apply to inline and html. The viewer shows one chapter at a
-  time and never trims.
+  --all         Print every chapter at once, no pausing
+                (inline and html; the viewer shows one at a time)
 
 While touring, reply with:
   next / n      go to the next chapter
   back / b      re-show the previous chapter
-  zoom          expand this chapter: untrimmed hunks, the enclosing
-                code, callers, and the tests that cover it
+  zoom          expand this chapter: the enclosing code, the callers,
+                and the tests that cover it
   why           more on the reasoning behind this chapter
   skip          pass over this chapter
   map           re-show the chapter list, marking where you are
@@ -139,8 +136,9 @@ the mode, and neither is a licence to loosen the others:
   keeps the `-x,y +a,b` ranges byte-exact but replaces the enclosing-scope text
   with the hunk code and caption. That trade is deliberate: git's context text for
   a file like an IIFE module is the same useless line on every hunk.
-- **"Mark every elision"** — `inline` and `html` mark trimmed *context* with `…`.
-  No mode ever elides a whole hunk: see "Every hunk gets shown" below.
+- **"Never hide an added or changed line"** — identical in all three modes, and not
+  a length tradeoff in any of them. `inline` pastes long hunks whole, and the viewer
+  and html both scroll.
 
 ### Every hunk gets shown
 
@@ -168,10 +166,9 @@ hides a hunk — not the repetitive ones, not the mechanical ones.
 - **A reader who scrolls past or leaves early has decided.** Don't count it,
   don't remark on it, don't withhold the wrap-up over it.
 
-[references/rendering.md](references/rendering.md) covers trimming, renames, moved
-code and oversized hunks. Its trimming rules apply to `inline` and `html`; in
-`viewer` mode read it for the rename, moved-code and large-hunk guidance and skip
-the trimming section.
+[references/rendering.md](references/rendering.md) covers renames, moved code, new
+files and oversized hunks. All of it applies in every mode — none of its rules are
+about saving space.
 
 ### Hunk codes
 
@@ -311,7 +308,7 @@ Every command works in every mode.
 |---|---|
 | `next` / `n` | Print the next chapter. |
 | `back` / `b` | Re-print the previous chapter, unchanged. |
-| `zoom` | Re-print this chapter with nothing trimmed, plus the enclosing functions, the callers you found in Step D, and the tests covering it. Then return to the same footer so the tour resumes cleanly. |
+| `zoom` | Widen the current chapter: the full enclosing functions, the callers you found in Step D, and the tests covering it. The hunks were already complete, so this adds surrounding code rather than restoring anything. Then return to the same footer so the tour resumes cleanly. |
 | `why` | The reasoning behind this cluster: what the commits and comments state, what you inferred, what alternatives lost. Keep stated and inferred separate. |
 | `skip` | Move on without narrating. The hunks stay in the tour; they are not deferred to Leftovers, which is a clustering decision, not a navigation one. |
 | `map` | Re-print the chapter list with a marker on the current chapter. |
@@ -324,7 +321,7 @@ tour file is single state and the viewer follows whatever it holds. Re-pushing a
 earlier chapter is harmless: the ledger de-duplicates, so the completeness check
 is unaffected.
 
-`references/rendering.md` has the rules for trimming context, handling renames, moved code, whitespace-only changes, and very large hunks. **Read it before printing the first cluster** — the trimming rules are what keep a tour readable, and getting them wrong is the most common way this skill produces a wall of text.
+`references/rendering.md` has the rules for grouping hunks, renames, moved code, new files, whitespace-only changes and very large hunks. **Read it before printing the first chapter** — in particular [Nothing is hidden](references/rendering.md#nothing-is-hidden), which is the rule most easily broken by an agent trying to be concise.
 
 In paired-viewer mode the shape is the same minus the `diff` blocks: push the chapter's hunks to the viewer, then narrate against their [hunk codes](#hunk-codes) — one framing line and one explanation per code, in the same order the viewer shows them. Never narrate a hunk the reader cannot see: if a code is not on their screen, paste it inline. Do not push it — the tour file is single state, so pushing would replace the chapter they are reading.
 
@@ -369,7 +366,7 @@ These are what separate this from a prose summary, so hold them tightly:
 
 - **Never retype code.** Copy hunk lines byte-for-byte from the diff output, markers included. If a line is too long, let it wrap — don't shorten it.
 - **Never fabricate a hunk** to illustrate a point. If the diff doesn't contain it, it doesn't get a `diff` block.
-- **Mark every elision.** Trimmed context becomes a `…` line, never a silent deletion. The reader must be able to trust that what they see is what's there.
+- **Never hide an added or changed line.** Not for a new file, not for forty peer definitions, not because a chapter is long. Length is managed by navigation, not by concealment — see [Nothing is hidden](references/rendering.md#nothing-is-hidden). Where a `…` does appear, it is one of the two cases named in Special cases, and it is never silent.
 - **Keep the `@@` headers.** They give line numbers and enclosing scope for free.
 - **Separate stated from inferred intent.** "The PR says…" versus "This looks like…".
 - **Suspicions are suspicions.** Say "worth checking whether…", never "this is a bug", unless it has been verified by reading the surrounding code and can be explained concretely.
@@ -384,7 +381,7 @@ Fetch the PR and its description, investigate, cluster into 4, print overview pl
 Same clustering and same hunk rendering, printed straight through with no pauses. Useful when the reader wants to scroll or paste it somewhere.
 
 **Example 3** — reader says `zoom` mid-tour
-Re-show the current cluster with untrimmed hunks, plus the full enclosing functions, the call sites found by grep, and the tests that cover it. Then return to the same cluster's footer so the tour resumes cleanly.
+Re-show the current chapter with the full enclosing functions, the call sites found by grep, and the tests that cover it. Then return to the same footer so the tour resumes cleanly.
 
 **Example 4** — "explain this diff, and show me the code"
 The "show me the code" is the signal. Run the full tour rather than a prose summary.

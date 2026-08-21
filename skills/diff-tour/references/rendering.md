@@ -1,7 +1,7 @@
 # Rendering hunks
 
 Contents:
-- [Trimming context](#trimming-context)
+- [Nothing is hidden](#nothing-is-hidden)
 - [Splitting and grouping hunks](#splitting-and-grouping-hunks)
 - [Special cases](#special-cases)
 - [Explanation quality](#explanation-quality)
@@ -9,31 +9,22 @@ Contents:
 
 The goal throughout: the reader should be able to trust that a `diff` block shows what is actually in the change, and should never have to skim. Those two goals pull against each other on big hunks, which is what most of this file is about.
 
-## Trimming context
+## Nothing is hidden
 
-`git diff` gives three lines of context on each side. That's usually right. Trim only when a hunk is long enough that the changed lines get lost in it.
+**Every added or changed line appears somewhere in the tour. No exceptions.** Not for a
+new file, not for a hunk that adds forty peer definitions, not for a rewritten file, not
+because a chapter is getting long. The reader is reviewing a diff and is entitled to all
+of it.
 
-**Rules:**
+Length is managed by navigation, never by hiding: chapters divide the tour, the viewer
+scrolls as far as it needs to, and a boring chapter costs the reader one keystroke. What
+you may compress is the *narration* — one caption for twenty similar hunks is fine,
+because the reader can see the twenty hunks it describes.
 
-- Keep every `+` and `-` line. These are never trimmed, ever. A tour that hides changed lines is worse than no tour.
-- Keep context that carries meaning: the enclosing `def`/`function`/`class` line, a guard clause the change depends on, the `if` whose branch was modified.
-- Replace dropped context with a bare `…` on its own line, indented to match. Never drop lines silently.
-- Below ~25 lines, don't trim at all — the trimming costs more attention than it saves.
-- With `--full`, never trim.
-
-**Example.** A hunk with 40 lines of untouched setup before a two-line change becomes:
-
-```diff
-@@ -88,34 +88,35 @@ class PriceResolver:
-     def resolve(self, order, tenant):
-         …
--        cached = self.cache.get(f"price:{order.sku}")
-+        cached = self.cache.get(f"price:{tenant.id}:{order.sku}")
-         if cached is not None:
-             return cached
-```
-
-The `…` tells the reader lines were skipped; the `@@` header tells them where they are.
+Context lines need no management either. `git diff` splits a hunk whenever the gap
+between changes exceeds twice the context setting, so the longest run of unchanged lines
+any hunk can hold is 6 at the default `-U3`. There is nothing to trim, and the `…`
+marker exists only for the two cases in Special cases below.
 
 ## Splitting and grouping hunks
 
@@ -46,27 +37,17 @@ The `…` tells the reader lines were skipped; the `@@` header tells them where 
 
 **Pure renames** — `git diff` shows these as `rename from` / `rename to` with no body. Report them as a line of prose, not a `diff` block. If the rename came with edits, show only the edits.
 
-**Moved code** — a block deleted in one file and added in another shows up as a large `-` run and a large `+` run, which reads as a rewrite. Run `git diff --color-moved=zebra` (or diff the two regions) to confirm it's a move. If it is, say so and show only the lines that actually changed during the move, or a short excerpt of the moved block with a note about its size. Pasting 200 identical lines twice is the worst possible output.
+**Moved code** — a block deleted in one file and added in another shows up as a large `-` run and a large `+` run, which reads as a rewrite. Run `git diff --color-moved=zebra` (or diff the two regions) to confirm it's a move. If it is, say so in the narration and lead with whatever genuinely changed during the move. The added side still gets shown in full — it is code the reader has not reviewed — but one sentence saying "identical to the block removed above, except the two lines called out" saves them from reading it twice.
 
 **Whitespace-only or reformatting churn** — compare against `git diff -w`. Set formatting-only hunks aside, note the line count, and tour the substantive diff.
 
-**New files** — don't paste the whole file. Show its shape (exported names, entry points), then the 10–30 lines that matter most, with `…` for the rest, and say how long the file is.
+**New files** — show the whole file. It is all new code, and none of it has been reviewed before. Say how long it is, and lead the narration with its shape — exported names, entry points — so the reader knows what they are scrolling through.
 
 **Deleted files** — show the signatures or behavior being removed, not the full body. The question the reader needs answered is what capability disappeared and who used it.
 
-**Many sibling definitions added at once** — a hunk that adds a dozen tests, methods,
-cases or config entries. The information is in the lines that *name* them, not in the
-bodies: keep every naming line — the signature, the declaration, the case label, the
-string a test is named by — and trim each body to `…`. Then show one or two bodies in
-full where the setup is the interesting part. A reader who sees twenty names knows the
-shape of what was added; a reader who sees three full bodies knows three of them.
-
-This is the most common cause of an unreadable chapter, because test files grow in
-exactly this shape.
-
 **Binary files, lockfiles, generated code** — one line each, no blocks.
 
-**Very large single hunks** (rewritten file) — split by function or logical section into sub-steps within the cluster, each with its own block and explanation.
+**Very large single hunks** (rewritten file) — split by function or logical section into sub-steps within the chapter, each with its own block and explanation. Splitting is presentation; every line still appears.
 
 ## Explanation quality
 
