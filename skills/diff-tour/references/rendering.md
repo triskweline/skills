@@ -54,6 +54,16 @@ The `…` tells the reader lines were skipped; the `@@` header tells them where 
 
 **Deleted files** — show the signatures or behavior being removed, not the full body. The question the reader needs answered is what capability disappeared and who used it.
 
+**Many sibling definitions added at once** — a hunk that adds a dozen tests, methods,
+cases or config entries. The information is in the lines that *name* them, not in the
+bodies: keep every naming line — the signature, the declaration, the case label, the
+string a test is named by — and trim each body to `…`. Then show one or two bodies in
+full where the setup is the interesting part. A reader who sees twenty names knows the
+shape of what was added; a reader who sees three full bodies knows three of them.
+
+This is the most common cause of an unreadable chapter, because test files grow in
+exactly this shape.
+
 **Binary files, lockfiles, generated code** — one line each, no blocks.
 
 **Very large single hunks** (rewritten file) — split by function or logical section into sub-steps within the cluster, each with its own block and explanation.
@@ -84,7 +94,15 @@ Structure:
 - **For syntax highlighting on top of those backgrounds, reuse delta rather than writing spans yourself.** Delta emits per-token foreground colors and per-line diff backgrounds in one ANSI stream, and `scripts/ansi-to-html.py` translates that to inline-styled HTML: diff state becomes the row's `background`, syntax becomes `color` on `<span>`s inside it. The two never fight, because they are different CSS properties.
 
       delta --paging=never --line-numbers --width 160 --hunk-header-style 'bold yellow' \
-        --keep-plus-minus-markers < tour.diff | python3 scripts/ansi-to-html.py > hunks.html
+        --keep-plus-minus-markers --file-style omit \
+        < one-hunk.diff | python3 scripts/ansi-to-html.py > one-hunk.html
+
+  Run that pipeline **once per hunk**, not once per tour: `ansi-to-html.py` wraps
+  everything it is given in a single `<div class="diff">`, so a whole tour through it
+  is one undivided blob and the two-column layout below becomes impossible. Write a
+  one-hunk patch, convert it, and splice each `<div class="diff">` into its own row of
+  the grid. `--file-style omit` drops delta's own file banner, which would otherwise
+  duplicate the section heading.
 
   Inline styles only — no stylesheet, script or font — which is what a strict CSP needs. Never hand-author the token spans: that is retyping code, and the [fidelity rules](../SKILL.md#fidelity-rules) forbid it.
 
