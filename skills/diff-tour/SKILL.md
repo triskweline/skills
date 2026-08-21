@@ -264,6 +264,7 @@ Expect a range to hold several bodies of work, each with its own rounds of prepa
 
 **Pass 2 — assign every hunk to the topic it exists for.** The test is counterfactual: **if this topic were reverted, would this hunk disappear from the diff?** Not "would my explanation mention it" — a topic's prose can be complete while a dozen hunks still exist only because of it, and judging by the prose sends all twelve to Leftovers.
 
+- **A topic's chapter carries every hunk that belongs to it**, including the repetitive and inconsequential ones. Never move a topic's own follow-ups to Leftovers: by the time the reader reaches the end they have lost the context that made those hunks legible, and a hunk shown without its topic is worse than useless. Narrate the first one properly, then say the rest follow the same shape and show their diffs after it.
 - **Tests and documentation go with the behavior they pin down or describe.** Six specs for one new behavior all belong to that topic, even though the explanation would read fine having quoted only one of them.
 - A hunk two topics both claim goes to the one whose explanation would suffer more without it — that is its primary home, and this is where the incompleteness question earns its keep, as a tiebreaker. Show it again in the other chapter only if that chapter would otherwise have no evidence at all; a cross-reference is not enough, because in `viewer` mode the earlier chapter is off the screen.
 - A hunk no topic claims is a **leftover** — no idea in the change would lose it if reverted.
@@ -304,7 +305,7 @@ pointers, not verified bugs.
 ## The tour
 2. <cluster name> — <half-line> · `path/one.py`, `path/two.py`
 3. <cluster name> — <half-line> · `path/three.py`
-4. Leftovers — <N hunks, and in a half-line what they repeat>
+4. Leftovers — <N hunks, and in a half-line what they are>
 5. Wrap-up — what I verified, what I asserted, open questions
 
 Say `next` to start, `go <n>` to jump in, or `help` for the commands.
@@ -375,18 +376,22 @@ In paired-viewer mode the shape is the same minus the `diff` blocks: push the ch
 
 ## Step H: The Leftovers chapter
 
-Every hunk that Step E's pass 2 found no home for — the ones whose absence no
-explanation would notice — in one chapter, grouped by file.
+**Leftovers are the hunks with no strong affinity to any topic** — not the boring hunks,
+and never a topic's own repetitive follow-ups. If a hunk would disappear when a topic was
+reverted, it belongs to that topic's chapter no matter how mechanical it looks. What lands
+here is the genuinely unaffiliated: a `.gitignore` line, an editor config, a dependency
+bump, churn in a subsystem the tour is not about, or a second body of work you named in
+the overview and are not touring.
 
-**Each group gets one line saying what it repeats or what produced it.** That is
-what makes a scroll-past an informed decision rather than a gamble, and it is also
-the check on the deferral: if you cannot name what a group repeats, it is not
-repetitive, it is unexamined, and it belongs in a narrated chapter.
+Group them by file, and **give each group one line saying what it is and why no topic
+claimed it.** That is what makes a scroll-past an informed decision. It is also the check
+on the classification: if you cannot say why a group belongs to no topic, it probably
+belongs to one — go back to pass 2.
 
-`tour-set.sh` takes the captions as `rest:<path>=<caption>` and warns about any
-group you left bare. Pass `TOUR_NEW=1` on your first `tour-set.sh` call of the tour so its ledger starts fresh;
-each later call reports how many hunks remain, which is how you know what this
-chapter will hold. That count is for you, not a score to report to the reader.
+`tour-set.sh` takes the captions as `rest:<path>=<caption>` and warns about any group you
+left bare. Pass `TOUR_NEW=1` on your first `tour-set.sh` call of the tour so its ledger
+starts fresh; each later call reports how many hunks remain, which is how you know what
+this chapter will hold. That count is for you, not a score to report to the reader.
 
 **In `inline` and `html` mode, mirror every chapter into `tour-set.sh` too.** The tour
 file goes unviewed there, but its ledger is the only thing that makes the check below
@@ -394,14 +399,13 @@ mean anything — skip it and `rest` reports the entire diff as unshown after yo
 already narrated it.
 
 **Run the completeness check before you write the wrap-up.** In every mode, call
-`tour-set.sh` with the `rest` spec once. It selects every hunk no earlier chapter
-used, and if there are none it prints `all hunks already shown` and exits 0. That
-is the only mechanical guarantee the tour has that nothing was dropped — do not
-print the wrap-up chapter without it.
+`tour-set.sh` with the `rest` spec once. It selects every hunk no earlier chapter used,
+and if there are none it prints `all hunks already shown` and exits 0. That is the only
+mechanical guarantee the tour has that nothing was dropped — do not print the wrap-up
+chapter without it.
 
-If `rest` returns hunks, they are this chapter. Caption each file's group with what
-it repeats, and say plainly that nothing here was explained and scrolling it is the
-reader's call.
+If `rest` returns more than a handful, treat it as a finding rather than a chapter: too
+many topics went unnamed, or the range holds a second body of work. Say which.
 
 ## Step I: The wrap-up chapter
 
