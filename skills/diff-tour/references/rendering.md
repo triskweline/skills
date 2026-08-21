@@ -78,13 +78,13 @@ All CSS and JS inline, no external requests of any kind — it's opened from dis
 Structure:
 
 - Header with the change title, the what/why paragraph, the new-behavior list, and the scope line.
-- A sticky sidebar (or, on narrow screens, a top list) with the cluster map, highlighting the cluster currently in view.
+- A sticky sidebar (or, on narrow screens, a top list) with the chapter list, highlighting the chapter currently in view.
 - One section per cluster: heading, purpose sentence, then alternating annotated hunks and explanation prose.
-- Hunks in a monospace block with per-line background colors — added lines green-tinted, removed red-tinted, context neutral, `@@` headers dimmed — and the file path as a small label above each block. Keep the `+`/`-` characters visible; don't rely on color alone, since the reader may print or copy it.
+- Hunks in a monospace block with per-line background colors — added lines green-tinted, removed red-tinted, context neutral, `@@` headers dimmed — and the file path as a small label above each block. Keep the `+`/`-` characters visible; don't rely on color alone, since the reader may print or copy it. Delta drops the marker column by default, so `--keep-plus-minus-markers` is required, not optional.
 - **For syntax highlighting on top of those backgrounds, reuse delta rather than writing spans yourself.** Delta emits per-token foreground colors and per-line diff backgrounds in one ANSI stream, and `scripts/ansi-to-html.py` translates that to inline-styled HTML: diff state becomes the row's `background`, syntax becomes `color` on `<span>`s inside it. The two never fight, because they are different CSS properties.
 
       delta --paging=never --line-numbers --width 160 --hunk-header-style 'bold yellow' \
-        < tour.diff | python3 scripts/ansi-to-html.py > hunks.html
+        --keep-plus-minus-markers < tour.diff | python3 scripts/ansi-to-html.py > hunks.html
 
   Inline styles only — no stylesheet, script or font — which is what a strict CSP needs. Never hand-author the token spans: that is retyping code, and the [fidelity rules](../SKILL.md#fidelity-rules) forbid it.
 

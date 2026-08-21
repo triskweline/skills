@@ -21,8 +21,10 @@
 #   Set TOUR_NEW=1 on the first chapter of a tour: it starts a fresh coverage ledger
 #   (<tour-file>.used), which is what makes `rest` and the coverage count meaningful.
 #
-#   Prints the assigned codes and the running coverage. Quote the codes in the narration.
+#   Prints the assigned codes and what is still unshown. Quote the codes in the narration.
 #   Exits 3 if a requested hunk does not exist, 4 if its own output disagrees with itself.
+#   `rest` with nothing left prints "all hunks already shown" and exits 0 — run it once
+#   before the wrap-up chapter, in every mode, as the tour's completeness check.
 set -euo pipefail
 
 [ $# -ge 4 ] || { echo "usage: tour-set.sh <tour-file> <source> <chapter> <spec> …" >&2; exit 2; }
@@ -111,7 +113,15 @@ if [ -n "$want_rest" ]; then
 fi
 
 paths=$(cut -f1 "$SPECS" | awk 'NF && !seen[$0]++')
-[ -n "$paths" ] || { echo "tour-set: nothing to show (rest is empty?)" >&2; exit 3; }
+if [ -z "$paths" ]; then
+  # `rest` with nothing left is the completeness check passing, not a failure.
+  if [ -n "$want_rest" ]; then
+    echo "tour-set: all hunks already shown — no Leftovers chapter needed"
+    exit 0
+  fi
+  echo "tour-set: nothing to show" >&2
+  exit 3
+fi
 
 # ---- pass 1: assign codes in on-screen order (file order, then line order) ----------
 n=0

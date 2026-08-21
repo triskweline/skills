@@ -87,6 +87,7 @@ while :; do
   delta --paging=never --line-numbers --width "$(tput cols)" \
         --hunk-header-style 'bold yellow' \
         --hunk-header-decoration-style 'yellow box' \
+        --keep-plus-minus-markers \
         < "$TOUR" > "$RENDER"
 
   # A sentinel, not an exit code: less installs a SIGTERM handler and exits 15 on some

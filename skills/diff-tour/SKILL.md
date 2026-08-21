@@ -14,7 +14,33 @@ Two things make this skill work, and both are easy to get wrong:
 1. **Real hunks, verbatim.** Every cluster shows the actual diff lines with their `+`/`-` markers, copied character-for-character from `git diff`. Paraphrased or retyped code silently destroys the whole value of the tour.
 2. **One cluster at a time.** Stop after each cluster and let the reader say `next`. A tour that dumps everything at once is just a long document, and the reader loses the thread by cluster three.
 
-## Step 0: Help
+## Clusters and chapters
+
+Two numbering schemes, deliberately different so they can never be confused:
+
+- **Steps A–H are lettered.** They are this skill's procedure — what you do, in
+  order. The reader never sees them.
+- **Chapters are numbered.** They are what the reader navigates with `next` and
+  `go <n>`. Hunk codes are `<chapter>.<hunk>`, so `3.2` is the second hunk of
+  chapter 3.
+
+A **hunk cluster** is a set of thematically cohesive hunks — the unit Step D
+produces. A **chapter** is a unit of navigation. Most chapters carry one cluster;
+three do not:
+
+| Step | Produces |
+|---|---|
+| A | nothing — prints usage and stops |
+| B, C, D | nothing — acquire, understand, cluster |
+| E | chapter 1, the overview |
+| F | one chapter per cluster, chapters 2…n |
+| G | the Leftovers chapter |
+| H | the wrap-up chapter |
+
+So a tour of five clusters is eight chapters. **The 3–7 budget in Step D counts
+clusters, not chapters.**
+
+## Step A: Help
 
 If the arguments are exactly `help`, `--help`, `-h`, or `?`, print this block verbatim and stop — don't gather a diff.
 
@@ -45,32 +71,39 @@ Flags:
   --all         Print every cluster at once, no pausing
   --full        Show full hunks with no context trimming
 
+  Both apply to inline and html. The viewer shows one chapter at a
+  time and never trims.
+
 While touring, reply with:
-  next / n      go to the next cluster
-  back / b      re-show the previous cluster
-  zoom          expand the current cluster: full hunks, surrounding
-                code, callers, tests
-  why           more on the reasoning behind this cluster
-  skip          jump past this cluster
-  map           re-show the cluster map and where you are in it
-  go <n>        jump to cluster n
-  done          end the tour with a wrap-up
+  next / n      go to the next chapter
+  back / b      re-show the previous chapter
+  zoom          expand this chapter: untrimmed hunks, the enclosing
+                code, callers, and the tests that cover it
+  why           more on the reasoning behind this chapter
+  skip          pass over this chapter
+  map           re-show the chapter list, marking where you are
+  go <n>        jump to chapter n
+  help          re-print this list
+  done          end early, going straight to the wrap-up chapter
 ```
 
-## Step 1: Acquire the diff
+## Step B: Acquire the diff
 
-- **No target**: `git diff @{upstream}...HEAD` (fall back to `git diff main...HEAD`, then `git diff HEAD~1`). If the working tree is dirty or that range is empty, also run `git diff HEAD` and fold the working-tree changes in.
+- **No target**: diff against the branch point, not the tracking branch. Resolve the base with `git merge-base --fork-point <default> HEAD`, falling back to `git merge-base <default> HEAD`, then `git diff <base>..HEAD`. Never `@{upstream}`: on a pushed branch that is the same branch on the remote, so the range covers only unpushed commits and silently tours a fraction of the change. If the working tree is dirty, also run `git diff HEAD` and fold it in. State which base you used and how many commits and hunks it covered, so a wrong guess is visible to the reader.
 - **PR number**: `gh pr view <n>` for title and description, `gh pr diff <n>` for the diff.
-- **Range / commit / branch**: `git diff <range>`, plus `git log` over the range — commit messages carry stated intent.
+- **Range / commit**: `git diff <range>`.
+- **Branch**: `git diff <default>...<branch>`. Bare `git diff <branch>` compares the *working tree* against that branch, which is the wrong direction and includes local edits.
+
+For every target, read the commit log over the range. It is the cheapest signal you will get for intent, for where the natural cluster boundaries are, and for whether the range holds more than one body of work. Skip merge commits when reading intent.
 - **Path**: restrict any of the above to that path.
 
-Keep the raw diff text available for the whole tour. Every hunk shown later must be copied from it, not reconstructed from memory.
+Keep the raw diff text available for the whole tour, and also write it to a patch file under a scratch path. Every hunk shown later must come from it, not from memory. `viewer` and `html` both need it on disk, and a saved patch is immune to the branch moving mid-session — which it does.
 
-Note but exclude from the narrative: lockfiles, generated code, vendored directories, and pure-formatting churn. Say what was excluded and how many lines, so the reader knows the tour covers the whole change.
+Note but exclude from the narrative: lockfiles, generated code, vendored directories, and pure-formatting churn. Excluded means not narrated, never hidden — those hunks still appear in the Leftovers chapter under one caption naming what they are. Say what was excluded and how many lines.
 
 If the diff is empty, report exactly what was compared and stop. Don't invent a tour.
 
-## Step 2: Understand before writing
+## Step C: Understand before writing
 
 The tour is only as good as this step, and it happens before any output.
 
@@ -81,7 +114,7 @@ The tour is only as good as this step, and it happens before any output.
 
 Scale effort to the diff. A 30-line change needs a few minutes here; a 3,000-line one needs real exploration but should still stay at cluster granularity.
 
-## Step 3: Cluster the hunks
+## Step D: Cluster the hunks
 
 A cluster is a **unit of intent**, not a file. Hunks from four files belong in one cluster if they exist for the same reason; two hunks in one file belong in different clusters if they don't.
 
@@ -97,9 +130,11 @@ Send a hunk to Leftovers when narrating it would not add understanding: it repea
 
 The test is the caption: you may only defer a hunk if you can say in one line what it repeats or what produced it. If you can't name that, it isn't repetitive, it's unexamined, and it belongs in a narrated cluster. Two things are never deferred: a hunk with an observable consequence, however small it looks, and a hunk you haven't read.
 
+A repeat stays in its cluster when the reader needs it to trust the cluster's claim, and goes to Leftovers when the claim is already complete without it.
+
 Deferring is not a way to hit the 3–7 cluster budget. If most of the diff ends up in Leftovers, either the clustering is lazy or the branch contains two unrelated bodies of work — decide which, and if it's the latter, say so in the overview.
 
-## Step 4: Print the overview and the map
+## Step E: Print the overview chapter
 
 Before touring, give the reader orientation in roughly a screen:
 
@@ -112,8 +147,7 @@ Before touring, give the reader orientation in roughly a screen:
 user, caller, API consumer, or the data. "None — internal refactor" is
 a valid and useful answer.
 
-**Scope** — N files, +X/−Y lines, across M clusters plus a Leftovers
-chapter. Note anything excluded (lockfiles, generated code). If a whole
+**Scope** — N files, +X/−Y lines, in M clusters across <M+3> chapters. Note anything excluded (lockfiles, generated code). If a whole
 subsystem sits only in Leftovers, say which half of the branch the tour
 actually covers.
 
@@ -122,11 +156,12 @@ concentrates, each naming the cluster it lives in. These are attention
 pointers, not verified bugs.
 
 ## The tour
-1. <cluster name> — <half-line> · `path/one.py`, `path/two.py`
-2. ...
-L. Leftovers — <N hunks, and in a half-line what they repeat>
+2. <cluster name> — <half-line> · `path/one.py`, `path/two.py`
+3. <cluster name> — <half-line> · `path/three.py`
+4. Leftovers — <N hunks, and in a half-line what they repeat>
+5. Wrap-up — what I verified, what I asserted, open questions
 
-Say `next` to start, or `go <n>` to jump in.
+Say `next` to start, `go <n>` to jump in, or `help` for the commands.
 ```
 
 Then stop and wait, unless `--all` was passed.
@@ -138,7 +173,7 @@ clustered and narrated. There are three modes. Settle on one before printing
 cluster 1 and say which you're using.
 
 **`inline`** — narration and diffs interwoven in your own messages, diffs as
-fenced diff blocks, as Step 5 describes. No syntax highlighting; accept that.
+fenced diff blocks, as Step F describes. No syntax highlighting; accept that.
 Works in every session, needs nothing installed, and stays readable in scrollback
 after the session ends.
 
@@ -222,7 +257,7 @@ precise work", "`2.3` is the guard on the whole approach". A reader who has
 scrolled away can find the hunk again, and a reader reading only your prose still
 knows how many hunks the chapter had.
 
-## Step 5: Tour one cluster at a time
+## Step F: Tour one cluster per chapter
 
 For each cluster, in order, output this shape and then **stop and wait for the reader**:
 
@@ -251,16 +286,54 @@ for callers, what it costs, what invariant it establishes or removes.>
 reader can answer by looking>
 
 ---
-`next` · `zoom` · `why` · `map`   (cluster <n> of <total>)
+`next` · `zoom` · `why` · `map` · `help`   (chapter <n> of <total>)
 ~~~~
 
-Repeat for every hunk in the cluster that carries meaning — several small `diff` blocks with a line of framing each read far better than one giant block. A cluster spanning many files leads with the hunks that carry the idea and lets the repetitive ones follow with short captions — it does not summarize them away (see [Every hunk gets shown](#every-hunk-gets-shown)).
+Repeat for every hunk in the cluster — several small `diff` blocks with a line of framing each read far better than one giant block. A cluster spanning many files leads with the hunks that carry the idea and lets the repetitive ones follow with short captions — it does not summarize them away (see [Every hunk gets shown](#every-hunk-gets-shown)).
+
+### Reader commands
+
+Print the command list once, in the overview chapter, and re-print it on `help`.
+Every command works in every mode.
+
+| Command | What you do |
+|---|---|
+| `next` / `n` | Print the next chapter. |
+| `back` / `b` | Re-print the previous chapter, unchanged. |
+| `zoom` | Re-print this chapter with nothing trimmed, plus the enclosing functions, the callers you found in Step C, and the tests covering it. Then return to the same footer so the tour resumes cleanly. |
+| `why` | The reasoning behind this cluster: what the commits and comments state, what you inferred, what alternatives lost. Keep stated and inferred separate. |
+| `skip` | Move on without narrating. The hunks stay in the tour; they are not deferred to Leftovers, which is a clustering decision, not a navigation one. |
+| `map` | Re-print the chapter list with a marker on the current chapter. |
+| `go <n>` | Jump to chapter n. Chapters are independent of each other only forward — say so if they land somewhere that assumes an earlier chapter. |
+| `help` | Re-print the command list. |
+| `done` | Stop touring and go straight to the wrap-up chapter. Run Step G's completeness check first; report what they did not see, without remarking on the fact that they left. |
+
+In `viewer` mode, `back`, `go <n>` and `zoom` all re-push a chapter, because the
+tour file is single state and the viewer follows whatever it holds. Re-pushing an
+earlier chapter is harmless: the ledger de-duplicates, so the completeness check
+is unaffected.
 
 `references/rendering.md` has the rules for trimming context, handling renames, moved code, whitespace-only changes, and very large hunks. **Read it before printing the first cluster** — the trimming rules are what keep a tour readable, and getting them wrong is the most common way this skill produces a wall of text.
 
-In paired-viewer mode the shape is the same minus the `diff` blocks: push the chapter's hunks to the viewer, then narrate against their [hunk codes](#hunk-codes) — one framing line and one explanation per code, in the same order the viewer shows them. Never narrate a hunk the reader cannot see: if a code is not on their screen, either push it or paste it inline.
+In paired-viewer mode the shape is the same minus the `diff` blocks: push the chapter's hunks to the viewer, then narrate against their [hunk codes](#hunk-codes) — one framing line and one explanation per code, in the same order the viewer shows them. Never narrate a hunk the reader cannot see: if a code is not on their screen, paste it inline. Do not push it — the tour file is single state, so pushing would replace the chapter they are reading.
 
-## Step 6: Wrap up
+## Step G: The Leftovers chapter
+
+Every hunk no cluster wanted, in one chapter, grouped by file with a caption per
+group. The policy is in [Every hunk gets shown](#every-hunk-gets-shown); this is
+where it happens.
+
+**Run the completeness check before you write the wrap-up.** In every mode, call
+`tour-set.sh` with the `rest` spec once. It selects every hunk no earlier chapter
+used, and if there are none it prints `all hunks already shown` and exits 0. That
+is the only mechanical guarantee the tour has that nothing was dropped — do not
+print the wrap-up chapter without it.
+
+If `rest` returns hunks, they are this chapter. Caption each file's group with what
+it repeats, and say plainly that nothing here was explained and scrolling it is the
+reader's call.
+
+## Step H: The wrap-up chapter
 
 After the last cluster, or on `done`:
 
