@@ -148,21 +148,10 @@ hides a hunk — not the repetitive ones, not the mechanical ones.
 - **Never show one hunk as a representative of several.** The old habit of "the
   same substitution in six more call sites, say `zoom` to see them" hides exactly
   the case the tour exists to catch: the seventh site that differs.
-- **End with a Leftovers chapter.** After the narrated clusters, one final chapter
-  carries every hunk no cluster wanted — repeats, renames, import shuffles,
-  generated churn. In `viewer` mode the viewport scrolls as far as it needs to, so
-  length costs nothing; in `inline` and `html` mode put it behind a heading the
-  reader can skip.
-- **Leftovers are grouped and annotated, not dumped.** Each file's leftover group
-  gets one line saying what it repeats and how it resembles something already
-  explained — "the same accessor swap as 2.2, in nine more places", "the behavior
-  changes 1.1 and 1.2 described, in release-note form". That is what makes a
-  scroll-past an informed decision rather than a gamble. `tour-set.sh` takes those
-  as `rest:<path>=<caption>` and warns about any group you left uncaptioned.
-- **Track what is left, for your own sake.** Pass `TOUR_NEW=1` on chapter 1 to
-  start the ledger; `rest` then selects every hunk no earlier chapter used, and
-  each call reports how many remain. That count is how you build the Leftovers
-  chapter — it is not a score to report to the reader.
+- **End with a Leftovers chapter.** Every hunk Step E found no home for goes
+  there, grouped and captioned. In `viewer` mode the viewport scrolls as far as it
+  needs to, so length costs nothing; in `inline` and `html` mode put it behind a
+  heading the reader can skip. Step H is where it happens.
 - **A reader who scrolls past or leaves early has decided.** Don't count it,
   don't remark on it, don't withhold the wrap-up over it.
 
@@ -189,7 +178,7 @@ knows how many hunks the chapter had.
 - **Range / commit**: `git diff <range>`.
 - **Branch**: `git diff <default>...<branch>`. Bare `git diff <branch>` compares the *working tree* against that branch, which is the wrong direction and includes local edits.
 
-For every target, read the commit log over the range. It is the cheapest signal you will get for intent, for where the natural cluster boundaries are, and for whether the range holds more than one body of work. Skip merge commits when reading intent.
+For every target, read the commit log over the range. It is the cheapest signal you will get for intent, and for whether the range holds more than one body of work. It is not a signal for where the cluster boundaries are — see Step E. Skip merge commits when reading intent.
 - **Path**: restrict any of the above to that path.
 
 Keep the raw diff text available for the whole tour, and also write it to a patch file under a scratch path. Every hunk shown later must come from it, not from memory. `viewer` and `html` both need it on disk, and a saved patch is immune to the branch moving mid-session — which it does.
@@ -211,25 +200,47 @@ Scale effort to the diff. A 30-line change needs a few minutes here; a 3,000-lin
 
 ## Step E: Cluster the hunks
 
+### What a good cluster looks like
+
 A cluster is a **unit of intent**, not a file. Hunks from four files belong in one cluster if they exist for the same reason; two hunks in one file belong in different clusters if they don't.
 
-Good cluster names describe a change: "thread the tenant id into the cache key", "make the retry budget configurable", "backfill script for existing rows". Bad ones name locations: "changes to cache.py", "misc".
+**Its name describes a change**: "thread the tenant id into the cache key", "make the retry budget configurable", "backfill script for existing rows". Not a location: "changes to cache.py", "misc".
 
-Aim for **3–7 clusters**. Fewer means the tour isn't decomposing anything; more means the reader loses the thread. Very large diffs get 5–7 clusters with sub-steps inside, not 15 clusters.
+**Its length follows its cohesion.** Never split a cluster to make it shorter. If a change can only be explained through twelve interconnected hunks, that is one chapter of twelve hunks — two chapters of six that each depend on the other are strictly worse, because neither can be understood where it sits. When a cluster is genuinely long, say at the top how many hunks it holds and lead with the ones carrying the idea.
 
-**Never split a cluster to make it shorter.** A cluster is as long as its cohesion requires. If a change can only be explained through twelve interconnected hunks, that is one chapter of twelve hunks — two chapters of six that each depend on the other are strictly worse, because neither can be understood where it sits. The 3–7 range counts *ideas the reader tracks*, not length. When a cluster is genuinely long, say at the top how many hunks it holds and order them so the ones carrying the idea come first.
+**Many hunks share a cluster, and almost every hunk has exactly one home.** A cluster of one hunk is possible but usually means the clustering is too fine. The exception is the multi-intent hunk: where two rounds of work overwrote the same lines, the surviving hunk genuinely serves two topics, and it may appear in both chapters. The gate is that **both** explanations would be incomplete without it — not that both are related to it. When you show it twice, say so: name its primary chapter and what the second chapter is looking at in it. A reader who sees the same hunk twice without being told is entitled to think you lost track.
 
-**Order them so each one is understandable given only its predecessors.** That's usually: data model or types → core logic → call sites and adapters → tests → config, migrations, docs. Where a dependency order exists, follow it; the reader should never need a later cluster to understand an earlier one. If cluster 4 is only comprehensible after cluster 6, reorder.
+**It is understandable from its predecessors alone.** The reader should never need a later chapter to follow an earlier one. If chapter 4 only makes sense after chapter 6, reorder.
 
-The mapping is many-to-one, in that order: **one chapter holds as many hunks as share its reason — that is the whole point of clustering by intent — and each hunk has exactly one home.** A chapter of one hunk is possible but usually means the clustering is too fine; a chapter of a dozen is fine if a dozen hunks exist for the same reason. The last chapter is always [Leftovers](#every-hunk-gets-shown).
+**It is as separate as the diff permits, and no more.** You are reverse-engineering a history from a net result, not writing one: you see only the final state of every line. Where a location was rewritten in several rounds, the surviving hunk carries all of them at once and no clustering can separate it. Perfect separation is not available, and claiming it is a fabrication.
 
-Send a hunk to Leftovers when narrating it would not add understanding: it repeats a change already explained, or it is the mechanical product of one — renames, import shuffles, a regenerated table of contents, the same substitution in nine more call sites.
+**What a cluster is never:** backend versus frontend. Tests versus code. By file type. By directory. Every one of those cuts across intent and produces chapters that can only be understood by reading a different chapter. **Tests belong with the behavior they pin down** — a spec asserting a new selector goes in the selector cluster. A layer split (schema → API → UI) is a last resort for a change that genuinely is one traversal of the stack, never a default.
 
-The test is the caption: you may only defer a hunk if you can say in one line what it repeats or what produced it. If you can't name that, it isn't repetitive, it's unexamined, and it belongs in a narrated cluster. Two things are never deferred: a hunk with an observable consequence, however small it looks, and a hunk you haven't read.
+### How to find them
 
-A repeat stays in its cluster when the reader needs it to trust the cluster's claim, and goes to Leftovers when the claim is already complete without it.
+Assume the diff is ugly. The commits may be checkpoints, merges and afterthoughts; the file order is alphabetical; the same lines may have been overwritten three times. **Cluster the whole diff as if you were writing the best possible commit history for it** — and derive that history from the diff's content, not from the commits that happen to be in it.
 
-Deferring is not a way to hit the 3–7 cluster budget. If most of the diff ends up in Leftovers, either the clustering is lazy or the branch contains two unrelated bodies of work — decide which, and if it's the latter, say so in the overview.
+Three passes. Do not skip to assignment: grouping hunks by resemblance is what produces the location-based clusters above, because resemblance correlates with location.
+
+**Pass 1 — extract topics, ignoring hunks.** Read the diff as a whole and name the ideas it contains: the behavior changes, the refactorings, the cleanups. Write them down as ideas, before deciding where any single hunk goes.
+
+One test does most of the work here: **does this change observable behavior?** Behavior-preserving work and behavior-changing work are different topics even when they touch the same lines — it is what separates "the refactoring that made room" from "the change it made room for". Unlike "is this preparatory?", you can answer it from the diff.
+
+Commit messages, PR descriptions and changelog entries are **hypotheses to test against the hunks, never the topic list itself**. Deriving topics from commit subjects smuggles back in the boundaries you were told not to trust.
+
+Expect a range to hold several bodies of work, each with its own rounds of preparation, refactoring and cleanup. Within one body, `preparation → behavior change → cleanup` is a good ordering and a good hint at where a boundary falls. Across bodies it means nothing — don't force one arc onto a range that has three.
+
+**Pass 2 — assign every hunk to its highest-affinity topic.** Affinity has one test: **would the topic's explanation be incomplete without this hunk?**
+
+- A hunk two topics both need goes to the one whose explanation would suffer more — that is its primary home. Show it again in the other chapter only if that chapter's explanation would otherwise have no evidence at all; a cross-reference is not enough there, because in `viewer` mode the earlier chapter is off the screen.
+- A hunk no topic needs is a **leftover** — its absence would go unnoticed in every explanation.
+- A hunk with no good home may instead be **evidence of a topic you missed**. Check that first. Adding a topic is cheap; misfiling real work as fallout is not.
+
+**Pass 3 — settle.** Merge two topics whose hunks turn out to depend on each other in both directions; mutual dependency means one cluster, while a one-directional dependency is only an ordering constraint. Split a topic whose hunks serve two ideas. Pull a new abstraction and its first consumer together unless the abstraction stands alone.
+
+Then count. **3–7 clusters** is the healthy range, but treat it as a smell check on the topics rather than a budget to hit: fifteen usually means one topic was found repeatedly under different names, and two usually means the change is smaller than its line count suggests. If the count is far outside the range, re-run this pass — never redraw a boundary by hand to hit a number.
+
+If most of the diff ends up in leftovers, either the topics are too few or the range holds two unrelated bodies of work. Decide which, and if it's the latter, say so in the overview and offer the second body as its own tour.
 
 ## Step F: Print the overview chapter
 
@@ -327,9 +338,18 @@ In paired-viewer mode the shape is the same minus the `diff` blocks: push the ch
 
 ## Step H: The Leftovers chapter
 
-Every hunk no cluster wanted, in one chapter, grouped by file with a caption per
-group. The policy is in [Every hunk gets shown](#every-hunk-gets-shown); this is
-where it happens.
+Every hunk that Step E's pass 2 found no home for — the ones whose absence no
+explanation would notice — in one chapter, grouped by file.
+
+**Each group gets one line saying what it repeats or what produced it.** That is
+what makes a scroll-past an informed decision rather than a gamble, and it is also
+the check on the deferral: if you cannot name what a group repeats, it is not
+repetitive, it is unexamined, and it belongs in a narrated chapter.
+
+`tour-set.sh` takes the captions as `rest:<path>=<caption>` and warns about any
+group you left bare. Pass `TOUR_NEW=1` on chapter 1 so its ledger starts fresh;
+each later call reports how many hunks remain, which is how you know what this
+chapter will hold. That count is for you, not a score to report to the reader.
 
 **Run the completeness check before you write the wrap-up.** In every mode, call
 `tour-set.sh` with the `rest` spec once. It selects every hunk no earlier chapter
