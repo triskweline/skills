@@ -91,7 +91,13 @@ Aim for **3–7 clusters**. Fewer means the tour isn't decomposing anything; mor
 
 **Order them so each one is understandable given only its predecessors.** That's usually: data model or types → core logic → call sites and adapters → tests → config, migrations, docs. Where a dependency order exists, follow it; the reader should never need a later cluster to understand an earlier one. If cluster 4 is only comprehensible after cluster 6, reorder.
 
-Every hunk lands in exactly one cluster. If some hunks are genuinely trivial (renames, import shuffling), collect them in a final "mechanical fallout" cluster rather than pretending they're interesting.
+The mapping is many-to-one, in that order: **one chapter holds as many hunks as share its reason — that is the whole point of clustering by intent — and each hunk has exactly one home.** A chapter of one hunk is possible but usually means the clustering is too fine; a chapter of a dozen is fine if a dozen hunks exist for the same reason. The last chapter is always [Leftovers](#every-hunk-gets-shown).
+
+Send a hunk to Leftovers when narrating it would not add understanding: it repeats a change already explained, or it is the mechanical product of one — renames, import shuffles, a regenerated table of contents, the same substitution in nine more call sites.
+
+The test is the caption: you may only defer a hunk if you can say in one line what it repeats or what produced it. If you can't name that, it isn't repetitive, it's unexamined, and it belongs in a narrated cluster. Two things are never deferred: a hunk with an observable consequence, however small it looks, and a hunk you haven't read.
+
+Deferring is not a way to hit the 3–7 cluster budget. If most of the diff ends up in Leftovers, either the clustering is lazy or the branch contains two unrelated bodies of work — decide which, and if it's the latter, say so in the overview.
 
 ## Step 4: Print the overview and the map
 
@@ -106,8 +112,10 @@ Before touring, give the reader orientation in roughly a screen:
 user, caller, API consumer, or the data. "None — internal refactor" is
 a valid and useful answer.
 
-**Scope** — N files, +X/−Y lines, across M clusters. Note anything
-excluded (lockfiles, generated code).
+**Scope** — N files, +X/−Y lines, across M clusters plus a Leftovers
+chapter. Note anything excluded (lockfiles, generated code). If a whole
+subsystem sits only in Leftovers, say which half of the branch the tour
+actually covers.
 
 **Where to be careful** — up to 3 ranked pointers at where risk
 concentrates, each naming the cluster it lives in. These are attention
@@ -116,6 +124,7 @@ pointers, not verified bugs.
 ## The tour
 1. <cluster name> — <half-line> · `path/one.py`, `path/two.py`
 2. ...
+L. Leftovers — <N hunks, and in a half-line what they repeat>
 
 Say `next` to start, or `go <n>` to jump in.
 ```
