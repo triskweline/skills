@@ -39,7 +39,7 @@ a restarted viewer shows the current chapter.
 
 ```bash
 cd /path/to/the/repo    # or export TOUR_REPO=/path/to/the/repo
-/abs/path/to/skills/diff-tour/scripts/tour-hunks.sh master..HEAD src/unpoly/form.js
+/abs/path/to/skills/diff-tour/scripts/tour-hunks.sh /abs/path/change.patch src/unpoly/form.js
 ```
 
 The first column is the hunk's new-side start line, which is what selects it. Both scripts
@@ -113,8 +113,8 @@ stale selector fails with `no hunk at +682 in …` and exit 3 rather than quietl
 less than you asked for — if you see that, re-list, don't guess. Driving from a saved
 patch avoids the whole problem, which is why it is the default.
 
-Note `tour-hunks.sh` takes a git range only. With a patch file, read the `@@` lines
-directly: `grep -n '^@@' /tmp/pr.patch`.
+`tour-hunks.sh` takes the same `<source>` as `tour-set.sh` — a patch file or a git
+range — so both halves of the tour read the same diff.
 
 ## Why it is built this way
 

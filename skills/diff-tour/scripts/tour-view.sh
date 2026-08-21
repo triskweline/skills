@@ -54,7 +54,15 @@ printf '#command\n\\e\\e quit\n' > "$KEYS"   # ESC alone can't quit: arrows are 
 LESSKEY=()
 less --lesskey-src=/dev/null --version >/dev/null 2>&1 && LESSKEY=(--lesskey-src="$KEYS")
 
-stamp() { [ -e "$TOUR" ] && ls -l --time-style=+%s "$TOUR" 2>/dev/null | awk '{print $6, $5}'; }
+# mtime + size, for the polling fallback. GNU and BSD stat disagree on flags, and the
+# platform without inotify (macOS) is the one guaranteed to need this path.
+if stat -c '%Y %s' . >/dev/null 2>&1; then
+  stamp() { [ -e "$TOUR" ] && stat -c '%Y %s' "$TOUR" 2>/dev/null; }
+elif stat -f '%m %z' . >/dev/null 2>&1; then
+  stamp() { [ -e "$TOUR" ] && stat -f '%m %z' "$TOUR" 2>/dev/null; }
+else
+  stamp() { [ -e "$TOUR" ] && wc -c < "$TOUR" 2>/dev/null; }   # last resort: size only
+fi
 
 watch_once() {
   if [ "$WATCH" = inotify ]; then

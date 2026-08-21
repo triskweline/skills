@@ -52,10 +52,12 @@ Usage: /diff-tour [target] [flags]
 
 Target (optional, defaults to your working diff):
   <empty>       Branch diff vs its branch point, plus uncommitted changes
-  <PR number>   e.g. 4821 — fetched via `gh pr diff`
   <git range>   e.g. main..HEAD, abc123..def456
   <commit>      e.g. HEAD~1, or a commit SHA
   <branch>      compared against the repo's default branch
+  <number>      a PR or MR in this repo
+  <PR/MR URL>   a GitHub pull request or GitLab merge request
+  <patch file>  a .patch or .diff you already have
   <path>        limit the tour to a file or directory
 
 Modes (how the diff reaches you — see "Presenting the diff"):
@@ -173,17 +175,47 @@ knows how many hunks the chapter had.
 
 ## Step C: Acquire the diff
 
-- **No target**: diff against the branch point, not the tracking branch. Resolve the base with `git merge-base --fork-point <default> HEAD`, falling back to `git merge-base <default> HEAD`, then `git diff <base>..HEAD`. Never `@{upstream}`: on a pushed branch that is the same branch on the remote, so the range covers only unpushed commits and silently tours a fraction of the change. If the working tree is dirty, also run `git diff HEAD` and fold it in. State which base you used and how many commits and hunks it covered, so a wrong guess is visible to the reader.
-- **PR number**: `gh pr view <n>` for title and description, `gh pr diff <n>` for the diff.
-- **Range / commit**: `git diff <range>`.
-- **Branch**: `git diff <default>...<branch>`. Bare `git diff <branch>` compares the *working tree* against that branch, which is the wrong direction and includes local edits.
-- **Path**: restrict any of the above to that path.
+**`scripts/tour-fetch.sh <out-file> [<target>]` resolves any target to a patch file.** It
+autodetects the form, so you rarely need to know which git command applies:
 
-For every target, read the commit log over the range. It is the cheapest signal you will get for intent, and for whether the range holds more than one body of work. It is not a signal for where the cluster boundaries are — see Step E. Skip merge commits when reading intent.
+| Target | What you get |
+|---|---|
+| *omitted* | this branch since its branch point, plus uncommitted work |
+| `a..b`, `a...b` | that range |
+| `abc123`, `HEAD`, `HEAD~2` | that one commit |
+| `some-branch` | the branch against the default branch (three dots) |
+| `807` | PR or MR number in this repo — tries `gh`, then `glab` |
+| `https://…/pull/807` | that GitHub pull request |
+| `https://…/-/merge_requests/42` | that GitLab merge request |
+| `/tmp/x.patch` | copied through unchanged |
 
-Keep the raw diff text available for the whole tour, and also write it to a patch file under a scratch path. Every hunk shown later must come from it, not from memory. `viewer` and `html` both need it on disk, and a saved patch is immune to the branch moving mid-session — which it does. **Drive `tour-set.sh` from that patch, not from the range** — a range is re-resolved on every call, so a commit landing mid-tour shifts every hunk's start line and invalidates both the selectors and the coverage ledger.
+It prints the hunk and file count, and the base it chose when there was no target — say
+both to the reader, so a wrong guess is visible. If the host has a GitHub or GitLab MCP
+server, fetching the diff through that and saving it to the same path is equivalent; the
+script is a convenience, not a gate.
 
-Note but exclude from the narrative: lockfiles, generated code, vendored directories, and pure-formatting churn. Excluded means not narrated, never hidden — those hunks still appear in the Leftovers chapter under one caption naming what they are. Say what was excluded and how many lines.
+Two things it gets right that are easy to get wrong by hand: the no-target base is the
+branch point (`git merge-base --fork-point`), never `@{upstream}` — on a pushed branch
+that is the same branch on the remote, so the range covers only unpushed commits and
+silently tours a fraction of the change. And a branch target uses three dots, because
+bare `git diff <branch>` compares the *working tree* against it, which is the wrong
+direction and includes local edits.
+
+**Everything downstream reads the patch file, never the target.** `tour-hunks.sh` and
+`tour-set.sh` both take it as their `<source>`, which is what makes a tour immune to the
+branch moving under it: a range is re-resolved on every call, so a commit landing
+mid-tour shifts every hunk's start line and invalidates both the selectors and the
+coverage ledger.
+
+For every target, read the commit log over the range. It is the cheapest signal you will
+get for intent, and for whether the range holds more than one body of work. It is not a
+signal for where the cluster boundaries are — see Step E. Skip merge commits when reading
+intent.
+
+Note but exclude from the narrative: lockfiles, generated code, vendored directories, and
+pure-formatting churn. Excluded means not narrated, never hidden — those hunks still
+appear in the Leftovers chapter under one caption naming what they are. Say what was
+excluded and how many lines.
 
 If the diff is empty, report exactly what was compared and stop. Don't invent a tour.
 
