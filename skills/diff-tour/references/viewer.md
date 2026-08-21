@@ -92,14 +92,15 @@ tour-set.sh /abs/path/tour.diff /tmp/pr.patch 2 "src/form.js:83=the new selector
 ```
 
 **Finish with a Leftovers chapter.** The pseudo-spec `rest` selects every hunk no earlier
-chapter showed. Give each file's group a line saying what it repeats — `rest` on its own
-labels them `(leftover) not narrated`, and warns you about every group you left bare:
+chapter showed — the hunks no topic claimed, never a topic's own follow-ups. Give each
+file's group a line saying what it is and why no topic wanted it; `rest` on its own labels
+them `(leftover) not narrated` and warns you about every group you left bare:
 
 ```bash
 tour-set.sh /abs/path/tour.diff /abs/path/change.patch 7 rest \
-  "rest:src/unpoly/form.js=the same accessor swap as 2.2, in nine more places" \
-  "rest:CHANGELOG.md=the behavior changes 2.1 and 2.2 described, in release-note form"
-# 7.72   src/unpoly/form.js   +10   the same accessor swap as 2.2, in nine more places
+  "rest:.gitignore=an unrelated ignore rule for local plan notes" \
+  "rest:tooling/toc.mjs=the test-tooling body of work, offered as its own tour"
+# 7.72   tooling/toc.mjs   +1   the test-tooling body of work, offered as its own tour
 # --- chapter 7: 93 hunks · 96/96 of the diff shown so far
 ```
 
