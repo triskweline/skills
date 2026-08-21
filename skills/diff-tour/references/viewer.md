@@ -56,7 +56,7 @@ attaches the caption. Pass `TOUR_NEW=1` on the first chapter so the coverage led
 fresh:
 
 ```bash
-TOUR_NEW=1 /abs/path/to/skills/diff-tour/scripts/tour-set.sh /abs/path/tour.diff master..HEAD 1 \
+TOUR_NEW=1 /abs/path/to/skills/diff-tour/scripts/tour-set.sh /abs/path/tour.diff /abs/path/change.patch 2 \
   "src/unpoly/form.js:83=The config doc now points authors at the new guide;155=One new selector, :enabled/:disabled minus every native" \
   "spec/unpoly/form_spec.js:102=The guard spec: everything else :enabled also matches, asserted out"
 ```
@@ -64,16 +64,16 @@ TOUR_NEW=1 /abs/path/to/skills/diff-tour/scripts/tour-set.sh /abs/path/tour.diff
 It prints the codes it assigned, and those are what your prose quotes:
 
 ```
-1.1    src/unpoly/form.js         +83     The config doc now points authors at the new guide
-1.2    src/unpoly/form.js         +155    One new selector, :enabled/:disabled minus every native
-1.3    spec/unpoly/form_spec.js   +102    The guard spec: everything else :enabled also matches, asserted out
+2.1    src/unpoly/form.js         +83     The config doc now points authors at the new guide
+2.2    src/unpoly/form.js         +155    One new selector, :enabled/:disabled minus every native
+2.3    spec/unpoly/form_spec.js   +102    The guard spec: everything else :enabled also matches, asserted out
 ```
 
 It also reports what is still unshown, which is how you know what the Leftovers chapter
 will hold:
 
 ```
---- chapter 1: 3 hunks · 3/96 of the diff shown so far · /abs/path/tour.diff
+--- chapter 2: 3 hunks · 3/96 of the diff shown so far · /abs/path/tour.diff
 --- 93 hunks still unshown; `rest` puts them in a Leftovers chapter
 ```
 
@@ -81,11 +81,14 @@ Captions may contain commas and `·`; not semicolons, tabs or newlines. They are
 truncated. Several specs may name one file — they get merged, and codes are always
 assigned in on-screen order, so `2.1` is always above `2.2`.
 
-**The source can be a patch file instead of a git range**, for anything git cannot name:
+**Prefer the patch file Step C saved over a git range.** Both work, but a range is
+re-resolved on every call, so a commit landing mid-tour shifts every `+start` and
+silently invalidates the ledger — the selectors *and* the coverage count. A saved patch
+is immune. A range stays useful for a quick one-chapter look:
 
 ```bash
-gh pr diff 807 > /tmp/pr.patch
-tour-set.sh /abs/path/tour.diff /tmp/pr.patch 1 "src/form.js:83=the new selector"
+gh pr diff 807 > /tmp/pr.patch        # or: git diff <base>..HEAD > /tmp/change.patch
+tour-set.sh /abs/path/tour.diff /tmp/pr.patch 2 "src/form.js:83=the new selector"
 ```
 
 **Finish with a Leftovers chapter.** The pseudo-spec `rest` selects every hunk no earlier
@@ -93,21 +96,25 @@ chapter showed. Give each file's group a line saying what it repeats — `rest` 
 labels them `(leftover) not narrated`, and warns you about every group you left bare:
 
 ```bash
-tour-set.sh /abs/path/tour.diff master..HEAD 9 rest \
-  "rest:src/unpoly/form.js=the same accessor swap as 1.2, in nine more places" \
-  "rest:CHANGELOG.md=the behavior changes 1.1 and 1.2 described, in release-note form"
-# 9.72   src/unpoly/form.js   +10   the same accessor swap as 1.2, in nine more places
-# --- chapter 9: 93 hunks · 96/96 of the diff shown so far
+tour-set.sh /abs/path/tour.diff /abs/path/change.patch 7 rest \
+  "rest:src/unpoly/form.js=the same accessor swap as 2.2, in nine more places" \
+  "rest:CHANGELOG.md=the behavior changes 2.1 and 2.2 described, in release-note form"
+# 7.72   src/unpoly/form.js   +10   the same accessor swap as 2.2, in nine more places
+# --- chapter 7: 93 hunks · 96/96 of the diff shown so far
 ```
 
 Length costs nothing here — the viewport scrolls as far as it needs to, and the reader
 decides whether to scroll. See
 [Every hunk gets shown](../SKILL.md#every-hunk-gets-shown).
 
-**Re-run `tour-hunks.sh` for every chapter.** Line numbers are relative to the current
-tip, and a branch can gain commits mid-session. A stale selector fails with
-`no hunk at +682 in …` and exit 3 rather than quietly showing you less than you asked
-for — if you see that, re-list, don't guess.
+**Re-run `tour-hunks.sh` for every chapter when you drive from a git range.** Line
+numbers are relative to the current tip, and a branch can gain commits mid-session. A
+stale selector fails with `no hunk at +682 in …` and exit 3 rather than quietly showing
+less than you asked for — if you see that, re-list, don't guess. Driving from a saved
+patch avoids the whole problem, which is why it is the default.
+
+Note `tour-hunks.sh` takes a git range only. With a patch file, read the `@@` lines
+directly: `grep -n '^@@' /tmp/pr.patch`.
 
 ## Why it is built this way
 

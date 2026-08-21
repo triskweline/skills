@@ -15,7 +15,10 @@ range="$1"; shift
 git -C "${TOUR_REPO:-$PWD}" diff "$range" -- "$@" | awk '
   # Take the path from "+++ b/…" rather than "diff --git": $NF breaks on a filename with
   # a space, and the a/ b/ prefixes are configurable (diff.mnemonicPrefix, diff.noprefix).
-  /^\+\+\+ / { path = substr($0, 5); sub(/^[^\/]*\//, "", path); sub(/\t.*$/, "", path); next }
+  /^--- / { minus = substr($0, 5); sub(/^[^\/]*\//, "", minus); sub(/\t.*$/, "", minus); next }
+  /^\+\+\+ / { path = substr($0, 5); sub(/\t.*$/, "", path)
+               if (path == "/dev/null") path = minus; else sub(/^[^\/]*\//, "", path)
+               next }
   /^@@/ {
     match($0, /\+[0-9]+/); start = substr($0, RSTART + 1, RLENGTH - 1)
     ctx = $0; sub(/^@@[^@]*@@ ?/, "", ctx)

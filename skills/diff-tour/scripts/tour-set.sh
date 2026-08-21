@@ -8,7 +8,7 @@
 #                $TOUR_REPO — or a path to a patch file, for anything git cannot name:
 #                `gh pr diff 807 > /tmp/pr.patch`, `git diff HEAD > /tmp/wip.patch`.
 #     <spec>   = <path>:<item>[;<item>…]   one or more per file, merged
-#                <path>:all                every hunk in that file
+#                <path>:all[=<caption>]    every hunk in that file, one shared caption
 #                rest                      every hunk not shown in an earlier chapter
 #                rest:<path>=<caption>     ...and what that file's leftover group repeats,
 #                                          e.g. rest:src/form.js="the same accessor swap
@@ -63,7 +63,11 @@ starts_of() {   # +start lines of one path
 
 all_pairs() {   # every path<TAB>+start in the whole diff, in diff order
   patch_of "" | awk '
-    /^\+\+\+ / { p = substr($0, 5); sub(/^[^\/]*\//, "", p); sub(/\t.*$/, "", p); next }
+    /^--- / { minus = substr($0, 5); sub(/^[^\/]*\//, "", minus); sub(/\t.*$/, "", minus); next }
+    /^\+\+\+ / { p = substr($0, 5); sub(/\t.*$/, "", p)
+                 # A deletion has "+++ /dev/null": the real path is on the --- line.
+                 if (p == "/dev/null") p = minus; else sub(/^[^\/]*\//, "", p)
+                 next }
     /^@@/ { match($0, /\+[0-9]+/); print p "\t" substr($0, RSTART + 1, RLENGTH - 1) }
   '
 }
@@ -130,8 +134,10 @@ for path in $paths; do
   starts=$(starts_of "$path")
   [ -n "$starts" ] || { echo "tour-set: no hunks at all in $path" >&2; exit 3; }
 
+  # "all" may carry a caption of its own, applied to every hunk in the file.
+  allcap=$(printf '%s' "$want" | tr ';' '\n' | sed -n 's/^[[:space:]]*all=//p' | head -1)
   case ";$want" in
-    *";all;"*) wanted="$starts" ;;
+    *";all;"*|*";all="*) wanted="$starts" ;;
     *) wanted=$(printf '%s' "$want" | tr ';' '\n' | sed 's/=.*//; s/^[[:space:]]*+\?//; s/[[:space:]]*$//' | grep -v '^$' | sort -n -u)
        for s in $wanted; do
          grep -qx "$s" <<<"$starts" || { echo "tour-set: no hunk at +$s in $path (try scripts/tour-hunks.sh)" >&2; exit 3; }
@@ -141,6 +147,7 @@ for path in $paths; do
   for s in $wanted; do
     n=$((n + 1))
     caption=$(printf '%s' "$want" | tr ';' '\n' | sed -n "s/^[[:space:]]*+\?$s=//p" | head -1)
+    [ -n "$caption" ] || caption="$allcap"
     printf '%s\t%s\t%s.%s\t%s\n' "$path" "$s" "$CHAPTER" "$n" "$caption" >> "$MAP"
   done
 done

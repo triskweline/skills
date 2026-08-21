@@ -58,7 +58,10 @@ stamp() { [ -e "$TOUR" ] && ls -l --time-style=+%s "$TOUR" 2>/dev/null | awk '{p
 
 watch_once() {
   if [ "$WATCH" = inotify ]; then
-    inotifywait -qq -e close_write,moved_to --include "^${BASE//./\\.}$" "$DIR" 2>/dev/null && return
+    # --include matches the event's FULL PATH, not the basename: a "^name$" anchor can
+    # never match. The leading slash pins it to this exact file, and the trailing $ still
+    # excludes the siblings (.<base>.rendered, <base>.tmp, .<base>.lesskey, .<base>.changed).
+    inotifywait -qq -e close_write,moved_to --include "/${BASE//./\\.}\$" "$DIR" 2>/dev/null && return
   fi
   local was; was="$(stamp)"
   while [ "$(stamp)" = "$was" ]; do sleep 1; done

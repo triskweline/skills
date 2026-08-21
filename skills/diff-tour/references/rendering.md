@@ -23,14 +23,14 @@ because the reader can see the twenty hunks it describes.
 
 Context lines need no management either. `git diff` splits a hunk whenever the gap
 between changes exceeds twice the context setting, so the longest run of unchanged lines
-any hunk can hold is 6 at the default `-U3`. There is nothing to trim, and the `…`
-marker exists only for the two cases in Special cases below.
+any hunk can hold is 6 at the default `-U3`. There is nothing to trim. The only
+surviving use of `…` is joining two adjacent hunks merged into one block, below.
 
 ## Splitting and grouping hunks
 
 - **One `diff` block per idea.** If a single `git diff` hunk contains two unrelated changes, split it into two blocks with a line of framing each, keeping each block's lines verbatim. Repeating the `@@` header on both is fine.
 - **Merge adjacent hunks** from the same file when they're the same idea and close together, using `…` between them.
-- **Repetitive hunks** — the identical mechanical change in eight call sites — still all get shown, because the one that is subtly different is exactly the thing a tour exists to catch, and you cannot know which it is without looking. Explain the pattern once against the first block, then let the rest follow with a one-line caption each, or move them to the [Leftovers chapter](../SKILL.md#every-hunk-gets-shown). Never write "and the same change in seven more files" in place of the hunks.
+- **Repetitive hunks** — the identical mechanical change in eight call sites — still all get shown, because the one that is subtly different is exactly the thing a tour exists to catch, and you cannot know which it is without looking. Explain the pattern once against the first block, then let the rest follow with a one-line caption each. Never write "and the same change in seven more files" in place of the hunks.
 - **Order within a cluster** follows the explanation, not the filesystem. Lead with the hunk that carries the idea, then the ones that follow from it.
 
 ## Special cases

@@ -18,7 +18,7 @@ Two things make this skill work, and both are easy to get wrong:
 
 Two numbering schemes, deliberately different so they can never be confused:
 
-- **Steps A–H are lettered.** They are this skill's procedure — what you do, in
+- **Steps A–I are lettered.** They are this skill's procedure — what you do, in
   order. The reader never sees them.
 - **Chapters are numbered.** They are what the reader navigates with `next` and
   `go <n>`. Hunk codes are `<chapter>.<hunk>`, so `3.2` is the second hunk of
@@ -51,7 +51,7 @@ diff-tour — a guided, cluster-by-cluster walkthrough of a code change
 Usage: /diff-tour [target] [flags]
 
 Target (optional, defaults to your working diff):
-  <empty>       Branch diff vs upstream, plus uncommitted changes
+  <empty>       Branch diff vs its branch point, plus uncommitted changes
   <PR number>   e.g. 4821 — fetched via `gh pr diff`
   <git range>   e.g. main..HEAD, abc123..def456
   <commit>      e.g. HEAD~1, or a commit SHA
@@ -177,11 +177,11 @@ knows how many hunks the chapter had.
 - **PR number**: `gh pr view <n>` for title and description, `gh pr diff <n>` for the diff.
 - **Range / commit**: `git diff <range>`.
 - **Branch**: `git diff <default>...<branch>`. Bare `git diff <branch>` compares the *working tree* against that branch, which is the wrong direction and includes local edits.
-
-For every target, read the commit log over the range. It is the cheapest signal you will get for intent, and for whether the range holds more than one body of work. It is not a signal for where the cluster boundaries are — see Step E. Skip merge commits when reading intent.
 - **Path**: restrict any of the above to that path.
 
-Keep the raw diff text available for the whole tour, and also write it to a patch file under a scratch path. Every hunk shown later must come from it, not from memory. `viewer` and `html` both need it on disk, and a saved patch is immune to the branch moving mid-session — which it does.
+For every target, read the commit log over the range. It is the cheapest signal you will get for intent, and for whether the range holds more than one body of work. It is not a signal for where the cluster boundaries are — see Step E. Skip merge commits when reading intent.
+
+Keep the raw diff text available for the whole tour, and also write it to a patch file under a scratch path. Every hunk shown later must come from it, not from memory. `viewer` and `html` both need it on disk, and a saved patch is immune to the branch moving mid-session — which it does. **Drive `tour-set.sh` from that patch, not from the range** — a range is re-resolved on every call, so a commit landing mid-tour shifts every hunk's start line and invalidates both the selectors and the coverage ledger.
 
 Note but exclude from the narrative: lockfiles, generated code, vendored directories, and pure-formatting churn. Excluded means not narrated, never hidden — those hunks still appear in the Leftovers chapter under one caption naming what they are. Say what was excluded and how many lines.
 
@@ -208,7 +208,7 @@ A cluster is a **unit of intent**, not a file. Hunks from four files belong in o
 
 **Its length follows its cohesion.** Never split a cluster to make it shorter. If a change can only be explained through twelve interconnected hunks, that is one chapter of twelve hunks — two chapters of six that each depend on the other are strictly worse, because neither can be understood where it sits. When a cluster is genuinely long, say at the top how many hunks it holds and lead with the ones carrying the idea.
 
-**Many hunks share a cluster, and almost every hunk has exactly one home.** A cluster of one hunk is possible but usually means the clustering is too fine. The exception is the multi-intent hunk: where two rounds of work overwrote the same lines, the surviving hunk genuinely serves two topics, and it may appear in both chapters. The gate is that **both** explanations would be incomplete without it — not that both are related to it. When you show it twice, say so: name its primary chapter and what the second chapter is looking at in it. A reader who sees the same hunk twice without being told is entitled to think you lost track.
+**Many hunks share a cluster, and almost every hunk has exactly one home.** A cluster of one hunk is possible but usually means the clustering is too fine. The exception is the multi-intent hunk: where two rounds of work overwrote the same lines, the surviving hunk genuinely serves two topics, and it may appear in both chapters. The operative gate is in pass 2 below: the other chapter must have no evidence at all without it, not merely be related to it. When you show it twice, say so: name its primary chapter and what the second chapter is looking at in it. A reader who sees the same hunk twice without being told is entitled to think you lost track.
 
 **It is understandable from its predecessors alone.** The reader should never need a later chapter to follow an earlier one. If chapter 4 only makes sense after chapter 6, reorder.
 
@@ -230,17 +230,21 @@ Commit messages, PR descriptions and changelog entries are **hypotheses to test 
 
 Expect a range to hold several bodies of work, each with its own rounds of preparation, refactoring and cleanup. Within one body, `preparation → behavior change → cleanup` is a good ordering and a good hint at where a boundary falls. Across bodies it means nothing — don't force one arc onto a range that has three.
 
-**Pass 2 — assign every hunk to its highest-affinity topic.** Affinity has one test: **would the topic's explanation be incomplete without this hunk?**
+**Pass 2 — assign every hunk to the topic it exists for.** The test is counterfactual: **if this topic were reverted, would this hunk disappear from the diff?** Not "would my explanation mention it" — a topic's prose can be complete while a dozen hunks still exist only because of it, and judging by the prose sends all twelve to Leftovers.
 
-- A hunk two topics both need goes to the one whose explanation would suffer more — that is its primary home. Show it again in the other chapter only if that chapter's explanation would otherwise have no evidence at all; a cross-reference is not enough there, because in `viewer` mode the earlier chapter is off the screen.
-- A hunk no topic needs is a **leftover** — its absence would go unnoticed in every explanation.
+- **Tests and documentation go with the behavior they pin down or describe.** Six specs for one new behavior all belong to that topic, even though the explanation would read fine having quoted only one of them.
+- A hunk two topics both claim goes to the one whose explanation would suffer more without it — that is its primary home, and this is where the incompleteness question earns its keep, as a tiebreaker. Show it again in the other chapter only if that chapter would otherwise have no evidence at all; a cross-reference is not enough, because in `viewer` mode the earlier chapter is off the screen.
+- A hunk no topic claims is a **leftover** — no idea in the change would lose it if reverted.
 - A hunk with no good home may instead be **evidence of a topic you missed**. Check that first. Adding a topic is cheap; misfiling real work as fallout is not.
 
 **Pass 3 — settle.** Merge two topics whose hunks turn out to depend on each other in both directions; mutual dependency means one cluster, while a one-directional dependency is only an ordering constraint. Split a topic whose hunks serve two ideas. Pull a new abstraction and its first consumer together unless the abstraction stands alone.
 
-Then count. **3–7 clusters** is the healthy range, but treat it as a smell check on the topics rather than a budget to hit: fifteen usually means one topic was found repeatedly under different names, and two usually means the change is smaller than its line count suggests. If the count is far outside the range, re-run this pass — never redraw a boundary by hand to hit a number.
+Then count. **3–7 clusters** is the healthy range, but treat it as a smell check rather than a budget to hit. If the count is far outside it, in this order:
 
-If most of the diff ends up in leftovers, either the topics are too few or the range holds two unrelated bodies of work. Decide which, and if it's the latter, say so in the overview and offer the second body as its own tour.
+1. **Check whether the range holds more than one unrelated body of work.** Two bodies of six clusters each look like twelve clusters and are not. Say so in the overview, tour the one the reader asked about, and offer the other as its own tour. Both bodies still get Leftovers groups, so coverage stays honest.
+2. **Otherwise re-run pass 1.** Too many usually means one topic was found repeatedly under different names; too few usually means the change is smaller than its line count suggests. The defect is in the topic list, not in the boundaries — never redraw a boundary by hand to hit a number.
+
+A range full of leftovers means the same thing: too few topics, or a second body of work you have not named.
 
 ## Step F: Print the overview chapter
 
@@ -312,7 +316,7 @@ Repeat for every hunk in the cluster — several small `diff` blocks with a line
 
 ### Reader commands
 
-Print the command list once, in the overview chapter, and re-print it on `help`.
+The overview names the starting commands; print this full list on `help`.
 Every command works in every mode.
 
 | Command | What you do |
@@ -321,16 +325,17 @@ Every command works in every mode.
 | `back` / `b` | Re-print the previous chapter, unchanged. |
 | `zoom` | Widen the current chapter: the full enclosing functions, the callers you found in Step D, and the tests covering it. The hunks were already complete, so this adds surrounding code rather than restoring anything. Then return to the same footer so the tour resumes cleanly. |
 | `why` | The reasoning behind this cluster: what the commits and comments state, what you inferred, what alternatives lost. Keep stated and inferred separate. |
-| `skip` | Move on without narrating. The hunks stay in the tour; they are not deferred to Leftovers, which is a clustering decision, not a navigation one. |
+| `skip` | Print the next chapter's hunks without narrating them, then stop as usual. The hunks stay where clustering put them — `skip` never defers anything to Leftovers, which is a clustering decision, not a navigation one. |
 | `map` | Re-print the chapter list with a marker on the current chapter. |
-| `go <n>` | Jump to chapter n. Chapters are independent of each other only forward — say so if they land somewhere that assumes an earlier chapter. |
+| `go <n>` | Jump to chapter n. Later chapters may assume earlier ones, so say so when a jump lands on one that does. |
 | `help` | Re-print the command list. |
 | `done` | Stop touring and go straight to the wrap-up chapter. Run Step H's completeness check first; report what they did not see, without remarking on the fact that they left. |
 
-In `viewer` mode, `back`, `go <n>` and `zoom` all re-push a chapter, because the
-tour file is single state and the viewer follows whatever it holds. Re-pushing an
-earlier chapter is harmless: the ledger de-duplicates, so the completeness check
-is unaffected.
+In `viewer` mode, `back` and `go <n>` re-push a chapter, because the tour file is
+single state and the viewer follows whatever it holds. Re-pushing is harmless: the
+ledger de-duplicates, so the completeness check is unaffected. `zoom` pushes nothing —
+the context it adds is not in the diff, so it goes in the chat while the viewer keeps
+showing the chapter's hunks.
 
 `references/rendering.md` has the rules for grouping hunks, renames, moved code, new files, whitespace-only changes and very large hunks. **Read it before printing the first chapter** — in particular [Nothing is hidden](references/rendering.md#nothing-is-hidden), which is the rule most easily broken by an agent trying to be concise.
 
@@ -347,9 +352,14 @@ the check on the deferral: if you cannot name what a group repeats, it is not
 repetitive, it is unexamined, and it belongs in a narrated chapter.
 
 `tour-set.sh` takes the captions as `rest:<path>=<caption>` and warns about any
-group you left bare. Pass `TOUR_NEW=1` on chapter 1 so its ledger starts fresh;
+group you left bare. Pass `TOUR_NEW=1` on your first `tour-set.sh` call of the tour so its ledger starts fresh;
 each later call reports how many hunks remain, which is how you know what this
 chapter will hold. That count is for you, not a score to report to the reader.
+
+**In `inline` and `html` mode, mirror every chapter into `tour-set.sh` too.** The tour
+file goes unviewed there, but its ledger is the only thing that makes the check below
+mean anything — skip it and `rest` reports the entire diff as unshown after you have
+already narrated it.
 
 **Run the completeness check before you write the wrap-up.** In every mode, call
 `tour-set.sh` with the `rest` spec once. It selects every hunk no earlier chapter
@@ -386,7 +396,7 @@ These are what separate this from a prose summary, so hold them tightly:
 
 - **Never retype code.** Copy hunk lines byte-for-byte from the diff output, markers included. If a line is too long, let it wrap — don't shorten it.
 - **Never fabricate a hunk** to illustrate a point. If the diff doesn't contain it, it doesn't get a `diff` block.
-- **Never hide an added or changed line.** Not for a new file, not for forty peer definitions, not because a chapter is long. Length is managed by navigation, not by concealment — see [Nothing is hidden](references/rendering.md#nothing-is-hidden). Where a `…` does appear, it is one of the two cases named in Special cases, and it is never silent.
+- **Never hide an added or changed line.** Not for a new file, not for forty peer definitions, not because a chapter is long. Length is managed by navigation, not by concealment — see [Nothing is hidden](references/rendering.md#nothing-is-hidden). The only `…` left in the skill joins two adjacent hunks merged into one block, and it is never silent.
 - **Keep the `@@` headers.** They give line numbers and enclosing scope for free.
 - **Separate stated from inferred intent.** "The PR says…" versus "This looks like…".
 - **Suspicions are suspicions.** Say "worth checking whether…", never "this is a bug", unless it has been verified by reading the surrounding code and can be explained concretely.
