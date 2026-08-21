@@ -122,6 +122,8 @@ Good cluster names describe a change: "thread the tenant id into the cache key",
 
 Aim for **3–7 clusters**. Fewer means the tour isn't decomposing anything; more means the reader loses the thread. Very large diffs get 5–7 clusters with sub-steps inside, not 15 clusters.
 
+**Never split a cluster to make it shorter.** A cluster is as long as its cohesion requires. If a change can only be explained through twelve interconnected hunks, that is one chapter of twelve hunks — two chapters of six that each depend on the other are strictly worse, because neither can be understood where it sits. The 3–7 range counts *ideas the reader tracks*, not length. When a cluster is genuinely long, say at the top how many hunks it holds and order them so the ones carrying the idea come first.
+
 **Order them so each one is understandable given only its predecessors.** That's usually: data model or types → core logic → call sites and adapters → tests → config, migrations, docs. Where a dependency order exists, follow it; the reader should never need a later cluster to understand an earlier one. If cluster 4 is only comprehensible after cluster 6, reorder.
 
 The mapping is many-to-one, in that order: **one chapter holds as many hunks as share its reason — that is the whole point of clustering by intent — and each hunk has exactly one home.** A chapter of one hunk is possible but usually means the clustering is too fine; a chapter of a dozen is fine if a dozen hunks exist for the same reason. The last chapter is always [Leftovers](#every-hunk-gets-shown).
@@ -136,7 +138,9 @@ Deferring is not a way to hit the 3–7 cluster budget. If most of the diff ends
 
 ## Step E: Print the overview chapter
 
-Before touring, give the reader orientation in roughly a screen:
+Before touring, give the reader everything the later chapters will assume. Length
+follows content: enough to make the detail land, and no padding. Don't pad it out
+to look thorough, and don't cut orientation to hit a length.
 
 ```
 # <one-line title of the change>
