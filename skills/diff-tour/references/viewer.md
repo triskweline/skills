@@ -106,7 +106,7 @@ tour-set.sh /abs/path/tour.diff /abs/path/change.patch 7 rest \
 
 Length costs nothing here — the viewport scrolls as far as it needs to, and the reader
 decides whether to scroll. See
-[Every hunk gets shown](../SKILL.md#every-hunk-gets-shown).
+[Every hunk gets shown](../SKILL.md#nothing-is-hidden-and-leftovers-is-not-a-dumping-ground).
 
 **Re-run `tour-hunks.sh` for every chapter when you drive from a git range.** Line
 numbers are relative to the current tip, and a branch can gain commits mid-session. A
