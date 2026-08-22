@@ -79,9 +79,14 @@ case "$TARGET" in
       git_ref "$TARGET" || { echo "tour-fetch: cannot resolve target: $TARGET" >&2; exit 3; }
     else
       # A bare number is a PR or MR in this repo. Try GitHub, then GitLab.
+      # An all-digit string can be both a PR number and an abbreviated sha. Say which won.
+      if git -C "$REPO" rev-parse --verify --quiet "$TARGET^{commit}" >/dev/null; then
+        echo "tour-fetch: $TARGET is also a git object here; using the PR/MR. Pass ${TARGET}^{commit} for the commit." >&2
+      fi
       if command -v gh >/dev/null && gh pr diff "$TARGET" > "$OUT" 2>/dev/null && [ -s "$OUT" ]; then :
       elif command -v glab >/dev/null && glab mr diff "$TARGET" --raw > "$OUT" 2>/dev/null && [ -s "$OUT" ]; then :
-      else echo "tour-fetch: $TARGET is neither a PR/MR here nor a git ref (tried gh and glab)" >&2; exit 3; fi
+      elif git_ref "$TARGET"; then echo "tour-fetch: no PR/MR $TARGET; treated it as a git object" >&2
+      else echo "tour-fetch: $TARGET is neither a PR/MR here nor a git object (tried gh, glab and git)" >&2; exit 3; fi
     fi ;;
   *)
     git_ref "$TARGET" || { echo "tour-fetch: cannot resolve target: $TARGET" >&2; exit 3; } ;;

@@ -44,10 +44,21 @@ patch_of() {
   if [ -f "$SOURCE" ]; then
     if [ -n "${1:-}" ]; then
       awk -v want="$1" '
-        /^diff --git/ { keep = 0 }
-        /^\+\+\+ / { p = substr($0, 5); sub(/^[^\/]*\//, "", p); sub(/\t.*$/, "", p); keep = (p == want) }
-        /^diff --git/ { hdr = $0; next }
-        keep { if (hdr != "") { print hdr; hdr = "" } print }
+        /^diff --git/ { keep = 0; seenhunk = 0; hdr = $0 "\n"; next }
+        /^--- / { minus = substr($0, 5); sub(/^[^\/]*\//, "", minus); sub(/\t.*$/, "", minus)
+                  hdr = hdr $0 "\n"; next }
+        /^\+\+\+ / {
+          p = substr($0, 5); sub(/\t.*$/, "", p)
+          # A deletion has "+++ /dev/null": the real path is on the --- line.
+          if (p == "/dev/null") p = minus; else sub(/^[^\/]*\//, "", p)
+          keep = (p == want); hdr = hdr $0 "\n"; next
+        }
+        # index / mode / rename lines precede +++, so buffer them into the header too.
+        !seenhunk && /^(index |new file |deleted file |old mode |new mode |similarity |rename )/ {
+          hdr = hdr $0 "\n"; next
+        }
+        /^@@/ { seenhunk = 1 }
+        keep { if (hdr != "") { printf "%s", hdr; hdr = "" } print }
       ' "$SOURCE"
     else
       cat "$SOURCE"

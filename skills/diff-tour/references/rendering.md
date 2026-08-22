@@ -85,7 +85,7 @@ Structure:
   the grid. `--file-style omit` drops delta's own file banner, which would otherwise
   duplicate the section heading.
 
-  Inline styles only — no stylesheet, script or font — which is what a strict CSP needs. Never hand-author the token spans: that is retyping code, and the [fidelity rules](../SKILL.md#fidelity-rules) forbid it.
+  Inline styles only — no stylesheet, script or font — which is what a strict CSP needs. Never hand-author the token spans: that is retyping code, and the [fidelity rules](../SKILL.md#fidelity) forbid it.
 
   The converter emits `<div class="r">` rows of escaped text and sets no layout, so **style `.diff` with `white-space: pre`, a monospace `font-family` and `overflow-x: auto`** — without `pre` every indent collapses and the output looks broken.
 - Explanations sit **beside** hunks on wide viewports (two-column: diff left, prose right, aligned to the top of the hunk) and **below** them under ~900px. This side-by-side layout is the main thing the HTML gives over the terminal tour.

@@ -141,7 +141,9 @@ A range full of leftovers means the same thing: too few topics, or a second body
 The prose under a hunk is the only thing the reader cannot get from the diff itself. That
 is the whole test for whether a sentence belongs: **could they have read it off the hunk?**
 If yes, cut it. A paragraph that restates the diff does more than waste words — it teaches
-the reader that your prose is skippable, and they will skip the one that mattered.
+the reader that your prose is skippable, and they will skip the one that mattered. **A
+hunk's own added comments are part of the hunk**, so the test applies to them too: a
+well-commented change may deserve less prose than a bare surprising one.
 
 So a mechanical walk ("here we call `foo` with the new argument") is never the job. What
 the diff cannot supply is: what the code *meant* before, why this route and not another,
@@ -170,25 +172,40 @@ not the fourth. This is visible in the diff and reliably missed.
 that could have been there, and that is what invites a rubber stamp. Naming one real
 alternative breaks the spell: *the author chose X; Y was also available, and would have
 traded A for B.* No comparative adjective, no recommendation, no verdict — the reader
-judges. The bar is that you can **name it and price it**. “This could be one selector
-instead of four, at the cost of also matching disabled controls” earns its place. “A
-cleaner approach may exist” is the shape of a thought without the content, and is worse
-than silence.
+judges. The bar is that you can **name it, price it, and point at where it already lives**.
+Pricing alone is not a guard: a fluent alternative that never existed prices just as
+convincingly as a real one. So it has to be something you *saw* — the code this diff
+removed (the diff hands you that one for free; the removed lines are literally the road
+not taken), a pattern used elsewhere in this codebase, or a route a comment or commit
+names. If you cannot point at where it lives, don't offer it.
+
+"This could be one selector instead of four, at the cost of also matching disabled
+controls" earns its place. "A cleaner approach may exist" is the shape of a thought
+without the content, and is worse than silence.
+
+**Most hunks have no alternative worth naming, and a chapter with none is normal.** A
+forced contingency is boilerplate, and boilerplate is what kills this rule first.
 
 **Admit what you do not understand, in the chapter, where the hunk is.** This is the most
 important rule here. A fluent, plausible, wrong explanation is worse than no tour, because
-it manufactures the feeling of having reviewed. A reader can defend themselves against “I
-do not know what this does”; they cannot defend themselves against confident invention.
+it manufactures the feeling of having reviewed. A reader can defend themselves against "I
+do not know what this does"; they cannot defend themselves against confident invention.
 Three cases, and they read very differently:
 
-- **You cannot explain it.** Say what you do know and what exactly is opaque — “this adds a
-  `?? false` default on the submitter; I could not find what reads it”. Bounded and
-  specific. “Unclear” is an abdication.
+- **You cannot explain it.** Say what you do know and what exactly is opaque — "this adds a
+  `?? false` default on the submitter; I could not find what reads it". Bounded and
+  specific. "Unclear" is an abdication.
 - **You understand it and it looks wrong.** Say so, with the reason. Do not soften it into
-  a hedge.
+  a hedge — this is the "unless" in [Fidelity](#fidelity)'s suspicion rule: you read the
+  surrounding code and can explain it concretely.
 - **It looks broken or unfinished as written** — a hunk that cannot be reconciled with the
   code around it. Say that plainly. **Never narrate a broken diff into coherence**; making
   it sound sensible is the worst outcome this skill can produce.
+
+Distinguish **"I looked and could not find"** from **"I did not look"** — Step D scales
+effort to the size of the diff, so both are honest, but they send the reader to different
+work. And if admissions pile up, the problem is upstream: go back to Step D rather than
+narrating on through hedged mush.
 
 Carry these forward to the wrap-up chapter, which is the only place they are collected.
 
@@ -233,14 +250,13 @@ described in [references/rendering.md](references/rendering.md).
 
 ### How the fidelity rules apply per mode
 
-The [Fidelity](#fidelity) are absolute about the hunk *content* in
+The [Fidelity](#fidelity) rules are absolute about the hunk *content* in
 every mode: bytes come from `git diff`, never from you. Two of them are shaped by
 the mode, and neither is a licence to loosen the others:
 
-- **"Keep the `@@` headers"** — `inline` and `html` keep them verbatim. `viewer`
-  keeps the `-x,y +a,b` ranges byte-exact but replaces the enclosing-scope text
-  with the hunk code and caption. That trade is deliberate: git's context text for
-  a file like an IIFE module is the same useless line on every hunk.
+- **"Keep the `@@` headers"** — `inline` keeps them verbatim. `viewer` and `html` both run
+  through the extractor, so they keep the ranges byte-exact and replace the
+  enclosing-scope text with the hunk code and caption.
 - **"Never hide an added or changed line"** — identical in all three modes, and not
   a length tradeoff in any of them. `inline` pastes long hunks whole, and the viewer
   and html both scroll.
@@ -264,7 +280,7 @@ space.
 
 ### Hunk codes
 
-In `viewer` and `html` mode every hunk carries a code so prose and screen can point at
+Every hunk carries a code so prose and screen can point at
 each other. The code is `<chapter>.<hunk>`: `2.1`, `2.2`, `2.3` for the first
 chapter's hunks, numbered in the order they appear on screen. No total count in
 the code; the chapter header already carries "2/7".
@@ -320,7 +336,6 @@ Target (optional, defaults to your working diff):
   <number>      a PR or MR in this repo
   <PR/MR URL>   a GitHub pull request or GitLab merge request
   <patch file>  a .patch or .diff you already have
-  <path>        limit the tour to a file or directory
 
 Modes (how the diff reaches you — see "Presenting the diff"):
   inline        Narration and diffs interwoven here in the chat, diffs as
@@ -342,7 +357,7 @@ While touring, reply with:
   zoom          expand this chapter: the enclosing code, the callers,
                 and the tests that cover it
   why           more on the reasoning behind this chapter
-  skip          pass over this chapter
+  skip          show the next chapter's diffs without narration
   map           re-show the chapter list, marking where you are
   go <n>        jump to chapter n
   help          re-print this list
@@ -461,7 +476,12 @@ Then stop and wait, unless `--all` was passed.
 One chapter per cluster, in order. The protocol is fixed; the prose is yours.
 
 **Fixed:** open with `## <n>/<total> · <cluster name>`. Show every hunk of the cluster,
-from `scripts/tour-set.sh`, never retyped. Close with a footer naming the commands and the
+never retyped: push the chapter through `scripts/tour-set.sh` and take the hunks from the
+file it writes — in `inline` mode you paste from that file, which is also where the
+code-stamped `@@` headers come from. **Every chapter goes through the script in every
+mode**, with `TOUR_NEW=1` on the first. Its ledger is the only thing that makes Step H's
+completeness check mean anything; skip it and `rest` will report the whole diff as unshown
+after you have already narrated it. Close with a footer naming the commands and the
 position: ``next` · `zoom` · `why` · `map` · `help`   (chapter <n> of <total>)``. Then
 **stop and wait for the reader.**
 
@@ -491,14 +511,8 @@ on the classification: if you cannot say why a group belongs to no topic, it pro
 belongs to one — go back to pass 2.
 
 `tour-set.sh` takes the captions as `rest:<path>=<caption>` and warns about any group you
-left bare. Pass `TOUR_NEW=1` on your first `tour-set.sh` call of the tour so its ledger
-starts fresh; each later call reports how many hunks remain, which is how you know what
-this chapter will hold. That count is for you, not a score to report to the reader.
-
-**In `inline` and `html` mode, mirror every chapter into `tour-set.sh` too.** The tour
-file goes unviewed there, but its ledger is the only thing that makes the check below
-mean anything — skip it and `rest` reports the entire diff as unshown after you have
-already narrated it.
+left bare. Each call reports how many hunks remain, which is how you know what this
+chapter will hold. That count is for you, not a score to report to the reader.
 
 **Run the completeness check before you write the wrap-up.** In every mode, call
 `tour-set.sh` with the `rest` spec once. It selects every hunk no earlier chapter used,
