@@ -75,10 +75,14 @@ while IFS= read -r line || [ -n "$line" ]; do
       hunkno=$((hunkno + 1))
       # Exactly one blank line on each side of a hunk.
       if [ -s "$OUT" ]; then printf '\n' >> "$OUT"; fi
+      # No yellow, no box, no bold: the caption is plain text over a grey underline, the
+      # same shape as a chapter title one level down. Delta's default box and blue path
+      # competed with every heading.
       delta --paging=never --line-numbers --width "$WIDTH" \
             --keep-plus-minus-markers --file-style omit \
-            --hunk-header-style 'bold yellow file' \
-            --hunk-header-decoration-style 'yellow box' \
+            --hunk-header-style 'file' \
+            --hunk-header-file-style '244' \
+            --hunk-header-decoration-style '238 ul' \
             < "$WORK" | trim_blanks >> "$OUT"
       printf '\n' >> "$OUT"
       ;;
