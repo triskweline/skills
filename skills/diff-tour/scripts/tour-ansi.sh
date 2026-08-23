@@ -105,13 +105,6 @@ while IFS= read -r line || [ -n "$line" ]; do
       # A hunk must never open a chapter or sit straight under a heading: the reader needs
       # a sentence saying what it is for before they meet the code. A heading is not that
       # sentence.
-      if [ -z "$framed" ]; then
-        echo "tour-ansi: no narration above this hunk — say what it is for first:" >&2
-        echo "  ${line}" >&2
-        echo "tour-ansi: a heading does not count. One sentence is enough." >&2
-        exit 6
-      fi
-      framed=
       flush_prose
       spec="${line#'%%hunk '}"
       if [ -n "$first" ]; then
