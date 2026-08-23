@@ -502,21 +502,32 @@ to look thorough, and don't cut orientation to hit a length.
 ```
 # <one-line title of the change>
 
-**What it does** — 2–4 sentences: the problem and the approach taken.
+## 1/<total> · Overview
 
-**New behavior** — bullets, only things observably different for a
-user, caller, API consumer, or the data. "None — internal refactor" is
-a valid and useful answer.
+### What it does
 
-**Scope** — N files, +X/−Y lines, in M clusters across <M+3> chapters. Note anything excluded (lockfiles, generated code). If a whole
-subsystem sits only in Leftovers, say which half of the branch the tour
+2–4 sentences: the problem and the approach taken.
+
+### New behavior
+
+Bullets, only things observably different for a user, caller, API
+consumer, or the data. "None — internal refactor" is a valid and
+useful answer.
+
+### Scope
+
+N files, +X/−Y lines, in M clusters across <M+3> chapters. Note
+anything excluded (lockfiles, generated code). If a whole subsystem
+sits only in Leftovers, say which half of the branch the report
 actually covers.
 
-**Where to be careful** — up to 3 ranked pointers at where risk
-concentrates, each naming the cluster it lives in. These are attention
-pointers, not verified bugs.
+### Where to be careful
 
-## The tour
+Up to 3 ranked pointers at where risk concentrates, each naming the
+cluster it lives in. These are attention pointers, not verified bugs.
+
+### The chapters
+
 2. <cluster name> — <half-line> · `path/one.py`, `path/two.py`
 3. <cluster name> — <half-line> · `path/three.py`
 4. Leftovers — <N hunks, and in a half-line what they are>
@@ -542,6 +553,14 @@ Step H's completeness check mean anything.
 
 Several small blocks with a framing line each read far better than one giant block, and a
 cluster spanning many files leads with the hunks that carry the idea.
+
+**Structure a long chapter with `###` subheadings.** Past three or four hunks, an unbroken
+run of prose and diffs gives the reader nowhere to stand and nothing to scroll back to. Each
+subheading names the sub-idea the next few hunks share — "why absence and not falseness",
+"the one call site that opts out" — and a reader skimming the report gets a second layer of
+outline for free. A three-hunk chapter usually needs none; a twelve-hunk chapter always does.
+Use bold text for emphasis inside a paragraph, never as a substitute for a heading: bold does
+not structure anything.
 
 How much to say, where to say nothing, what to admit, when to name an alternative — all of
 that is [Narration](#narration). There is no template, because a chapter about a one-line

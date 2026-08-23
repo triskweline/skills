@@ -78,38 +78,49 @@ def render_heading(level, text, width):
 
 
 def blocks(lines):
-    """Group the source into (kind, payload) blocks. Consecutive text is one paragraph and
-    consecutive list items are one list, so nothing gets a blank line inserted inside it."""
+    """Group the source into (kind, payload) blocks. Consecutive text lines are one
+    paragraph and consecutive list items are one list, so neither gets a blank line
+    inserted inside it. Only a block *boundary* flushes — never a continuation."""
     para, items = [], []
 
     def flush():
+        out = []
         if para:
-            yield ("para", " ".join(para))
+            out.append(("para", " ".join(para)))
             para.clear()
         if items:
-            yield ("list", list(items))
+            out.append(("list", list(items)))
             items.clear()
+        return out
 
     for raw in lines:
         line = raw.rstrip("\n")
         heading = HEADING.match(line)
         bullet = BULLET.match(line)
-        if bullet:
-            if para:
-                yield from flush()
+
+        if bullet:                        # continues a list, or starts one
+            yield from flush() if para else ()
             items.append(bullet)
             continue
-        yield from flush()
-        if not line.strip():
+        if not line.strip():              # blank ends whatever was open
+            yield from flush()
             continue
         if heading:
+            yield from flush()
             yield ("heading", (len(heading.group(1)), heading.group(2)))
-        elif HRULE.match(line.strip()):
+            continue
+        if HRULE.match(line.strip()):
+            yield from flush()
             yield ("rule", None)
-        elif QUOTED.match(line):
+            continue
+        if QUOTED.match(line):
+            yield from flush()
             yield ("quote", QUOTED.match(line).group(1))
-        else:
-            para.append(line.strip())
+            continue
+        if items:                         # text after a list ends the list
+            yield from flush()
+        para.append(line.strip())         # continuation: accumulate, do not flush
+
     yield from flush()
 
 
