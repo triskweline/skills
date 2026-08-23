@@ -12,7 +12,7 @@
 #       https://…/merge_requests/<n> a GitLab merge request
 #       <path>.patch  <path>.diff    an existing patch file, copied through
 #
-# Everything downstream — tour-hunks.sh, tour-set.sh, the viewer — consumes the patch
+# Everything downstream — tour-hunks.sh, tour-set.sh, tour-ansi.sh — consumes the patch
 # file, never the target. That is what makes a tour immune to the branch moving under
 # it, and it is why every source type only has to be understood here.
 #

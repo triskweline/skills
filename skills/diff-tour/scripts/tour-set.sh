@@ -1,5 +1,5 @@
 #!/bin/bash
-# Set the chapter the viewer is showing. Hunks are extracted byte-exact from the diff;
+# Extract one chapter's hunks. They come byte-exact from the diff;
 # only the free text after the second @@ is rewritten, into "<chapter>.<n> · <caption>".
 #
 #   Usage: tour-set.sh <tour-file> <source> <chapter> <spec> [<spec> …]
