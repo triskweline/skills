@@ -336,7 +336,8 @@ output tokens spent on bytes you are not thinking about.
 
 **`markdown` is the default.** Use it unless the reader asked for something else with
 `--format markdown|ansi|html`. Don't ask: the default works everywhere and the flag is there
-for the reader who wants more. Every format writes a file and prints how to open it.
+for the reader who wants more. Every format writes a file; `markdown` also prints itself into
+the session when it is small enough to arrive whole, and prints its path when it is not.
 
 **After the report, invite questions.** This is session output, not part of the report — for
 `ansi` and `html` the report is a file and cannot contain it. Say that they can ask about

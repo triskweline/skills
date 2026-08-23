@@ -145,8 +145,19 @@ fi
 
 echo "tour-report: $(grep -c '^@@' "$WORK" 2>/dev/null || echo 0) hunks in the last chapter, format $FMT" >&2
 echo
+bytes=$(wc -c < "$OUT")
 case "$FMT" in
-  md)   echo "$OUT" ;;
+  md)
+    # A small report goes straight into the session, which is the point of markdown. A large
+    # one cannot: tool output is capped around 40 KB and is truncated past it, for the reader
+    # as well as for you. Above the cap, hand over the path.
+    if [ "$bytes" -le "${TOUR_INLINE_MAX:-35000}" ]; then
+      cat "$OUT"
+    else
+      printf '%s\n\n' "$OUT"
+      printf 'tour-report: %s bytes — too large to print here (tool output is truncated\n' "$bytes"
+      printf '  past ~40 KB). Open it with:  less %s\n' "$OUT"
+    fi ;;
   ansi) echo "less -R $OUT" ;;
   html) echo "$OUT   (open it in a browser)" ;;
 esac

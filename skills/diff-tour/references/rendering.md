@@ -43,6 +43,12 @@ and format-agnostic:
 Consumable by another agent, diffable, and the format to hand over when the reader did not
 ask for anything.
 
+A small `md` report prints itself into the session, which is the point of the format. Past
+about 35 KB it prints its path instead: tool output is truncated around 40 KB, for the reader
+as well as for you, so a partial report would be worse than a path. `TOUR_INLINE_MAX` moves
+the line. For scale, a hundred-hunk change comes to roughly 230 KB — that one is always a
+file.
+
 **`ansi`** — prose through `md-to-ansi.py`, hunks through `delta`. Real syntax highlighting
 and a heading hierarchy that a terminal markdown renderer cannot express: the report title in
 yellow over a heavy rule, a chapter title as a blue `3/9` badge with white capitals over a
