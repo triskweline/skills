@@ -12,8 +12,9 @@ the text instead:
 
 - **Report title** — `#`, followed by a `---` rule. The rule is what separates it from what
   follows, since the heading alone may not.
-- **Chapter** — `##`, opening with the chapter number: `## 3 · One accessor per field
-  question`. The number is the hierarchy signal, and hunk codes depend on it anyway.
+- **Chapter** — `##`, opening with the chapter number and total: `## 3/9 · One accessor per
+  field question`. The number is the hierarchy signal, hunk codes depend on it, and the
+  total tells the reader how much is left. Same heading text in every format.
 - **Section inside a chapter** — `###`, no number. If a renderer flattens it against the
   chapter heading, the absent number still distinguishes them.
 

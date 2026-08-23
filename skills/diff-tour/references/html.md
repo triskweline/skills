@@ -14,7 +14,10 @@ preserves both. `scripts/ansi-to-html.py` does that translation:
 
 - **Run it once per hunk.** The converter wraps everything it is given in a single
   `<div class="diff">`, so a whole chapter through it is one undivided block and you cannot
-  put prose between hunks. Write a one-hunk patch, convert, repeat.
+  put prose between hunks. Get each one-hunk patch from `scripts/tour-set.sh` like every
+  other format — never hand-craft one — calling it once per hunk with
+  `TOUR_CODE_OFFSET=<hunks already coded in this chapter>` so the codes run `3.1`, `3.2`
+  instead of restarting at `3.1` every time.
 - `--keep-plus-minus-markers` is required, not optional: delta drops the marker column by
   default, and the `+`/`-` characters must stay visible for a reader who prints or copies.
 - `--file-style omit` drops delta's own file banner, which would duplicate your framing line.
@@ -24,7 +27,7 @@ preserves both. `scripts/ansi-to-html.py` does that translation:
   `.diff` with **`white-space: pre`**, a monospace `font-family` and `overflow-x: auto`.
   Without `pre` every indent collapses and it looks broken.
 
-## The exported document
+## The document
 
 Concatenate the chapters in order — chapter 1, the cluster chapters, Leftovers, the wrap-up
 — each as written in its step. No sidebar, no two-column layout, no navigation: the reader

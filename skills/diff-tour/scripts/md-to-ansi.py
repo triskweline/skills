@@ -38,7 +38,7 @@ INLINE = [
 ]
 
 HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
-BULLET = re.compile(r"^(\s*)[-*]\s+(.*)$")
+BULLET = re.compile(r"^(\s*)([-*]|\d{1,3}[.)])\s+(.*)$")
 QUOTED = re.compile(r"^>\s?(.*)$")
 HRULE = re.compile(r"^(-{3,}|\*{3,}|_{3,})$")
 
@@ -78,29 +78,39 @@ def render_heading(level, text, width):
 
 
 def blocks(lines):
-    """Group the source into (kind, payload) blocks. A paragraph is consecutive text."""
-    para = []
+    """Group the source into (kind, payload) blocks. Consecutive text is one paragraph and
+    consecutive list items are one list, so nothing gets a blank line inserted inside it."""
+    para, items = [], []
+
+    def flush():
+        if para:
+            yield ("para", " ".join(para))
+            para.clear()
+        if items:
+            yield ("list", list(items))
+            items.clear()
+
     for raw in lines:
         line = raw.rstrip("\n")
-        m = HEADING.match(line)
-        if m or HRULE.match(line.strip()) or BULLET.match(line) or QUOTED.match(line) or not line.strip():
+        heading = HEADING.match(line)
+        bullet = BULLET.match(line)
+        if bullet:
             if para:
-                yield ("para", " ".join(para))
-                para = []
+                yield from flush()
+            items.append(bullet)
+            continue
+        yield from flush()
         if not line.strip():
             continue
-        if m:
-            yield ("heading", (len(m.group(1)), m.group(2)))
+        if heading:
+            yield ("heading", (len(heading.group(1)), heading.group(2)))
         elif HRULE.match(line.strip()):
             yield ("rule", None)
-        elif BULLET.match(line):
-            yield ("bullet", BULLET.match(line))
         elif QUOTED.match(line):
             yield ("quote", QUOTED.match(line).group(1))
         else:
             para.append(line.strip())
-    if para:
-        yield ("para", " ".join(para))
+    yield from flush()
 
 
 def main():
@@ -118,11 +128,15 @@ def main():
             out.extend(render_heading(payload[0], payload[1], width))
         elif kind == "rule":
             out.append(RULE + "─" * width + R)
-        elif kind == "bullet":
-            indent = payload.group(1)
-            body = textwrap.wrap(payload.group(2), max(20, width - len(indent) - 2)) or [""]
-            out.append(f"{indent}{DIM}·{R} " + inline(body[0]))
-            out.extend(" " * (len(indent) + 2) + inline(b) for b in body[1:])
+        elif kind == "list":
+            for item in payload:
+                indent, marker, text = item.group(1), item.group(2), item.group(3)
+                # Keep a numbered marker as written — the overview's chapter list is
+                # numbered, and its numbers are the chapter numbers.
+                lead = "·" if marker in ("-", "*") else marker
+                body = textwrap.wrap(text, max(20, width - len(indent) - len(lead) - 1)) or [""]
+                out.append(f"{indent}{DIM}{lead}{R} " + inline(body[0]))
+                out.extend(" " * (len(indent) + len(lead) + 1) + inline(b) for b in body[1:])
         elif kind == "quote":
             for w in textwrap.wrap(payload, max(20, width - 2)) or [""]:
                 out.append(QUOTE + "▏ " + inline(w) + R)

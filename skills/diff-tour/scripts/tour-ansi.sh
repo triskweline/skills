@@ -1,5 +1,5 @@
 #!/bin/bash
-# Assemble an ansi-export document: narration and hunks interwoven in one text file,
+# Assemble the ansi report: narration and hunks interwoven in one text file,
 # styled with ANSI escapes, read with `less -R`.
 #
 #   Usage: tour-ansi.sh <out-file> <source> <narration-file>
@@ -32,7 +32,7 @@ mkdir -p "$(dirname "$OUT")"
 : > "$OUT"
 prose=$(mktemp); trap 'rm -f "$prose"' EXIT
 first=1
-chapter=1; hunkno=0; framed=   # `framed` tracks prose since the last hunk
+chapter=1; hunkno=0; framed=; sawchapter=   # `framed` tracks prose since the last hunk
                        # updated from headings like "## 3/8 · <name>", so codes come out 3.1, 3.2, …
 
 # Strip leading and trailing blank lines. Both the narration and delta bring their own,
@@ -75,6 +75,11 @@ while IFS= read -r line || [ -n "$line" ]; do
         echo "tour-ansi: a heading does not count. One sentence is enough." >&2
         exit 6
       fi
+      if [ -z "$sawchapter" ]; then
+        echo "tour-ansi: no numbered chapter heading above this hunk — codes would all start" >&2
+        echo "  at 1. Give the chapter a heading like '## 3/9 · <name>' first." >&2
+        exit 7
+      fi
       framed=
       flush_prose
       spec="${line#'%%hunk '}"
@@ -83,7 +88,9 @@ while IFS= read -r line || [ -n "$line" ]; do
       else
         TOUR_CODE_OFFSET="$hunkno" bash "$HERE/tour-set.sh" "$WORK" "$SOURCE" "$chapter" "$spec" >/dev/null
       fi
-      hunkno=$((hunkno + 1))
+      # A placeholder may resolve to several hunks (a `;` list, `all`, `rest`), so advance
+      # by what was emitted. Counting placeholders gives two hunks the same code.
+      hunkno=$((hunkno + $(grep -c '^@@' "$WORK")))
       # Exactly one blank line on each side of a hunk.
       if [ -s "$OUT" ]; then printf '\n' >> "$OUT"; fi
       # No yellow, no box, no bold: the caption is plain text over a grey underline, the
@@ -99,8 +106,9 @@ while IFS= read -r line || [ -n "$line" ]; do
       ;;
     *)
       case "$line" in
-        \#*) n=$(printf '%s' "$line" | sed -n 's/^#\{1,6\}[[:space:]]*\([0-9]\{1,\}\)\/.*/\1/p')
-             if [ -n "$n" ] && [ "$n" != "$chapter" ]; then chapter="$n"; hunkno=0; fi ;;
+        \#*) # "## 3/9 · name" or "## 3 · name" — the number is what matters.
+             n=$(printf '%s' "$line" | sed -n 's|^#\{1,6\}[[:space:]]*\([0-9]\{1,\}\)[/ ].*|\1|p')
+             if [ -n "$n" ] && [ "$n" != "$chapter" ]; then chapter="$n"; hunkno=0; sawchapter=1; fi ;;
       esac
       case "$line" in
         '#'*|'') ;;                      # headings and blanks do not frame a hunk

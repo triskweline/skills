@@ -37,10 +37,12 @@ Two numbering schemes, deliberately different so they can never be confused:
   order. The reader never sees them.
 - **Chapters are numbered.** A chapter is a numbered heading in the report — nothing more.
   The number exists so hunks can be coded `<chapter>.<hunk>`: `3.2` is the second hunk of
-  chapter 3, and that is how prose points at code.
+  chapter 3, and that is how prose points at code. Write a chapter heading as
+`<n>/<total> · <name>`, in every format: the builder for `ansi` reads the number from it,
+and a reader wants to know how much is left.
 
 A **hunk cluster** is a set of thematically cohesive hunks — the unit Step E
-produces. A **chapter** is a unit of navigation. Most chapters carry one cluster;
+produces. A **chapter** is a unit of the report. Most chapters carry one cluster;
 three do not:
 
 | Step | Produces |
@@ -72,7 +74,7 @@ here is breakage.
 - **Never hide an added or changed line.** Not for a new file, not for forty peer
   definitions, not because a chapter is long — see [Nothing is hidden](#nothing-is-hidden).
   `markdown` prints long hunks whole; a file scrolls.
-- **Keep the `@@` headers.** Every mode takes hunks from the extractor, so the ranges stay
+- **Keep the `@@` headers.** Every format takes hunks from the extractor, so the ranges stay
   byte-exact and the enclosing-scope text is replaced by the hunk code and caption. That
   trade is deliberate: git's context text for a file like an IIFE module is the same
   useless line on every hunk, while the code is what the narration points at.
@@ -96,14 +98,13 @@ shown.
 **Never show one hunk as a representative of several.** That hides precisely the case the
 tour exists to catch: the seventh call site that differs.
 
-Length is managed by navigation, never by hiding: chapters divide the tour, the reader
-scrolls, and a dull chapter costs one keystroke. What you may compress is the *narration* —
+Length is managed by structure, never by hiding: chapters divide the report, the reader
+scrolls, and a dull chapter is cheap to scroll past. What you may compress is the *narration* —
 one caption for twenty similar hunks is fine, because the reader can see the twenty hunks
 it describes. A topic's own hunks stay in that topic's chapter however dull they are;
 Leftovers is only for hunks no topic claimed.
 
-A reader who scrolls past or leaves early has decided. Don't count it, don't remark on it,
-don't withhold the wrap-up over it.
+A reader who scrolls past a chapter has decided. Don't remark on it.
 
 Context lines need no management either. `git diff` splits a hunk whenever the gap between
 changes exceeds twice the context setting, so the longest run of unchanged lines any hunk
@@ -293,9 +294,6 @@ threads the same value through the validator" — so the direction is never some
 reader has to infer from tone. Unnamed prose looks back; prose naming a code looks at that
 code.
 
-Order is part of this, and the extractor honours it: hunks appear and are numbered in the
-order you list them, so what you narrate first is what the reader sees first. Never ask a
-reader to start at the bottom of their screen.
 
 **Gloss a term once, at first use, in a clause.** Where a project's own concept is
 unavoidable, define it in passing and move on. If the tour needs a glossary, the narration
@@ -513,7 +511,8 @@ report.
 Write each cluster as a numbered chapter, in order. Open with the chapter heading, then
 narrate and show hunks interwoven: framing sentence, hunk, explanation, next framing
 sentence. Every hunk comes from `scripts/tour-set.sh` and is never retyped — push the
-chapter through it and take the hunks from the file it writes. **Every chapter goes through
+chapter through it — always with the same `<tour-file>`, since the ledger lives beside it —
+and take the hunks from the file it writes. **Every chapter goes through
 the script**, with `TOUR_NEW=1` on the first, because its ledger is the only thing that makes
 Step H's completeness check mean anything.
 
@@ -543,7 +542,7 @@ belongs to one — go back to pass 2.
 left bare. Each call reports how many hunks remain, which is how you know what this
 chapter will hold. That count is for you, not a score to report to the reader.
 
-**Run the completeness check before you write the wrap-up.** In every mode, call
+**Run the completeness check before you write the wrap-up.** In every format, call
 `tour-set.sh` with the `rest` spec once. It selects every hunk no earlier chapter used,
 and if there are none it prints `all hunks already shown` and exits 0. That is the only
 mechanical guarantee the tour has that nothing was dropped — do not print the wrap-up
@@ -574,4 +573,4 @@ many topics went unnamed, or the range holds a second body of work. Say which.
 
 **`gh` fails** — Say so, suggest `gh auth login`, and offer to tour a local range instead.
 
-**Reader jumps ahead or asks something unrelated mid-tour** — Answer, then offer to resume: "back to cluster 3 of 5?" Never restart the tour from the top unasked.
+**Reader interrupts with a question while the report is streaming** — answer it, then continue where you stopped. Never restart from the top unasked.

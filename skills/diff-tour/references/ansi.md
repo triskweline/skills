@@ -26,7 +26,7 @@ The builder refuses a document where a hunk has no narration above it — a head
 count as framing. Fix it by adding the sentence, not by moving the placeholder.
 
 Two things to get right in the narration itself, both covered in
-[Captions carry the story on their own](../SKILL.md#captions):
+[Captions](../SKILL.md#captions):
 the chapter heading is already on screen, so a caption should describe its own hunk rather
 than restate the chapter; and prose between two hunks is read as commentary on the one
 above, so name a hunk by its code when you mean to introduce it.
@@ -36,9 +36,12 @@ sets it, so codes come out `3.1`, `3.2`. Hunks are recorded in the same ledger
 `tour-set.sh` keeps, so the completeness check works exactly as elsewhere: run
 `tour-set.sh <out>.hunk.diff <source> <n> rest` when the document is built.
 
+**No fenced code blocks in the narration** — the renderer has no handling for them and will
+join them into a paragraph. Use inline code, or a hunk.
+
 ## What it needs
 
-`delta`, `less` and `python3`. No fonts, no browser, no second window.
+`delta`, `less` and `python3`. No fonts, no browser.
 
 ## Handing it over
 
