@@ -53,9 +53,19 @@ CHAPTER_MARK = re.compile(r"^\s*(\d+\s*/\s*\d+)\s*·\s*(.*)$")
 def render_heading(level, text, width):
     rule = RULE + "─" * width + R
     if level == 1:
-        # The report title: no colour at all. Capitals between two rules, which reads as a
-        # title page rather than as another coloured band.
-        return [rule, "", TITLE + text.upper() + R, "", rule]
+        # The report title in a double-line box, so it cannot be mistaken for a chapter
+        # title. Wraps inside the box rather than truncating, since a change's one-line
+        # title can be long.
+        inner = max(10, width - 4)
+        body = textwrap.wrap(text.upper(), inner) or [""]
+        top = RULE + "╔" + "═" * (inner + 2) + "╗" + R
+        bottom = RULE + "╚" + "═" * (inner + 2) + "╝" + R
+        side = RULE + "║" + R
+        out = [top]
+        for row in body:
+            out.append(side + " " + TITLE + row.ljust(inner) + R + " " + side)
+        out.append(bottom)
+        return out
     if level == 2:
         # " 3/9 " as a badge, then the title in capitals with no background, then a rule.
         m = CHAPTER_MARK.match(text)
