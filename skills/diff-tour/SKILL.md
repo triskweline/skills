@@ -148,7 +148,12 @@ A cluster is a **unit of intent**, not a file. Hunks from four files belong in o
 
 The exception is the **multi-topic hunk**, and it is not rare: `git diff` merges changes that sit within a few context lines of each other, so one hunk routinely carries several unrelated additions. Two rounds of work overwriting the same lines does it too. Either way the hunk serves more than one topic, and it may appear in more than one chapter.
 
-The gate: **show it again wherever the lines that chapter is about live inside it.** A chapter must never discuss code that is only shown in another chapter — making the reader scroll back to re-find a function is friction the report exists to remove. When you re-show it, say which chapter owns it and **name the lines this chapter is about**, or a 60-line hunk appearing three times reads as a mistake rather than three views of one place.
+The rule for the second and third chapter: **never discuss code the reader has no way to reach, and choose reaching over repeating by size.**
+
+- **A short hunk you re-show.** Under roughly twenty lines it is cheaper to print again than to send the reader hunting, and the hunk sitting under its own framing sentence is worth the duplication. Say which chapter owns it, and **name the lines this chapter is about**.
+- **A long hunk you cross-reference.** Above that, printing sixty lines three times inflates the report and buries the difference between the three readings. Point at it by code — "the guard is in `2.3`, the `assertFieldsInSameLayer` lines" — and quote the two or three lines this chapter turns on, so the reader has the code in front of them and knows where the rest lives.
+
+The cross-reference works because the report is one document the reader can scroll. It is the whole hunk they cannot afford to meet three times, not the code.
 
 **It is understandable from its predecessors alone.** The reader should never need a later chapter to follow an earlier one. If chapter 4 only makes sense after chapter 6, reorder.
 
@@ -174,7 +179,7 @@ Expect a range to hold several bodies of work, each with its own rounds of prepa
 
 - **A topic's chapter carries every hunk that belongs to it**, including the repetitive and inconsequential ones. Never move a topic's own follow-ups to Leftovers: by the time the reader reaches the end they have lost the context that made those hunks legible, and a hunk shown without its topic is worse than useless. Narrate the first one properly, then say the rest follow the same shape and show their diffs after it.
 - **Tests and documentation go with the behavior they pin down or describe.** Six specs for one new behavior all belong to that topic, even though the explanation would read fine having quoted only one of them.
-- A hunk several topics claim goes to the one whose explanation would suffer most without it — that is its primary home, and this is where the incompleteness question earns its keep, as a tiebreaker. Re-show it in the others under the rule above.
+- A hunk several topics claim goes to the one whose explanation would suffer most without it — that is its primary home, and this is where the incompleteness question earns its keep, as a tiebreaker. In the other chapters, re-show it or cross-reference it by size, under the rule above.
 - **A hunk that summarises the whole change** — a changelog entry, release notes — is claimed by every topic, because reverting any of them would shrink it. It belongs to the topic that *documents* the change if the diff has one, and is otherwise its own small cluster. Place it early either way and read it as stated intent: it is usually the best account of the author's own understanding in the whole diff.
 - A hunk no topic claims is a **leftover** — no idea in the change would lose it if reverted.
 - A hunk with no good home may instead be **evidence of a topic you missed**. Check that first. Adding a topic is cheap; misfiling real work as fallout is not.
