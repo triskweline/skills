@@ -51,7 +51,11 @@ CHAPTER_MARK = re.compile(r"^\s*(\d+\s*/\s*\d+)\s*·\s*(.*)$")
 
 
 def render_heading(level, text, width):
+    # Three weights of rule, so the levels grade downwards: the report title is boxed in
+    # double lines, a chapter title is underlined with them, and delta underlines a hunk
+    # caption with a single line.
     rule = RULE + "─" * width + R
+    double = RULE + "═" * width + R
     if level == 1:
         # The report title in a double-line box, so it cannot be mistaken for a chapter
         # title. Wraps inside the box rather than truncating, since a change's one-line
@@ -73,7 +77,7 @@ def render_heading(level, text, width):
             head = BADGE + " " + m.group(1).replace(" ", "") + " " + R + " " + TITLE + m.group(2).upper() + R
         else:
             head = TITLE + text.upper() + R
-        return [head, rule]
+        return [head, double]
     return [H3 + inline(text) + R]
 
 
