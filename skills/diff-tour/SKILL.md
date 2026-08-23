@@ -288,6 +288,14 @@ lower resolution.
   chapter survives, they are doing their job. If they read as a list of file names, rewrite
   them.
 
+**Every hunk is framed before the reader meets it.** A hunk never opens a chapter and never
+sits straight under a heading — there is always a sentence above it saying what it is for.
+A heading does not count: `ONE ACCESSOR PER FIELD QUESTION` names the chapter, not this
+hunk's purpose. One sentence is enough, and "this is the same swap in the disable path" is
+a whole sentence. A reader who meets code before they are told why is reverse-engineering
+your intent from a diff, which is the work the tour exists to save them.
+(`tour-ansi.sh` refuses to build a document that breaks this.)
+
 **Where narration and hunks interleave — `inline`, `export`, `ansi-export` — prose after a
 hunk is about that hunk.** That is the default the reader can rely on, and it means a
 paragraph sitting between two hunks needs no preamble to be understood: it looks backwards.

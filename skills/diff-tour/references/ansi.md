@@ -22,6 +22,9 @@ Everything that is not a placeholder goes through `md-to-ansi.py`. Every placeho
 replaced by that hunk, byte-exact from the patch and rendered by `delta`. The script prints
 one command as its last line; that command is what you hand the reader.
 
+The builder refuses a document where a hunk has no narration above it — a heading does not
+count as framing. Fix it by adding the sentence, not by moving the placeholder.
+
 Two things to get right in the narration itself, both covered in
 [Captions carry the story on their own](../SKILL.md#captions-carry-the-story-on-their-own):
 the chapter heading is already on screen, so a caption should describe its own hunk rather

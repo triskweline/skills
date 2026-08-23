@@ -32,7 +32,8 @@ mkdir -p "$(dirname "$OUT")"
 : > "$OUT"
 prose=$(mktemp); trap 'rm -f "$prose"' EXIT
 first=1
-chapter=1; hunkno=0    # updated from headings like "## 3/8 · <name>", so codes come out 3.1, 3.2, …
+chapter=1; hunkno=0; framed=   # `framed` tracks prose since the last hunk
+                       # updated from headings like "## 3/8 · <name>", so codes come out 3.1, 3.2, …
 
 # Strip leading and trailing blank lines. Both the narration and delta bring their own,
 # and stacked they read as a gap rather than a separator.
@@ -65,6 +66,16 @@ flush_prose() {
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in
     '%%hunk '*)
+      # A hunk must never open a chapter or sit straight under a heading: the reader needs
+      # a sentence saying what it is for before they meet the code. A heading is not that
+      # sentence.
+      if [ -z "$framed" ]; then
+        echo "tour-ansi: no narration above this hunk — say what it is for first:" >&2
+        echo "  ${line}" >&2
+        echo "tour-ansi: a heading does not count. One sentence is enough." >&2
+        exit 6
+      fi
+      framed=
       flush_prose
       spec="${line#'%%hunk '}"
       if [ -n "$first" ]; then
@@ -90,6 +101,10 @@ while IFS= read -r line || [ -n "$line" ]; do
       case "$line" in
         \#*) n=$(printf '%s' "$line" | sed -n 's/^#\{1,6\}[[:space:]]*\([0-9]\{1,\}\)\/.*/\1/p')
              if [ -n "$n" ] && [ "$n" != "$chapter" ]; then chapter="$n"; hunkno=0; fi ;;
+      esac
+      case "$line" in
+        '#'*|'') ;;                      # headings and blanks do not frame a hunk
+        *) framed=1 ;;
       esac
       printf '%s\n' "$line" >> "$prose" ;;
   esac
