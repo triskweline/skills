@@ -12,7 +12,10 @@ mirror of `ansi-to-html.py`, which does the same job in the other direction for 
 
 Write the narration as markdown, with one placeholder line wherever a hunk belongs:
 
-    %%hunk <path>:<+start>[=<caption>]
+    %%hunk <path>:<+start>[@<code>][=<caption>]
+
+`@<code>` pins the hunk's code instead of assigning the next one — for a chapter re-showing
+a hunk another chapter owns, so the hunk keeps one code across the whole report.
 
 Then:
 

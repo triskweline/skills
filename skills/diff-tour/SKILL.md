@@ -150,7 +150,7 @@ The exception is the **multi-topic hunk**, and it is not rare: `git diff` merges
 
 The rule for the second and third chapter: **never discuss code the reader has no way to reach, and choose reaching over repeating by size.**
 
-- **A short hunk you re-show.** Under roughly twenty lines it is cheaper to print again than to send the reader hunting, and the hunk sitting under its own framing sentence is worth the duplication. Say which chapter owns it, and **name the lines this chapter is about**.
+- **A short hunk you re-show.** Under roughly twenty lines it is cheaper to print again than to send the reader hunting, and the hunk sitting under its own framing sentence is worth the duplication. Say which chapter owns it, and **name the lines this chapter is about**. **A re-shown hunk keeps its own code** — the one its owning chapter gave it — because a hunk has exactly one code in the whole report and a second code would make one place look like two. Its caption may differ, since this chapter is looking at it for a different reason. In `tour-set.sh`, pin it: `src/form.js:233@2.3=the guard, from the other side`.
 - **A long hunk you cross-reference.** Above that, printing sixty lines three times inflates the report and buries the difference between the three readings. Point at it by code — "the guard is in `2.3`, the `assertFieldsInSameLayer` lines" — and quote the two or three lines this chapter turns on, so the reader has the code in front of them and knows where the rest lives.
 
 The cross-reference works because the report is one document the reader can scroll. It is the whole hunk they cannot afford to meet three times, not the code.
@@ -349,7 +349,7 @@ nothing after it.
 
 ### Hunk codes
 
-Every hunk carries a code so prose and screen can point at
+Every hunk carries exactly one code, however many chapters show it, so prose and screen can point at
 each other. The code is `<chapter>.<hunk>`: `2.1`, `2.2`, `2.3` for the first
 chapter's hunks, numbered in the order they appear on screen. No total count in
 the code; the chapter header already carries "2/7".

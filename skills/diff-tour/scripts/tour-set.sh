@@ -14,7 +14,10 @@
 #                                          prefix (rest:docs/=...) to cover a whole subtree,
 #                                          e.g. rest:src/form.js="the same accessor swap
 #                                          as 2.2, in six more call sites"
-#     <item>   = <+start>[=<caption>]      +start comes from tour-hunks.sh
+#     <item>   = <+start>[@<code>][=<caption>]   +start comes from tour-hunks.sh
+#                <code> pins the hunk's code instead of assigning the next one — use it when
+#                a later chapter re-shows a hunk another chapter owns, so the hunk keeps one
+#                code for the whole report (e.g. src/form.js:233@2.3=the guard, again)
 #
 #   Captions may contain commas and "·" but not semicolons, tabs or newlines, and are
 #   never truncated. Hunks are emitted and numbered in the order you list them, so
@@ -153,6 +156,7 @@ fi
 # TOUR_CODE_OFFSET lets a caller that invokes us once per hunk keep one running
 # numbering across calls, as tour-ansi.sh does.
 n=${TOUR_CODE_OFFSET:-0}
+pinned=0
 while IFS= read -r path; do
   [ -n "$path" ] || continue
   want=$(awk -F'\t' -v p="$path" '$1 == p { printf "%s;", $2 }' "$SPECS")
@@ -166,17 +170,25 @@ while IFS= read -r path; do
     *) # Deliberately unsorted: hunks appear in the order you list them, so narration
        # order, screen order and code order are the same thing. `all` and `rest` fall
        # back to file order below, since there is no stated order to honour.
-       wanted=$(printf '%s' "$want" | tr ';' '\n' | sed 's/=.*//; s/^[[:space:]]*+\?//; s/[[:space:]]*$//' | grep -v '^$' | awk '!seen[$0]++')
+       wanted=$(printf '%s' "$want" | tr ';' '\n' | sed 's/=.*//; s/@.*//; s/^[[:space:]]*+\?//; s/[[:space:]]*$//' | grep -v '^$' | awk '!seen[$0]++')
        for s in $wanted; do
          grep -qx "$s" <<<"$starts" || { echo "tour-set: no hunk at +$s in $path (try scripts/tour-hunks.sh)" >&2; exit 3; }
        done ;;
   esac
 
   for s in $wanted; do
-    n=$((n + 1))
-    caption=$(printf '%s' "$want" | tr ';' '\n' | sed -n "s/^[[:space:]]*+\?$s=//p" | head -1)
+    item=$(printf '%s' "$want" | tr ';' '\n' | sed -n "s/^[[:space:]]*+\?\($s\)\([@=].*\)\?$/\1\2/p" | head -1)
+    pin=$(printf '%s' "$item" | sed -n 's/^[0-9]*@\([^=]*\).*/\1/p')
+    caption=$(printf '%s' "$item" | sed -n 's/^[^=]*=//p')
     [ -n "$caption" ] || caption="$allcap"
-    printf '%s\t%s\t%s.%s\t%s\n' "$path" "$s" "$CHAPTER" "$n" "$caption" >> "$MAP"
+    if [ -n "$pin" ]; then
+      # A re-shown hunk keeps the code its owning chapter gave it, and does not consume a
+      # new one — a hunk has exactly one code in the whole report.
+      code="$pin"; pinned=$((pinned + 1))
+    else
+      n=$((n + 1)); code="$CHAPTER.$n"
+    fi
+    printf '%s\t%s\t%s\t%s\n' "$path" "$s" "$code" "$caption" >> "$MAP"
   done
 done <<< "$paths"
 
@@ -211,7 +223,7 @@ while IFS=$'\t' read -r path start code caption; do
 done < "$MAP"
 
 emitted=$(grep -c '^@@' "$TMP" || true)
-assigned=$((n - ${TOUR_CODE_OFFSET:-0}))
+assigned=$((n - ${TOUR_CODE_OFFSET:-0} + pinned))
 [ "$emitted" -eq "$assigned" ] || { echo "tour-set: internal error — assigned $assigned codes but emitted $emitted hunks" >&2; exit 4; }
 
 cut -f1,2 "$MAP" >> "$LEDGER"
