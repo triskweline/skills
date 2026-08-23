@@ -272,8 +272,9 @@ prose is in another window or another scroll position. So captions are a **light
 not labels**: read top to bottom with the chat hidden, they should tell the same story, at
 lower resolution.
 
-- **In `viewer`, the first caption of a chapter names the chapter's idea**, because nothing
-  else on that screen does. `3.1 · one accessor per field question` orients; `3.1 · form.js
+- **In `viewer`, the first caption of a chapter names the chapter's idea**, because the
+  hunks live on a screen your headings never reach — the one case where a mode changes what
+  a caption has to carry, and only because the chapter title is not there to carry it. `3.1 · one accessor per field question` orients; `3.1 · form.js
   changes` does not.
 - **In `export` and `ansi-export`, it does not** — the chapter heading is directly above it,
   so restating it wastes the one line the reader is most likely to read. Say what *this
@@ -294,7 +295,8 @@ A heading does not count: `ONE ACCESSOR PER FIELD QUESTION` names the chapter, n
 hunk's purpose. One sentence is enough, and "this is the same swap in the disable path" is
 a whole sentence. A reader who meets code before they are told why is reverse-engineering
 your intent from a diff, which is the work the tour exists to save them.
-(`tour-ansi.sh` refuses to build a document that breaks this.)
+This holds in every mode. `ansi-export` is simply the one that can check it —
+`tour-ansi.sh` refuses to build a document where a hunk has no prose above it.
 
 **Where narration and hunks interleave — `inline`, `export`, `ansi-export` — prose after a
 hunk is about that hunk.** That is the default the reader can rely on, and it means a
@@ -314,8 +316,17 @@ is failing.
 
 ## Presentation modes
 
-Where the reader reads, and whether they can steer. Three modes, each with one pause
+Where the reader reads, and whether they can steer. Four modes, each with one pause
 behaviour — the mechanics never depend on which kind of session you are in.
+
+**A mode changes delivery, never content.** The same clusters, the same hunks in the same
+order, the same framing sentence above each one, the same admissions. `inline` and
+`ansi-export` are the same report; one pauses and the other has better colours. Every rule
+in [Narration](#narration) and [Fidelity](#fidelity) applies in all four — where a rule
+mentions a mode, it is describing how that rule *shows up* there, never an exemption. Only
+`ansi-export` runs its content through a builder that can refuse, so it is the only mode
+where some rules are checked rather than trusted; that is a difference in enforcement, not
+in what is required.
 
 **`inline`** — the report appears in this session, chapter by chapter, pausing after each.
 Markdown in a terminal session; rendered HTML in a session that renders it, from the same
