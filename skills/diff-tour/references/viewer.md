@@ -169,7 +169,7 @@ script edit. Ask them to quit and re-paste.
 **Reader wants to keep a chapter while you move on** — they can't; the file is single
 state. Paste that hunk inline instead, or wait. This is the viewer's real cost: comparing
 chapter 2 against chapter 5 is one of the most valuable things a reviewer does, and this
-mode forbids it. If the reader starts doing that, offer `inline` or `html`.
+mode forbids it. If the reader starts doing that, offer `inline` or `export`.
 
 **Quitting wipes the screen** — `finish()` calls `clear`, so the tour leaves no scrollback
 in viewer mode. Say so when you offer the mode.

@@ -60,9 +60,11 @@ The explanation after each block is where the value is. Some tests for whether i
 
 When a cluster genuinely has nothing beyond the obvious — a version bump, a typo fix — one sentence is the correct output.
 
-## HTML output
+## The exported document
 
-`html` mode carries the whole tour — narration and diffs interwoven — not a companion to a chat tour. In a session that renders HTML, stream the document. In a terminal session, write one self-contained file to `/tmp/YYYY-MM-DD-difftour-<slug>.html` using today's real date, then tell the reader the path and ask them to open it; don't also re-narrate the tour in the chat.
+`export` mode carries the whole tour — narration and diffs interwoven, every chapter as a document section — with no pauses. Write one self-contained file to a temporary directory, `/tmp/YYYY-MM-DD-difftour-<slug>.html` using today's real date, then print the path and stop; don't also re-narrate the tour in the chat.
+
+The same pipeline serves `inline` in a session that renders HTML — there you emit one chapter's block at a time instead of the whole document, and you keep the pauses.
 
 All CSS and JS inline, no external requests of any kind — it's opened from disk and must work offline.
 

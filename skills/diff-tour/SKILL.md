@@ -71,10 +71,10 @@ here is breakage.
 - **Never hide an added or changed line.** Not for a new file, not for forty peer
   definitions, not because a chapter is long. Length is managed by navigation, not by
   concealment — see [Nothing is hidden](references/rendering.md#nothing-is-hidden).
-- **Keep the `@@` headers.** They give line numbers and enclosing scope for free. In
-  `viewer` and `html` mode the ranges stay byte-exact but the scope text is replaced by the
-  hunk code and caption; that trade is deliberate, since git's context text for a file like
-  an IIFE module is the same useless line on every hunk.
+- **Keep the `@@` headers.** Every mode takes hunks from the extractor, so the ranges stay
+  byte-exact and the enclosing-scope text is replaced by the hunk code and caption. That
+  trade is deliberate: git's context text for a file like an IIFE module is the same
+  useless line on every hunk, while the code is what the narration points at.
 - **Every hunk appears in exactly one chapter**, except the multi-intent hunk described
   under [Clustering](#clustering).
 - **Separate stated from inferred intent.** "The PR says…" versus "This looks like…".
@@ -215,38 +215,59 @@ is failing.
 
 ## Presentation modes
 
-How the hunks reach the reader is a separate decision from how the tour is
-clustered and narrated. There are three modes. Settle on one before printing
-cluster 1 and say which you're using.
+Where the reader reads, and whether they can steer. Three modes, each with one pause
+behaviour — the mechanics never depend on which kind of session you are in.
 
-**`inline`** — narration and diffs interwoven in your own messages, diffs as
-fenced diff blocks, as Step G describes. No syntax highlighting; accept that.
-Works in every session, needs nothing installed, and stays readable in scrollback
-after the session ends.
+**`inline`** — the report appears in this session, chapter by chapter, pausing after each.
+Markdown in a terminal session; rendered HTML in a session that renders it, from the same
+`delta` pipeline `export` uses. The reader can steer: every command works, and what they
+say changes what you write next.
 
-**`viewer`** — a second terminal running `delta`, which repaints as chapters
-advance. Terminal sessions only. Narration stays in the chat and the reader
-watches code on the other screen. Setup and the two commands are in
-[references/viewer.md](references/viewer.md).
+**`export`** — one self-contained HTML document, the whole report, no pauses. Written to a
+temporary directory; print the path. Real syntax highlighting, a chapter sidebar, and a
+file the reader can keep, reopen and send to someone else. Available from any session,
+terminal or not. Built as described in
+[references/rendering.md](references/rendering.md).
 
-**`html`** — narration and diffs interwoven in a single HTML document, with real
-syntax highlighting. In a session that renders HTML, stream it directly. In a
-terminal session, write the file and ask the reader to open it. Build it as
-described in [references/rendering.md](references/rendering.md).
+**`viewer`** — narration here, chapter by chapter with pauses; diffs in a second terminal
+running `delta`, which repaints as chapters advance. Terminal sessions only. Setup and the
+two commands are in [references/viewer.md](references/viewer.md).
+
+Chapters exist in all three. `export` keeps them as document sections with the same hunk
+codes; what it drops is the pause, and with it the reader's ability to redirect you
+mid-tour.
+
+### Why the pause exists
+
+Not to control the reader's pace — a chaptered document is perfectly navigable by
+scrolling. It buys two things a finished report cannot:
+
+- **The reader can steer.** `zoom`, `why`, `skip`, "I don't care about the tooling half" —
+  none of these mean anything without a point at which to say them, and a report written
+  in one pass cannot respond to any of them.
+- **They start reading sooner.** On a large diff, a complete report is a long silence.
+  Chaptered, they read chapter 2 while you are idle and chapter 3 is written on demand.
+
+In `viewer` the pause is also structural: the tour file is single state, so without it
+chapter 5's hunks would overwrite chapter 2's while the reader is still on chapter 2.
 
 ### Choosing the mode
 
-- **A session that renders HTML: use `html`, without asking.** It is strictly
-  better there — highlighting, layout, and no second window to manage.
-- **A terminal session: ask the reader**, once, before cluster 1. Name all three
-  in a sentence each and let them pick. Don't assume: staying in the terminal
-  matters to a lot of developers, and so does not juggling two windows.
-- **An explicit `--inline` / `--viewer` / `--html` overrides all of that.** Never
-  re-ask when the reader already said.
-- **Any diff can drive any mode.** `tour-set.sh` takes either a git range or a
-  patch file, so `gh pr diff 807 > /tmp/pr.patch` or
-  `git diff HEAD > /tmp/wip.patch` works the same as `master..HEAD`. Nothing about
-  the target restricts the mode.
+**Always ask; never infer.** The choice is a preference about how the reader wants to
+work, not a property of their environment, so you cannot read it off the session. Ask with
+a multiple-choice prompt (`AskUserQuestion` in Claude Code) naming all three in a line
+each — or skip the question entirely if they invoked the skill with `--inline`, `--export`
+or `--viewer`.
+
+Two things to tell them while asking:
+
+- **`export` takes a while and cannot be steered.** For a large diff it is a long wait
+  before anything is readable, and once it starts they cannot redirect it. That is
+  information they need before choosing, not after.
+- **`viewer` needs a second terminal** open before chapter 2 can be pushed.
+
+[Step B](#step-b-settle-the-presentation-mode) is where this happens, before any of the
+slow work.
 
 ### How the fidelity rules apply per mode
 
@@ -254,12 +275,12 @@ The [Fidelity](#fidelity) rules are absolute about the hunk *content* in
 every mode: bytes come from `git diff`, never from you. Two of them are shaped by
 the mode, and neither is a licence to loosen the others:
 
-- **"Keep the `@@` headers"** — `inline` keeps them verbatim. `viewer` and `html` both run
-  through the extractor, so they keep the ranges byte-exact and replace the
-  enclosing-scope text with the hunk code and caption.
+- **"Keep the `@@` headers"** — every mode takes hunks from the extractor, so the ranges
+  stay byte-exact everywhere and the enclosing-scope text is replaced by the hunk code and
+  caption.
 - **"Never hide an added or changed line"** — identical in all three modes, and not
-  a length tradeoff in any of them. `inline` pastes long hunks whole, and the viewer
-  and html both scroll.
+  a length tradeoff in any of them. `inline` pastes long hunks whole; the viewer and an
+  exported document both scroll.
 
 ### Nothing is hidden, and Leftovers is not a dumping ground
 
@@ -292,8 +313,9 @@ knows how many hunks the chapter had.
 
 ## Reader commands
 
-The overview names the starting commands; print this full list on `help`.
-Every command works in every mode.
+The overview names the starting commands; print this full list on `help`. They apply to
+`inline` and `viewer` — the paused modes. `export` has no commands, which is the trade for
+a document the reader can keep.
 
 | Command | What you do |
 |---|---|
@@ -337,19 +359,15 @@ Target (optional, defaults to your working diff):
   <PR/MR URL>   a GitHub pull request or GitLab merge request
   <patch file>  a .patch or .diff you already have
 
-Modes (how the diff reaches you — see "Presenting the diff"):
-  inline        Narration and diffs interwoven here in the chat, diffs as
-                fenced diff blocks. No syntax highlighting. Works anywhere.
-  viewer        A second terminal running delta, refreshing as chapters
-                advance. Terminal sessions only.
-  html          Narration and diffs interwoven in one HTML document.
+Modes (where you read it, and whether you can steer):
+  inline        Here in this session, chapter by chapter, pausing after
+                each. You can steer: zoom, why, skip, or redirect.
+  export        One self-contained HTML document, all of it, no pauses.
+                Written to a temp directory; you get the path.
+  viewer        Narration here chapter by chapter; diffs in a second
+                terminal running delta. Terminal sessions only.
 
-  Pass one as a flag to force it: --inline, --viewer, --html.
-  Otherwise: HTML-capable sessions use html; terminal sessions ask you.
-
-Flags:
-  --all         Print every chapter at once, no pausing
-                (inline and html; the viewer shows one at a time)
+  You are asked which one unless you pass --inline, --export or --viewer.
 
 While touring, reply with:
   next / n      go to the next chapter
@@ -366,13 +384,13 @@ While touring, reply with:
 
 ## Step B: Settle the presentation mode
 
-Do this **first**, before acquiring the diff — acquiring, reading and clustering a large
-change takes real time, and the reader should be able to choose a mode, walk away, and come
-back to a finished tour. Asking later strands them: they answer a question instead of
-getting chapter 1, and in `viewer` mode they then have to open a second terminal before a
-chapter can exist at all.
+Do this **first**, before acquiring the diff. Acquiring, reading and clustering a large
+change takes real time, and the reader should be able to choose, walk away, and come back
+to a finished tour. Asking later strands them: they answer a question instead of getting a
+chapter, and `viewer` needs their second terminal open before one can exist.
 
-See [Presentation modes](#presentation-modes) for the three modes and how to choose.
+Ask with a multiple-choice prompt, or accept `--inline` / `--export` / `--viewer` and don't
+ask. See [Choosing the mode](#choosing-the-mode) for what to tell them.
 
 ## Step C: Acquire the diff
 
@@ -469,7 +487,7 @@ pointers, not verified bugs.
 Say `next` to start, `go <n>` to jump in, or `help` for the commands.
 ```
 
-Then stop and wait, unless `--all` was passed.
+Then stop and wait — unless the mode is `export`, which has no pauses.
 
 ## Step G: Tour one cluster per chapter
 
@@ -544,8 +562,8 @@ many topics went unnamed, or the range holds a second body of work. Say which.
 **Example 1** — "walk me through this PR"
 Fetch the PR and its description, investigate, cluster into 4, print overview plus map, stop. Reader says `next`; print cluster 1 with two `diff` blocks and explanation; stop. Continue on each `next`.
 
-**Example 2** — "/diff-tour main..HEAD --all"
-Same clustering and same hunk rendering, printed straight through with no pauses. Useful when the reader wants to scroll or paste it somewhere.
+**Example 2** — "/diff-tour main..HEAD --export"
+Same clustering and same hunks, written straight through into one HTML document with no pauses. Print the path. Useful when the reader wants to keep the report or send it to someone.
 
 **Example 3** — reader says `zoom` mid-tour
 Re-show the current chapter with the full enclosing functions, the call sites found by grep, and the tests that cover it. Then return to the same footer so the tour resumes cleanly.
