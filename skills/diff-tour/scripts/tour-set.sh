@@ -150,7 +150,9 @@ if [ -z "$paths" ]; then
 fi
 
 # ---- pass 1: assign codes in on-screen order (file order, then line order) ----------
-n=0
+# TOUR_CODE_OFFSET lets a caller that invokes us once per hunk keep one running
+# numbering across calls, as tour-ansi.sh does.
+n=${TOUR_CODE_OFFSET:-0}
 while IFS= read -r path; do
   [ -n "$path" ] || continue
   want=$(awk -F'\t' -v p="$path" '$1 == p { printf "%s;", $2 }' "$SPECS")
@@ -209,7 +211,8 @@ while IFS=$'\t' read -r path start code caption; do
 done < "$MAP"
 
 emitted=$(grep -c '^@@' "$TMP" || true)
-[ "$emitted" -eq "$n" ] || { echo "tour-set: internal error — assigned $n codes but emitted $emitted hunks" >&2; exit 4; }
+assigned=$((n - ${TOUR_CODE_OFFSET:-0}))
+[ "$emitted" -eq "$assigned" ] || { echo "tour-set: internal error — assigned $assigned codes but emitted $emitted hunks" >&2; exit 4; }
 
 cut -f1,2 "$MAP" >> "$LEDGER"
 sort -u "$LEDGER" -o "$LEDGER"

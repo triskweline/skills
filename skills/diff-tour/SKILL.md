@@ -308,11 +308,22 @@ highlighting, and a file they can keep, reopen and send on. No pauses, since the
 in a browser. Written to a temporary directory; print the path. Built as described in
 [references/html.md](references/html.md).
 
+**`ansi-export`** *(experimental)* — the same document as `export`, but a text file styled
+with ANSI escapes instead of HTML, read in the terminal with `less -R`. Narration and hunks
+interwoven, so a narrated hunk always sits next to its narration. No pauses. Choose this
+over `viewer` when correlating two windows is the problem rather than the rendering; choose
+it over `export` when the reader would rather not leave the terminal. Built by
+`scripts/tour-ansi.sh` — see [references/ansi.md](references/ansi.md).
+
 **`viewer`** — narration here, chapter by chapter with pauses; diffs in a second terminal
 running `delta`, which repaints as chapters advance. Terminal sessions only. Setup and the
 two commands are in [references/viewer.md](references/viewer.md).
 
-Chapters exist in all three. `export` keeps them as document sections with the same hunk
+`viewer`'s cost is real and worth naming when you offer it: narration and diff live in
+separate windows, and correlating them is work the reader has to do. `ansi-export` exists
+because that correlation turned out to be the mode's weak point.
+
+Chapters exist in all four. `export` keeps them as document sections with the same hunk
 codes; what it drops is the pause, and with it the reader's ability to redirect you
 mid-tour.
 
@@ -334,7 +345,7 @@ chapter 5's hunks would overwrite chapter 2's while the reader is still on chapt
 
 **Always ask; never infer.** The choice is a preference about how the reader wants to
 work, not a property of their environment, so you cannot read it off the session. Ask with
-a multiple-choice prompt (`AskUserQuestion` in Claude Code) naming all three in a line
+a multiple-choice prompt (`AskUserQuestion` in Claude Code) naming the modes in a line
 each — or skip the question entirely if they invoked the skill with `--inline`, `--export`
 or `--viewer`.
 
@@ -343,7 +354,11 @@ Two things to tell them while asking:
 - **`export` takes a while and cannot be steered.** For a large diff it is a long wait
   before anything is readable, and once it starts they cannot redirect it. That is
   information they need before choosing, not after.
-- **`viewer` needs a second terminal** open before chapter 2 can be pushed.
+- **`viewer` needs a second terminal** open before chapter 2 can be pushed, and the reader
+  has to correlate two windows themselves. `ansi-export` is the answer when that is the
+  objection.
+- **Both export modes end with one command to paste.** Print it on its own line and say
+  nothing after it, so it is the last thing on their screen.
 
 [Step B](#step-b-settle-the-presentation-mode) is where this happens, before any of the
 slow work.
@@ -421,7 +436,12 @@ Modes (where you read it, and whether you can steer):
   viewer        Narration here chapter by chapter; diffs in a second
                 terminal running delta. Terminal sessions only.
 
-  You are asked which one unless you pass --inline, --export or --viewer.
+  ansi-export   Like export, but a terminal document with ANSI colors,
+                read with less -R. Narration and diffs interwoven.
+                (experimental)
+
+  You are asked which one unless you pass --inline, --export,
+  --ansi-export or --viewer.
 
 While touring, reply with:
   next / n      go to the next chapter
