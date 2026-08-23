@@ -1,12 +1,12 @@
-# The ansi-export document
+# The ansi document
 
 One text file, narration and hunks interwoven, styled with ANSI escapes and read in a pager.
-It exists because `viewer` mode splits narration and diff across two windows, and
-correlating them turns out to be the hard part.
+It exists so a terminal reader gets syntax highlighting and a clear heading hierarchy
+without leaving the terminal, and without the markdown renderer flattening the levels.
 
 Nothing is converted on the way in: `delta` already emits ANSI, so hunks are inserted
 verbatim. Only the narration needs rendering, and `scripts/md-to-ansi.py` does that — the
-mirror of `ansi-to-html.py`, which does the same job in the other direction for `export`.
+mirror of `ansi-to-html.py`, which does the same job in the other direction for `html`.
 
 ## Building it
 

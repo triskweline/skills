@@ -1,6 +1,6 @@
 ---
 name: diff-tour
-description: Walks a reader through a code change cluster by cluster, showing the real diff hunks with +/- markers inline and explaining each cluster before moving to the next, pausing for the reader between clusters. Starts with an overview of the change and the new behaviors, then tours the clusters. Use this whenever the user wants to be *walked through*, *toured*, *guided through*, or *led through* a diff, PR, branch, or commit — phrases like "walk me through these changes", "show me the diff with explanations", "explain this PR hunk by hunk", "review this change with me", "tour this branch", "show me the actual code as you explain it" — and also whenever a user asking to "explain a diff" wants to see the code itself rather than a prose summary. Prefer this over a summary-only explainer any time the user says "show me" about a change.
+description: Writes one long report that walks a reader through a code change, chapter by chapter, with the real diff hunks interwoven with the narration that explains them — so a human can review a diff they did not write. Starts with an overview of the change and its new behaviors, then a chapter per cluster of related hunks, then the leftovers, then what to check yourself. Renders as markdown here, or as a colour terminal file, or as a self-contained HTML page. Use this whenever the user wants to be *walked through*, *toured*, *guided through*, or *led through* a diff, PR, branch, or commit — phrases like "walk me through these changes", "show me the diff with explanations", "explain this PR hunk by hunk", "review this change with me", "tour this branch", "show me the actual code as you explain it" — and also whenever a user asking to "explain a diff" wants to see the code itself rather than a prose summary. Prefer this over a summary-only explainer any time the user says "show me" about a change.
 metadata:
   version: 1.1.0
 ---
@@ -25,8 +25,9 @@ Two mechanics make it work, and both are easy to get wrong:
 
 1. **Real hunks, verbatim.** Every chapter shows actual diff lines from the extractor,
    never retyped. Paraphrased code destroys the whole value of the tour.
-2. **One chapter at a time.** Stop and let the reader say `next`. A tour that dumps
-   everything at once is a long document, and the reader loses the thread by chapter three.
+2. **Narration and hunks interwoven.** A hunk sits next to the prose about it, always. A
+   report that puts all the explanation in one place and all the code in another makes the
+   reader do the correlating, which is the work the tour exists to do for them.
 
 ## Clusters and chapters
 
@@ -34,9 +35,9 @@ Two numbering schemes, deliberately different so they can never be confused:
 
 - **Steps A–I are lettered.** They are this skill's procedure — what you do, in
   order. The reader never sees them.
-- **Chapters are numbered.** They are what the reader navigates with `next` and
-  `go <n>`. Hunk codes are `<chapter>.<hunk>`, so `3.2` is the second hunk of
-  chapter 3.
+- **Chapters are numbered.** A chapter is a numbered heading in the report — nothing more.
+  The number exists so hunks can be coded `<chapter>.<hunk>`: `3.2` is the second hunk of
+  chapter 3, and that is how prose points at code.
 
 A **hunk cluster** is a set of thematically cohesive hunks — the unit Step E
 produces. A **chapter** is a unit of navigation. Most chapters carry one cluster;
@@ -45,7 +46,7 @@ three do not:
 | Step | Produces |
 |---|---|
 | A | nothing — prints usage and stops |
-| B | nothing — settles the presentation mode, before any slow work |
+| B | nothing — settles the format |
 | C, D, E | nothing — acquire, understand, cluster |
 | F | chapter 1, the overview |
 | G | one chapter per cluster, chapters 2…n |
@@ -70,7 +71,7 @@ here is breakage.
   doesn't get shown.
 - **Never hide an added or changed line.** Not for a new file, not for forty peer
   definitions, not because a chapter is long — see [Nothing is hidden](#nothing-is-hidden).
-  `inline` pastes long hunks whole; the viewer and an exported document both scroll.
+  `markdown` prints long hunks whole; a file scrolls.
 - **Keep the `@@` headers.** Every mode takes hunks from the extractor, so the ranges stay
   byte-exact and the enclosing-scope text is replaced by the hunk code and caption. That
   trade is deliberate: git's context text for a file like an IIFE module is the same
@@ -146,7 +147,7 @@ A cluster is a **unit of intent**, not a file. Hunks from four files belong in o
 
 The exception is the **multi-topic hunk**, and it is not rare: `git diff` merges changes that sit within a few context lines of each other, so one hunk routinely carries several unrelated additions. Two rounds of work overwriting the same lines does it too. Either way the hunk serves more than one topic, and it may appear in more than one chapter.
 
-The gate: **show it again wherever the lines that chapter is about live inside it.** A chapter must never discuss code the reader cannot see on their screen — in `viewer` mode the earlier chapter is gone, and even inline, scrolling back to re-find a function is friction the tour exists to remove. When you re-show it, say which chapter owns it and **name the lines this chapter is about**, or a 60-line hunk appearing three times reads as a mistake rather than three views of one place.
+The gate: **show it again wherever the lines that chapter is about live inside it.** A chapter must never discuss code that is only shown in another chapter — making the reader scroll back to re-find a function is friction the report exists to remove. When you re-show it, say which chapter owns it and **name the lines this chapter is about**, or a 60-line hunk appearing three times reads as a mistake rather than three views of one place.
 
 **It is understandable from its predecessors alone.** The reader should never need a later chapter to follow an earlier one. If chapter 4 only makes sense after chapter 6, reorder.
 
@@ -265,29 +266,16 @@ narrating on through hedged mush.
 
 Carry these forward to the wrap-up chapter, which is the only place they are collected.
 
-### Captions carry the story on their own
+### Captions
 
-In `viewer` and `export` the hunk captions are the only text on the reader's screen — your
-prose is in another window or another scroll position. So captions are a **light narration,
-not labels**: read top to bottom with the chat hidden, they should tell the same story, at
-lower resolution.
+A hunk's caption sits in its header, next to the file path, and is the one line a reader
+scanning the report will always read. So it says what *this hunk* does — the chapter heading
+is right above it, and restating that wastes the line. `3.1 · the four readers and writers`,
+not `3.1 · one accessor per field question`.
 
-- **In `viewer`, the first caption of a chapter names the chapter's idea**, because the
-  hunks live on a screen your headings never reach — the one case where a mode changes what
-  a caption has to carry, and only because the chapter title is not there to carry it. `3.1 · one accessor per field question` orients; `3.1 · form.js
-  changes` does not.
-- **In `export` and `ansi-export`, it does not** — the chapter heading is directly above it,
-  so restating it wastes the one line the reader is most likely to read. Say what *this
-  hunk* does: `3.1 · the four readers and writers`, not `3.1 · one accessor per field
-  question`.
-- **Each later caption says how its hunk follows from the one above.** "so the watch guard
-  reads through it too", "the same swap in the disable path". A caption that could sit
-  under any hunk in any order is doing nothing.
-- **Never write a caption that needs the chat open.** "as described above", "see my
-  explanation" — the reader may be looking only at the viewer.
-- **The test:** hide your own narration and read the captions in order. If the shape of the
-  chapter survives, they are doing their job. If they read as a list of file names, rewrite
-  them.
+A caption that could sit under any hunk in any order is doing nothing. Hunks appear and are
+numbered in the order you list them, so what you narrate first is what the reader sees first;
+never ask them to start at the bottom.
 
 **Every hunk is framed before the reader meets it.** A hunk never opens a chapter and never
 sits straight under a heading — there is always a sentence above it saying what it is for.
@@ -314,89 +302,48 @@ reader to start at the bottom of their screen.
 unavoidable, define it in passing and move on. If the tour needs a glossary, the narration
 is failing.
 
-## Presentation modes
+## Formats
 
-Where the reader reads, and whether they can steer. Four modes, each with one pause
-behaviour — the mechanics never depend on which kind of session you are in.
+The report is one long document, always the same document. `--format` only decides how it
+is rendered.
 
-**A mode changes delivery, never content.** The same clusters, the same hunks in the same
-order, the same framing sentence above each one, the same admissions. `inline` and
-`ansi-export` are the same report; one pauses and the other has better colours. Every rule
-in [Narration](#narration) and [Fidelity](#fidelity) applies in all four — where a rule
-mentions a mode, it is describing how that rule *shows up* there, never an exemption. Only
-`ansi-export` runs its content through a builder that can refuse, so it is the only mode
-where some rules are checked rather than trusted; that is a difference in enforcement, not
-in what is required.
+**`markdown`** *(default)* — printed into this session. Diffs as fenced diff blocks. No
+syntax highlighting; accept that. Works everywhere, streams as you write it so the reader
+starts reading immediately, and stays in scrollback afterwards. Good for humans and for
+other agents. See [references/markdown.md](references/markdown.md).
 
-**`inline`** — the report appears in this session, chapter by chapter, pausing after each.
-Markdown in a terminal session; rendered HTML in a session that renders it, from the same
-`delta` pipeline `export` uses. The reader can steer: every command works, and what they
-say changes what you write next.
+**`ansi`** — one text file styled with ANSI escapes, read in the terminal with `less -R`.
+Real syntax highlighting and a clear heading hierarchy, without leaving the terminal. Built
+by `scripts/tour-ansi.sh` — see [references/ansi.md](references/ansi.md).
 
-**`export`** — the same report as `inline`, written to one self-contained HTML file instead
-of printed, so a terminal reader gets the rendering an HTML session gets: real syntax
-highlighting, and a file they can keep, reopen and send on. No pauses, since they read it
-in a browser. Written to a temporary directory; print the path. Built as described in
+**`html`** — one self-contained HTML file, opened in a browser. Same content, richest
+rendering, and a file the reader can keep and send on. See
 [references/html.md](references/html.md).
 
-**`ansi-export`** *(experimental)* — the same document as `export`, but a text file styled
-with ANSI escapes instead of HTML, read in the terminal with `less -R`. Narration and hunks
-interwoven, so a narrated hunk always sits next to its narration. No pauses. Choose this
-over `viewer` when correlating two windows is the problem rather than the rendering; choose
-it over `export` when the reader would rather not leave the terminal. Built by
-`scripts/tour-ansi.sh` — see [references/ansi.md](references/ansi.md).
+**A format changes rendering, never content.** The same clusters, the same hunks in the same
+order, the same framing sentence above each one, the same admissions. Every rule in
+[Narration](#narration) and [Fidelity](#fidelity) applies to all three. Only `ansi` runs its
+content through a builder that can refuse, so it is the only format where some rules are
+checked rather than trusted; that is a difference in enforcement, not in what is required.
 
-**`viewer`** — narration here, chapter by chapter with pauses; diffs in a second terminal
-running `delta`, which repaints as chapters advance. Terminal sessions only. Setup and the
-two commands are in [references/viewer.md](references/viewer.md).
+**Both file formats cost the reader a wait.** `markdown` streams, so they read as you write.
+`ansi` and `html` produce nothing readable until the whole report exists — on a large change
+that is a long silence, and worth saying when you offer them.
 
-`viewer`'s cost is real and worth naming when you offer it: narration and diff live in
-separate windows, and correlating them is work the reader has to do. `ansi-export` exists
-because that correlation turned out to be the mode's weak point.
+### Choosing the format
 
-Chapters exist in all four. `export` keeps them as document sections with the same hunk
-codes; what it drops is the pause, and with it the reader's ability to redirect you
-mid-tour.
+**`markdown` is the default, including in a session that renders HTML.** Use it unless the
+reader asked for something else with `--format markdown|ansi|html`. Don't ask: the default
+works everywhere and the flag is there for the reader who wants more.
 
-### Why the pause exists
+**After the report, invite questions.** This is session output, not part of the report — for
+`ansi` and `html` the report is a file and cannot contain it. Say that they can ask about
+anything they have just read, and that **every hunk carries a code like `3.2`** they can
+quote to point at one. It is the only interactive surface the report has, and a reader
+holding a file has no other signal that the conversation is still open.
 
-Not to control the reader's pace — a chaptered document is perfectly navigable by
-scrolling. It buys two things a finished report cannot:
-
-- **The reader can steer.** `zoom`, `why`, `skip`, "I don't care about the tooling half" —
-  none of these mean anything without a point at which to say them, and a report written
-  in one pass cannot respond to any of them.
-- **They start reading sooner.** On a large diff, a complete report is a long silence.
-  Chaptered, they read chapter 2 while you are idle and chapter 3 is written on demand.
-
-In `viewer` the pause is also structural: the tour file is single state, so without it
-chapter 5's hunks would overwrite chapter 2's while the reader is still on chapter 2.
-
-### Choosing the mode
-
-**Always ask; never infer.** The choice is a preference about how the reader wants to
-work, not a property of their environment, so you cannot read it off the session. Ask with
-a multiple-choice prompt (`AskUserQuestion` in Claude Code) naming the modes in a line
-each — or skip the question entirely if they invoked the skill with `--inline`, `--export`
-or `--viewer`.
-
-Two things to tell them while asking:
-
-- **`export` takes a while and cannot be steered.** For a large diff it is a long wait
-  before anything is readable, and once it starts they cannot redirect it. That is
-  information they need before choosing, not after.
-- **`viewer` needs a second terminal** open before chapter 2 can be pushed, and the reader
-  has to correlate two windows themselves. `ansi-export` is the answer when that is the
-  objection.
-- **Both export modes end with one command to paste.** Print it on its own line so it is
-  the last thing on their screen. Above it, say two things: that they can ask you anything
-  about the change while they read, and that **every hunk carries a code like `3.2`** they
-  can quote to point at one. Without that, a reader holding a document has no idea the
-  conversation is still open — and the codes exist precisely so a question can name a hunk
-  instead of describing it.
-
-[Step B](#step-b-settle-the-presentation-mode) is where this happens, before any of the
-slow work.
+For `ansi` and `html`, print the command to open the file on its own line, last, with
+nothing after it.
 
 ### Hunk codes
 
@@ -409,34 +356,6 @@ Use them in prose the way you would a figure number: "the `??` in `2.1` is doing
 precise work", "`2.3` is the guard on the whole approach". A reader who has
 scrolled away can find the hunk again, and a reader reading only your prose still
 knows how many hunks the chapter had.
-
-## Reader commands
-
-The overview names the starting commands; print this full list on `help`. They apply to
-`inline` and `viewer` — the paused modes. `export` has no commands, which is the trade for
-a document the reader can keep.
-
-| Command | What you do |
-|---|---|
-| `next` / `n` | Print the next chapter. |
-| `back` / `b` | Re-print the previous chapter, unchanged. |
-| `zoom` | Widen the current chapter: the full enclosing functions, the callers you found in Step D, and the tests covering it. The hunks were already complete, so this adds surrounding code rather than restoring anything. Then return to the same footer so the tour resumes cleanly. |
-| `why` | The reasoning behind this cluster: what the commits and comments state, what you inferred, what alternatives lost. Keep stated and inferred separate. |
-| `skip` | Print the next chapter's hunks without narrating them, then stop as usual. The hunks stay where clustering put them — `skip` never defers anything to Leftovers, which is a clustering decision, not a navigation one. |
-| `map` | Re-print the chapter list with a marker on the current chapter. |
-| `go <n>` | Jump to chapter n. Later chapters may assume earlier ones, so say so when a jump lands on one that does. |
-| `help` | Re-print the command list. |
-| `done` | Stop touring and go straight to the wrap-up chapter. Run Step H's completeness check first; report what they did not see, without remarking on the fact that they left. |
-
-In `viewer` mode, `back` and `go <n>` re-push a chapter, because the tour file is
-single state and the viewer follows whatever it holds. Re-pushing is harmless: the
-ledger de-duplicates, so the completeness check is unaffected. `zoom` pushes nothing —
-the context it adds is not in the diff, so it goes in the chat while the viewer keeps
-showing the chapter's hunks.
-
-Read [references/html.md](references/html.md) only if your output surface is HTML — `export` always, `inline` in a session that renders it.
-
-In paired-viewer mode the shape is the same minus the `diff` blocks: push the chapter's hunks to the viewer, then narrate against their [hunk codes](#hunk-codes) — one framing line and one explanation per code, in the same order the viewer shows them. Never narrate a hunk the reader cannot see: if a code is not on their screen, paste it inline. Do not push it — the tour file is single state, so pushing would replace the chapter they are reading.
 
 ## Procedure
 
@@ -463,43 +382,17 @@ Target (optional, defaults to your working diff):
   <PR/MR URL>   a GitHub pull request or GitLab merge request
   <patch file>  a .patch or .diff you already have
 
-Modes (where you read it, and whether you can steer):
-  inline        Here in this session, chapter by chapter, pausing after
-                each. You can steer: zoom, why, skip, or redirect.
-  export        One self-contained HTML document, all of it, no pauses.
-                Written to a temp directory; you get the path.
-  viewer        Narration here chapter by chapter; diffs in a second
-                terminal running delta. Terminal sessions only.
+Format (how the report is rendered; the content is identical):
+  --format markdown   (default) printed here, fenced diff blocks
+  --format ansi       a terminal file with colour, read with less -R
+  --format html       a self-contained page for a browser
 
-  ansi-export   Like export, but a terminal document with ANSI colors,
-                read with less -R. Narration and diffs interwoven.
-                (experimental)
-
-  You are asked which one unless you pass --inline, --export,
-  --ansi-export or --viewer.
-
-While touring, reply with:
-  next / n      go to the next chapter
-  back / b      re-show the previous chapter
-  zoom          expand this chapter: the enclosing code, the callers,
-                and the tests that cover it
-  why           more on the reasoning behind this chapter
-  skip          show the next chapter's diffs without narration
-  map           re-show the chapter list, marking where you are
-  go <n>        jump to chapter n
-  help          re-print this list
-  done          end early, going straight to the wrap-up chapter
 ```
 
-## Step B: Settle the presentation mode
+## Step B: Settle the format
 
-Do this **first**, before acquiring the diff. Acquiring, reading and clustering a large
-change takes real time, and the reader should be able to choose, walk away, and come back
-to a finished tour. Asking later strands them: they answer a question instead of getting a
-chapter, and `viewer` needs their second terminal open before one can exist.
-
-Ask with a multiple-choice prompt, or accept `--inline` / `--export` / `--viewer` and don't
-ask. See [Choosing the mode](#choosing-the-mode) for what to tell them.
+`markdown` unless the reader passed `--format`. See [Formats](#formats). It costs nothing to
+decide now and it determines which reference file you will need.
 
 ## Step C: Acquire the diff
 
@@ -610,36 +503,30 @@ pointers, not verified bugs.
 4. Leftovers — <N hunks, and in a half-line what they are>
 5. Wrap-up — what to check yourself, and open questions
 
-<In a paused mode: how to start and where the commands are. In `export`: nothing —
-the reader is already holding the whole document.>
+
 ```
 
-Then stop and wait — unless the mode is `export`, which has no pauses.
+Then carry straight on into the chapters. There are no pauses; the reader gets the whole
+report.
 
-## Step G: Tour one cluster per chapter
+## Step G: One chapter per cluster
 
-One chapter per cluster, in order. The protocol is fixed; the prose is yours.
+Write each cluster as a numbered chapter, in order. Open with the chapter heading, then
+narrate and show hunks interwoven: framing sentence, hunk, explanation, next framing
+sentence. Every hunk comes from `scripts/tour-set.sh` and is never retyped — push the
+chapter through it and take the hunks from the file it writes. **Every chapter goes through
+the script**, with `TOUR_NEW=1` on the first, because its ledger is the only thing that makes
+Step H's completeness check mean anything.
 
-**Fixed:** open with `## <n>/<total> · <cluster name>`. Show every hunk of the cluster,
-never retyped: push the chapter through `scripts/tour-set.sh` and take the hunks from the
-file it writes — in `inline` mode you paste from that file, which is also where the
-code-stamped `@@` headers come from. **Every chapter goes through the script in every
-mode**, with `TOUR_NEW=1` on the first. Its ledger is the only thing that makes Step H's
-completeness check mean anything; skip it and `rest` will report the whole diff as unshown
-after you have already narrated it. Close with a footer naming the commands and the
-position: ``next` · `zoom` · `why` · `map` · `help`   (chapter <n> of <total>)``. Then
-**stop and wait for the reader.**
+Several small blocks with a framing line each read far better than one giant block, and a
+cluster spanning many files leads with the hunks that carry the idea.
 
-Several small blocks with a line of framing each read far better than one giant block, and
-a cluster spanning many files leads with the hunks that carry the idea.
+How much to say, where to say nothing, what to admit, when to name an alternative — all of
+that is [Narration](#narration). There is no template, because a chapter about a one-line
+guard and a chapter about a rewritten module have nothing in common but the ordering above.
 
-Everything else — how much to say, where to say nothing, what to admit, when to name an
-alternative — is in [Narration](#narration). There is no template for it, because a
-chapter about a one-line guard and a chapter about a rewritten module have nothing in
-common but the protocol above.
-
-Where a hunk deserves a specific thing for the reader to check, say it as a question they
-can answer by looking, at a named location — not "this may have implications".
+Where a hunk deserves a specific thing for the reader to check, say it as a question they can
+answer by looking, at a named location — not "this may have implications".
 
 ## Step H: The Leftovers chapter
 
