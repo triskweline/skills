@@ -21,6 +21,8 @@ R = "\x1b[0m"
 # weight, capitals and grey rules. Hierarchy comes from structure, not hue.
 BADGE = "\x1b[48;5;25m\x1b[38;5;231m\x1b[1m"   # the chapter mark, e.g. " 3/9 "
 TITLE = "\x1b[1;38;5;231m"                     # bold white, no background
+YELLOW = "\x1b[38;5;179m"                      # the report title and its heavy rule
+BOLD_ON = "\x1b[1m"
 H3 = "\x1b[1;38;5;231m"                        # subheading: bold white, nothing else
 BOLD = "\x1b[1m"
 DIM = "\x1b[2m"
@@ -57,18 +59,12 @@ def render_heading(level, text, width):
     rule = RULE + "─" * width + R
     bright = "\x1b[38;5;231m" + "─" * width + R
     if level == 1:
-        # The report title in a double-line box, so it cannot be mistaken for a chapter
-        # title. Wraps inside the box rather than truncating, since a change's one-line
-        # title can be long.
-        inner = max(10, width - 4)
-        body = textwrap.wrap(text.upper(), inner) or [""]
-        top = RULE + "╔" + "═" * (inner + 2) + "╗" + R
-        bottom = RULE + "╚" + "═" * (inner + 2) + "╝" + R
-        side = RULE + "║" + R
-        out = [top]
-        for row in body:
-            out.append(side + " " + TITLE + row.ljust(inner) + R + " " + side)
-        out.append(bottom)
+        # The report title: yellow capitals over a heavy yellow rule. The weight of the
+        # rule is what separates it from a chapter title's light one, and yellow is the
+        # only place the narration uses it, so the top of the document is unmistakable.
+        rows = textwrap.wrap(text.upper(), width) or [""]
+        out = [YELLOW + BOLD_ON + row + R for row in rows]
+        out.append(YELLOW + "━" * width + R)
         return out
     if level == 2:
         # " 3/9 " as a badge, then the title in capitals with no background, then a rule.
