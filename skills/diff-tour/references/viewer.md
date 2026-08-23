@@ -119,42 +119,13 @@ range — so both halves of the tour read the same diff.
 
 ## Why it is built this way
 
-Four properties are worth preserving if you ever rewrite these scripts.
+One property is worth knowing because it shapes how you use the mode: **colored bytes
+never enter your context.** You write plain diff text to a file; `delta` runs in the
+reader's terminal. So chapter length costs you nothing here, unlike pasting hunks inline.
 
-**Hunks are never retyped.** `tour-set.sh` pipes real `git diff` output and rewrites only
-the free text after the second `@@`, leaving the `-x,y +a,b` ranges byte-exact. This is
-the skill's fidelity rule enforced mechanically instead of by your care.
-
-**Colored bytes never enter your context.** You write ~4 KB of plain text; `delta` runs
-in the reader's terminal. ANSI rendering costs roughly 10× the plain size, so piping
-`delta` through your own tool calls would burn context and hit output caps. Here chapter
-length is unbounded.
-
-**Updates are atomic.** `tour-set.sh` writes `tour.diff.tmp` and `mv`s it into place, so
-the viewer never renders a half-written file. Because `mv` swaps the inode, the watch is
-on the *directory* with an `--include` filter on the basename — never on the file itself,
-which would go deaf after the first swap. The filter also has to exclude the `.tmp` and
-rendered files, or delta's own writes retrigger the watch forever.
-
-**A new chapter interrupts the pager.** A background watcher touches a sentinel file and
-`pkill`s `less` when the chapter changes; the loop then re-renders and reopens at the top.
-The sentinel — not `less`'s exit status — is what distinguishes the two ways out, because
-`less` installs a SIGTERM handler and exits 15 on some builds and 143 on others. Sentinel
-present means a new chapter; absent means the reader left. That is why quit keys don't
-need enumerating.
-
-**Captions are prose, so they must not be highlighted as code.** Delta's default
-`--hunk-header-style` includes its special `syntax` attribute, which colours the hunk
-header with the file's language rules — `2.1` comes out as a numeric literal and every
-caption word as an identifier, which reads as a rendering fault. The viewer passes
-`--hunk-header-style 'bold yellow'` so the caption is one uniform run, and drops the
-`line-number` attribute because the code replaces it and `--line-numbers` already numbers
-every row.
-
-Two smaller ones: `--width "$(tput cols)"` is recomputed per render because delta can't
-detect width when writing to a file — so a terminal resized mid-chapter stays wrapped for
-the old width until the next chapter — and `ESC ESC` rather than bare `ESC` quits because
-arrow keys transmit as `ESC [ A` and a bare binding fires on every scroll.
+The rest of the rationale — the atomic swap, the directory watch, the sentinel that decides
+whether a new chapter landed or the reader quit — lives in comments in the scripts
+themselves, next to the code it explains. Don't rewrite them from this file.
 
 ## Troubleshooting
 

@@ -27,9 +27,7 @@ preserves both. `scripts/ansi-to-html.py` does that translation:
 
 ## The exported document
 
-`export` is not a different report. It is the same chapters an `inline` tour would print,
-written to one file so a terminal reader gets the rendering an HTML session gets. So:
-concatenate the chapters in order — chapter 1, the cluster chapters, Leftovers, the wrap-up
+Concatenate the chapters in order — chapter 1, the cluster chapters, Leftovers, the wrap-up
 — each as written in its step. No sidebar, no two-column layout, no navigation: the reader
 scrolls.
 

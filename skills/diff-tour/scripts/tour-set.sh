@@ -10,7 +10,8 @@
 #     <spec>   = <path>:<item>[;<item>…]   one or more per file, merged
 #                <path>:all[=<caption>]    every hunk in that file, one shared caption
 #                rest                      every hunk not shown in an earlier chapter
-#                rest:<path>=<caption>     ...and what that file's leftover group repeats,
+#                rest:<path>=<caption>     ...and what that group is. <path> may be a
+#                                          prefix (rest:docs/=...) to cover a whole subtree,
 #                                          e.g. rest:src/form.js="the same accessor swap
 #                                          as 2.2, in six more call sites"
 #     <item>   = <+start>[=<caption>]      +start comes from tour-hunks.sh
@@ -113,7 +114,9 @@ if [ -n "$want_rest" ]; then
 
   uncaptioned=""
   while IFS=$'\t' read -r p s; do
+    # Exact path first, then the longest matching prefix (rest:docs/=... covers a subtree).
     cap=$(awk -F'\t' -v p="$p" '$1 == p { print $2; exit }' "$RESTCAP")
+    [ -n "$cap" ] || cap=$(awk -F'\t' -v p="$p" 'index(p, $1) == 1 { if (length($1) > n) { n = length($1); c = $2 } } END { print c }' "$RESTCAP")
     if [ -z "$cap" ]; then
       cap="(leftover) not narrated"
       case "$uncaptioned" in *"|$p|"*) ;; *) uncaptioned="$uncaptioned|$p|" ;; esac
@@ -122,8 +125,15 @@ if [ -n "$want_rest" ]; then
   done < "$MAP.rest"
 
   if [ -n "$uncaptioned" ]; then
-    echo "tour-set: leftover groups with no caption — say what each repeats:" >&2
+    echo "tour-set: leftover groups with no caption — say what each one is:" >&2
     printf '%s' "$uncaptioned" | tr '|' '\n' | awk 'NF' | sed 's/^/  rest:/; s/$/=.../' >&2
+    # Fatal, and before the ledger is touched: once these hunks are marked shown, a
+    # second `rest` reports "all hunks already shown" and the bare captions are baked in.
+    # A path prefix caption covers many files at once: rest:docs/=the second body of work
+    if [ -z "${TOUR_BARE:-}" ]; then
+      echo "tour-set: nothing written. Caption them, or set TOUR_BARE=1 to accept the defaults." >&2
+      exit 5
+    fi
   fi
 fi
 
@@ -140,7 +150,8 @@ fi
 
 # ---- pass 1: assign codes in on-screen order (file order, then line order) ----------
 n=0
-for path in $paths; do
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
   want=$(awk -F'\t' -v p="$path" '$1 == p { printf "%s;", $2 }' "$SPECS")
   starts=$(starts_of "$path")
   [ -n "$starts" ] || { echo "tour-set: no hunks at all in $path" >&2; exit 3; }
@@ -161,11 +172,12 @@ for path in $paths; do
     [ -n "$caption" ] || caption="$allcap"
     printf '%s\t%s\t%s.%s\t%s\n' "$path" "$s" "$CHAPTER" "$n" "$caption" >> "$MAP"
   done
-done
+done <<< "$paths"
 
 # ---- pass 2: emit the hunks, rewriting only the @@ trailing text --------------------
 : > "$TMP"
-for path in $paths; do
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
   awk -F'\t' -v p="$path" '$1 == p { print $2 "\t" $3 "\t" $4 }' "$MAP" > "$MAP.one"
   [ -s "$MAP.one" ] || continue
 
@@ -196,7 +208,7 @@ for path in $paths; do
     }
     inhunk { print }
   ' >> "$TMP"
-done
+done <<< "$paths"
 
 emitted=$(grep -c '^@@' "$TMP" || true)
 [ "$emitted" -eq "$n" ] || { echo "tour-set: internal error — assigned $n codes but emitted $emitted hunks" >&2; exit 4; }

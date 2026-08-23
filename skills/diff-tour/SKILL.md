@@ -69,8 +69,8 @@ here is breakage.
 - **Never fabricate a hunk** to illustrate a point. If the diff doesn't contain it, it
   doesn't get shown.
 - **Never hide an added or changed line.** Not for a new file, not for forty peer
-  definitions, not because a chapter is long. Length is managed by navigation, not by
-  concealment — see [Nothing is hidden](#nothing-is-hidden).
+  definitions, not because a chapter is long — see [Nothing is hidden](#nothing-is-hidden).
+  `inline` pastes long hunks whole; the viewer and an exported document both scroll.
 - **Keep the `@@` headers.** Every mode takes hunks from the extractor, so the ranges stay
   byte-exact and the enclosing-scope text is replaced by the hunk code and caption. That
   trade is deliberate: git's context text for a file like an IIFE module is the same
@@ -83,9 +83,7 @@ here is breakage.
 - **Never certify.** You read the diff; you did not verify it. Don't offer a verdict on the
   change as a whole.
 
-**The completeness guarantee.** Every added or changed line appears somewhere in the tour,
-and the mechanism is the ledger `tour-set.sh` keeps: chapters go through it in every mode,
-and `rest` before the wrap-up reports anything unshown. See [Step H](#step-h-the-leftovers-chapter).
+**The completeness guarantee** is the ledger `tour-set.sh` keeps — see [Step H](#step-h-the-leftovers-chapter).
 
 ### Nothing is hidden
 
@@ -115,7 +113,7 @@ is joining two adjacent hunks merged into one block, below.
 
 - **One `diff` block per idea.** If a single `git diff` hunk contains two unrelated changes, split it into two blocks with a line of framing each, keeping each block's lines verbatim. Repeating the `@@` header on both is fine.
 - **Merge adjacent hunks** from the same file when they're the same idea and close together, using `…` between them.
-- **Repetitive hunks** — the identical mechanical change in eight call sites — still all get shown, because the one that is subtly different is exactly the thing a tour exists to catch, and you cannot know which it is without looking. Explain the pattern once against the first block, then let the rest follow with a one-line caption each — **in the same chapter as the hunk you explained**, never deferred to Leftovers, because the explanation is what makes them readable and it is on this screen. Never write "and the same change in seven more files" in place of the hunks.
+- **Repetitive hunks** — the identical mechanical change in eight call sites — all get shown, in the same chapter as the one you explained, never deferred to Leftovers. Explain the pattern once against the first block and let the rest follow with a one-line caption each.
 - **Order within a cluster** follows the explanation, not the filesystem. Lead with the hunk that carries the idea, then the ones that follow from it.
 
 ### Special cases
@@ -144,7 +142,11 @@ A cluster is a **unit of intent**, not a file. Hunks from four files belong in o
 
 **Its length follows its cohesion.** Never split a cluster to make it shorter. If a change can only be explained through twelve interconnected hunks, that is one chapter of twelve hunks — two chapters of six that each depend on the other are strictly worse, because neither can be understood where it sits. When a cluster is genuinely long, say at the top how many hunks it holds and lead with the ones carrying the idea.
 
-**Many hunks share a cluster, and almost every hunk has exactly one home.** A cluster of one hunk is possible but usually means the clustering is too fine. The exception is the multi-intent hunk: where two rounds of work overwrote the same lines, the surviving hunk genuinely serves two topics, and it may appear in both chapters. The operative gate is in pass 2 below: the other chapter must have no evidence at all without it, not merely be related to it. When you show it twice, say so: name its primary chapter and what the second chapter is looking at in it. A reader who sees the same hunk twice without being told is entitled to think you lost track.
+**Many hunks share a cluster, and almost every hunk has exactly one home.** A cluster of one hunk is possible but usually means the clustering is too fine.
+
+The exception is the **multi-topic hunk**, and it is not rare: `git diff` merges changes that sit within a few context lines of each other, so one hunk routinely carries several unrelated additions. Two rounds of work overwriting the same lines does it too. Either way the hunk serves more than one topic, and it may appear in more than one chapter.
+
+The gate: **show it again wherever the lines that chapter is about live inside it.** A chapter must never discuss code the reader cannot see on their screen — in `viewer` mode the earlier chapter is gone, and even inline, scrolling back to re-find a function is friction the tour exists to remove. When you re-show it, say which chapter owns it and **name the lines this chapter is about**, or a 60-line hunk appearing three times reads as a mistake rather than three views of one place.
 
 **It is understandable from its predecessors alone.** The reader should never need a later chapter to follow an earlier one. If chapter 4 only makes sense after chapter 6, reorder.
 
@@ -160,7 +162,7 @@ Three passes. Do not skip to assignment: grouping hunks by resemblance is what p
 
 **Pass 1 — extract topics, ignoring hunks.** Read the diff as a whole and name the ideas it contains: the behavior changes, the refactorings, the cleanups. Write them down as ideas, before deciding where any single hunk goes.
 
-One test does most of the work here: **does this change observable behavior?** Behavior-preserving work and behavior-changing work are different topics even when they touch the same lines — it is what separates "the refactoring that made room" from "the change it made room for". Unlike "is this preparatory?", you can answer it from the diff.
+One useful test: **does this change observable behavior?** Behavior-preserving work and behavior-changing work are different topics even when they touch the same lines — it is what separates "the refactoring that made room" from "the change it made room for". Unlike "is this preparatory?", you can answer it from the diff. It will not always separate much — on a branch where nearly everything is a behavior change, what actually draws the boundaries is which functions and call sites a hunk owns.
 
 Commit messages, PR descriptions and changelog entries are **hypotheses to test against the hunks, never the topic list itself**. Deriving topics from commit subjects smuggles back in the boundaries you were told not to trust.
 
@@ -170,7 +172,8 @@ Expect a range to hold several bodies of work, each with its own rounds of prepa
 
 - **A topic's chapter carries every hunk that belongs to it**, including the repetitive and inconsequential ones. Never move a topic's own follow-ups to Leftovers: by the time the reader reaches the end they have lost the context that made those hunks legible, and a hunk shown without its topic is worse than useless. Narrate the first one properly, then say the rest follow the same shape and show their diffs after it.
 - **Tests and documentation go with the behavior they pin down or describe.** Six specs for one new behavior all belong to that topic, even though the explanation would read fine having quoted only one of them.
-- A hunk two topics both claim goes to the one whose explanation would suffer more without it — that is its primary home, and this is where the incompleteness question earns its keep, as a tiebreaker. Show it again in the other chapter only if that chapter would otherwise have no evidence at all; a cross-reference is not enough, because in `viewer` mode the earlier chapter is off the screen.
+- A hunk several topics claim goes to the one whose explanation would suffer most without it — that is its primary home, and this is where the incompleteness question earns its keep, as a tiebreaker. Re-show it in the others under the rule above.
+- **A hunk that summarises the whole change** — a changelog entry, release notes — is claimed by every topic, because reverting any of them would shrink it. It belongs to the topic that *documents* the change if the diff has one, and is otherwise its own small cluster. Place it early either way and read it as stated intent: it is usually the best account of the author's own understanding in the whole diff.
 - A hunk no topic claims is a **leftover** — no idea in the change would lose it if reverted.
 - A hunk with no good home may instead be **evidence of a topic you missed**. Check that first. Adding a topic is cheap; misfiling real work as fallout is not.
 
@@ -200,20 +203,17 @@ what breaks elsewhere, what invariant appeared or vanished, and what the hunk is
 reverse-engineer the delta they were just shown, which is the expensive half of reviewing
 and the half you can do for them.
 
-**Aim at what a skim would miss.** The reliable candidates: a cross-file consequence, an
-invariant that disappeared, an assumption the code now makes implicitly, an ordering
-dependency. If a sentence would survive the reader skimming the hunk themselves, it is
-probably not worth writing.
+**Aim at what a skim would miss**, and let the obvious pass. The reliable candidates: a
+cross-file consequence, an invariant that disappeared, an assumption the code now makes
+implicitly, an ordering dependency — and any hunk that deviates from the idiom around it,
+does something its name does not suggest, defends against something invisible in the diff,
+or takes a deliberate route past an easier one.
 
 **Be proportional.** Length is signal. A hunk that surprises you deserves several
 sentences; an obvious one deserves a clause; a repeat of the hunk above deserves five
 words. Uniform paragraphs under every hunk flatten the signal and exhaust the reader — the
 variation is how they know where to slow down. This is the single most common way narration
 fails.
-
-**Explain what is non-obvious, and let the obvious pass.** Reach for explanation when a
-hunk deviates from the idiom around it, does something its name does not suggest, defends
-against something invisible in the diff, or takes a deliberate route past an easier one.
 
 **Say what a hunk is for** when its purpose is not self-evident: it enables this cluster,
 it enables a later one, it pays down something in the way, it buys performance. Do not
@@ -324,19 +324,6 @@ Two things to tell them while asking:
 
 [Step B](#step-b-settle-the-presentation-mode) is where this happens, before any of the
 slow work.
-
-### How the fidelity rules apply per mode
-
-The [Fidelity](#fidelity) rules are absolute about the hunk *content* in
-every mode: bytes come from `git diff`, never from you. Two of them are shaped by
-the mode, and neither is a licence to loosen the others:
-
-- **"Keep the `@@` headers"** — every mode takes hunks from the extractor, so the ranges
-  stay byte-exact everywhere and the enclosing-scope text is replaced by the hunk code and
-  caption.
-- **"Never hide an added or changed line"** — identical in all three modes, and not
-  a length tradeoff in any of them. `inline` pastes long hunks whole; the viewer and an
-  exported document both scroll.
 
 ### Hunk codes
 
@@ -457,12 +444,9 @@ both to the reader, so a wrong guess is visible. If the host has a GitHub or Git
 server, fetching the diff through that and saving it to the same path is equivalent; the
 script is a convenience, not a gate.
 
-Two things it gets right that are easy to get wrong by hand: the no-target base is the
-branch point (`git merge-base --fork-point`), never `@{upstream}` — on a pushed branch
-that is the same branch on the remote, so the range covers only unpushed commits and
-silently tours a fraction of the change. And a branch target uses three dots, because
-bare `git diff <branch>` compares the *working tree* against it, which is the wrong
-direction and includes local edits.
+Two traps it avoids, which matter if you ever bypass it: the no-target base is the branch
+point, never `@{upstream}` (on a pushed branch that covers only unpushed commits); and a
+branch target needs three dots, or you diff the working tree against it.
 
 **Everything downstream reads the patch file, never the target.** `tour-hunks.sh` and
 `tour-set.sh` both take it as their `<source>`, which is what makes a tour immune to the
@@ -488,7 +472,7 @@ The tour is only as good as this step, and it happens before any output.
 
 1. **Read every hunk, then the enclosing function or class for each.** Behavior usually lives in the unchanged lines around a change — a two-line diff inside a retry loop means something different than the same two lines in a constructor.
 2. **Read stated intent**: commit messages, PR description, linked issues if cheap. Keep stated intent separate from inferred intent when writing.
-3. **Trace outward**: grep callers of changed symbols, find the tests covering this area, check config or schema the change depends on. This is what lets a cluster explanation say "and that's why the three call sites in `billing/` needed updating" instead of just describing lines.
+3. **Trace outward**: grep callers of changed symbols, find the tests covering this area, check config or schema the change depends on. **When a change replaces an idiom, also grep for surviving uses of the old one** — greping the new symbol finds adopters, not stragglers, and a missed call site is the likeliest bug class in a migration. Report the count in the cluster that introduced the replacement; the reader cannot get it from the diff. This is what lets a cluster explanation say "and that's why the three call sites in `billing/` needed updating" instead of just describing lines.
 4. **Establish before-and-after behavior.** For each meaningful change, know what the code did before and what it does now. That contrast is the substance of every cluster explanation.
 
 Scale effort to the diff. A 30-line change needs a few minutes here; a 3,000-line one needs real exploration but should still stay at cluster granularity.
@@ -561,10 +545,8 @@ can answer by looking, at a named location — not "this may have implications".
 
 ## Step H: The Leftovers chapter
 
-**Leftovers are the hunks with no strong affinity to any topic** — not the boring hunks,
-and never a topic's own repetitive follow-ups. If a hunk would disappear when a topic was
-reverted, it belongs to that topic's chapter no matter how mechanical it looks. What lands
-here is the genuinely unaffiliated: a `.gitignore` line, an editor config, a dependency
+**Leftovers are the hunks pass 2 assigned to no topic** — not the boring ones, and never a
+topic's own follow-ups. What lands here is the genuinely unaffiliated: a `.gitignore` line, an editor config, a dependency
 bump, churn in a subsystem the tour is not about, or a second body of work you named in
 the overview and are not touring.
 
@@ -602,27 +584,9 @@ many topics went unnamed, or the range holds a second body of work. Say which.
 - **Suggested next step** — usually a dedicated correctness pass over the same diff
   (`/code-review` in Claude Code), or a specific file worth reading in full.
 
-## Examples
-
-**Example 1** — "walk me through this PR"
-Fetch the PR and its description, investigate, cluster into 4, print overview plus map, stop. Reader says `next`; print cluster 1 with two `diff` blocks and explanation; stop. Continue on each `next`.
-
-**Example 2** — "/diff-tour main..HEAD --export"
-Same clustering and same hunks, written straight through into one HTML document with no pauses. Print the path. Useful when the reader wants to keep the report or send it to someone.
-
-**Example 3** — reader says `zoom` mid-tour
-Re-show the current chapter with the full enclosing functions, the call sites found by grep, and the tests that cover it. Then return to the same footer so the tour resumes cleanly.
-
-**Example 4** — "explain this diff, and show me the code"
-The "show me the code" is the signal. Run the full tour rather than a prose summary.
-
 ## Troubleshooting
 
-**Empty diff** — Report exactly what was compared ("no diff between HEAD and origin/main, working tree clean") and ask what to tour.
-
-**One enormous hunk** (a rewritten file) — Don't paste hundreds of lines. Split it into sub-steps by function or section, show each separately with its own explanation, and say the file was rewritten so the reader knows why the diff looks the way it does.
-
-**Diff is mostly formatting** — Detect with `git diff -w`. If the whitespace-ignoring diff is much smaller, tour *that*, and note upfront that formatting-only changes were set aside.
+**Diff is mostly formatting** — Detect with `git diff -w`, but tour the *full* patch: the ledger counts what it was given, so touring the `-w` diff would leave the formatting hunks unaccounted for and invisible to `rest`. Cluster the substantive hunks and give the formatting churn one `rest` group.
 
 **`gh` fails** — Say so, suggest `gh auth login`, and offer to tour a local range instead.
 
