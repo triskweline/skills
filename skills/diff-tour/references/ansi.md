@@ -26,7 +26,7 @@ The builder refuses a document where a hunk has no narration above it — a head
 count as framing. Fix it by adding the sentence, not by moving the placeholder.
 
 Two things to get right in the narration itself, both covered in
-[Captions carry the story on their own](../SKILL.md#captions-carry-the-story-on-their-own):
+[Captions carry the story on their own](../SKILL.md#captions):
 the chapter heading is already on screen, so a caption should describe its own hunk rather
 than restate the chapter; and prose between two hunks is read as commentary on the one
 above, so name a hunk by its code when you mean to introduce it.

@@ -1,7 +1,6 @@
 # Rendering hunks as HTML
 
-Read this when your output surface is HTML: `export` always, and `inline` in a session
-that renders HTML. A terminal `inline` tour needs none of it.
+Read this only for `--format html`. The other two formats need none of it.
 
 ## Hunks
 

@@ -283,11 +283,10 @@ A heading does not count: `ONE ACCESSOR PER FIELD QUESTION` names the chapter, n
 hunk's purpose. One sentence is enough, and "this is the same swap in the disable path" is
 a whole sentence. A reader who meets code before they are told why is reverse-engineering
 your intent from a diff, which is the work the tour exists to save them.
-This holds in every mode. `ansi-export` is simply the one that can check it —
+This holds in every format. `ansi` is simply the one that can check it —
 `tour-ansi.sh` refuses to build a document where a hunk has no prose above it.
 
-**Where narration and hunks interleave — `inline`, `export`, `ansi-export` — prose after a
-hunk is about that hunk.** That is the default the reader can rely on, and it means a
+**Prose after a hunk is about that hunk.** That is the default the reader can rely on, and it means a
 paragraph sitting between two hunks needs no preamble to be understood: it looks backwards.
 When you do want to set up the hunk below instead, **name it by its code** — "`3.4` then
 threads the same value through the validator" — so the direction is never something the
