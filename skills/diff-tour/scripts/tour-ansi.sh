@@ -67,6 +67,37 @@ if [ "$problems" -gt 0 ]; then
   exit 6
 fi
 
+: > "$OUT"
+prose=$(mktemp); trap 'rm -f "$prose"' EXIT
+first=1
+chapter=1; hunkno=0
+
+trim_blanks() {
+  awk '
+    {
+      line[++n] = $0
+      bare = $0; gsub(/\033\[[0-9;]*m/, "", bare)
+      empty[n] = (bare == "")   # spaces on a coloured background are structure, not blank
+    }
+    END {
+      s = 1; while (s <= n && empty[s]) s++
+      e = n; while (e >= s && empty[e]) e--
+      for (i = s; i <= e; i++) print line[i]
+    }
+  '
+}
+
+flush_prose() {
+  [ -s "$prose" ] || return 0
+  # A heading gets two blank lines above it wherever it lands, including straight after a
+  # hunk — md-to-ansi does that between its own blocks, but cannot see across a hunk.
+  if [ -s "$OUT" ] && grep -qm1 '^#' <(grep -m1 '[^[:space:]]' "$prose"); then
+    printf '\n' >> "$OUT"
+  fi
+  python3 "$HERE/md-to-ansi.py" --width "$WIDTH" < "$prose" | trim_blanks >> "$OUT"
+  : > "$prose"
+}
+
 # ---- pass 2: build.
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in
