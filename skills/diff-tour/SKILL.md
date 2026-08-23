@@ -48,7 +48,7 @@ three do not:
 | Step | Produces |
 |---|---|
 | A | nothing — prints usage and stops |
-| B | nothing — settles the format |
+| B | one short note: the format, the alternatives, and that this will take a few minutes |
 | C, D, E | nothing — acquire, understand, cluster |
 | F | chapter 1, the overview |
 | G | one chapter per cluster, chapters 2…n |
@@ -391,10 +391,23 @@ Format (how the report is rendered; the content is identical):
 
 ```
 
-## Step B: Settle the format
+## Step B: Settle the format, and say so
 
-`markdown` unless the reader passed `--format`. See [Formats](#formats). It costs nothing to
-decide now and it determines which reference file you will need.
+`markdown` unless the reader passed `--format`. See [Formats](#formats). Decide now: it
+determines which reference file you will need, and it is the one thing worth telling the
+reader before you go quiet.
+
+**Then say three things, in two or three lines, before doing any of the slow work:**
+
+- **Which format you are using**, and that it was the default if it was.
+- **What else they could have asked for**, in a clause each — the other two formats and the
+  flag that selects them. A reader who does not know `ansi` exists will never ask for it.
+- **That this will take a few minutes.** Reading the diff, tracing callers and clustering all
+  happen before a single word of the report appears. Without this the reader is watching an
+  idle session and wondering whether it is stuck.
+
+Then work. Don't narrate the intermediate steps — there is nothing useful to report between
+here and the first chapter, and progress chatter is worse than silence you were warned about.
 
 ## Step C: Acquire the diff
 
