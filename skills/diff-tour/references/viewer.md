@@ -69,6 +69,9 @@ It prints the codes it assigned, and those are what your prose quotes:
 2.3    spec/unpoly/form_spec.js   +102    The guard spec: everything else :enabled also matches, asserted out
 ```
 
+Hunks appear in the order you list them and are numbered in that order, so what you narrate
+first is what the reader sees first. Only `all` and `rest` fall back to file order.
+
 It also reports what is still unshown, which is how you know what the Leftovers chapter
 will hold:
 
@@ -79,7 +82,7 @@ will hold:
 
 Captions may contain commas and `·`; not semicolons, tabs or newlines. They are never
 truncated. Several specs may name one file — they get merged, and codes are always
-assigned in on-screen order, so `2.1` is always above `2.2`.
+assigned in the order you list them, so `2.1` is always above `2.2` on screen.
 
 **Prefer the patch file Step C saved over a git range.** Both work, but a range is
 re-resolved on every call, so a commit landing mid-tour shifts every `+start` and

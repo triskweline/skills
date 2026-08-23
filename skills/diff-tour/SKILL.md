@@ -114,7 +114,7 @@ is joining two adjacent hunks merged into one block, below.
 - **One `diff` block per idea.** If a single `git diff` hunk contains two unrelated changes, split it into two blocks with a line of framing each, keeping each block's lines verbatim. Repeating the `@@` header on both is fine.
 - **Merge adjacent hunks** from the same file when they're the same idea and close together, using `…` between them.
 - **Repetitive hunks** — the identical mechanical change in eight call sites — all get shown, in the same chapter as the one you explained, never deferred to Leftovers. Explain the pattern once against the first block and let the rest follow with a one-line caption each.
-- **Order within a cluster** follows the explanation, not the filesystem. Lead with the hunk that carries the idea, then the ones that follow from it.
+- **Order within a cluster** follows the explanation, not the filesystem. Lead with the hunk that carries the idea, then the ones that follow from it. `tour-set.sh` emits hunks in the order you list them and numbers them in that order, so narration order, screen order and hunk codes are the same thing — never tell the reader to start at the bottom of their screen. Only `all` and `rest` fall back to file order, since neither states one.
 
 ### Special cases
 
@@ -475,7 +475,27 @@ The tour is only as good as this step, and it happens before any output.
 3. **Trace outward**: grep callers of changed symbols, find the tests covering this area, check config or schema the change depends on. **When a change replaces an idiom, also grep for surviving uses of the old one** — greping the new symbol finds adopters, not stragglers, and a missed call site is the likeliest bug class in a migration. Report the count in the cluster that introduced the replacement; the reader cannot get it from the diff. This is what lets a cluster explanation say "and that's why the three call sites in `billing/` needed updating" instead of just describing lines.
 4. **Establish before-and-after behavior.** For each meaningful change, know what the code did before and what it does now. That contrast is the substance of every cluster explanation.
 
-Scale effort to the diff. A 30-line change needs a few minutes here; a 3,000-line one needs real exploration but should still stay at cluster granularity.
+**Build one caller index, and share it across every chapter.** Grep the symbols this change
+adds or alters *at a module boundary* — exports, public API, anything another file can name
+— whole-word, and keep the `file:line` hits. It is small, it is reusable, and it is what
+lets a chapter say "three callers, all in `billing/`, and this diff changes two of them"
+instead of describing lines.
+
+**Scope it to the boundary.** Indexing every identifier the diff declares, locals included,
+returns more text than reading the whole repository — measured on one 52-file change:
+13 boundary symbols gave 30 call sites; all 118 declarations gave 20,515 hits. A local
+`const` has no callers to find, and grepping it drowns the index.
+
+**Don't read whole files for context.** The enclosing function or class of a hunk is already
+in git's `@@` header, once per hunk, free. Reading the file to rediscover what the diff told
+you is where unbounded cost comes from.
+
+**Delegate only when the reading is genuinely large.** If answering a cluster's questions
+needs substantially more code than the cluster contains, and several clusters need that
+independently, hand those reads to subagents and keep the judgement. Otherwise don't: a
+subagent costs more wall clock than the greps it would run. When you do delegate, a
+positive finding may be summarized, but **a claim that something does not exist must come
+back as the command and its output** — that is the claim a reviewer will lean on.
 
 ## Step E: Cluster the hunks
 

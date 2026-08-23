@@ -17,7 +17,8 @@
 #     <item>   = <+start>[=<caption>]      +start comes from tour-hunks.sh
 #
 #   Captions may contain commas and "·" but not semicolons, tabs or newlines, and are
-#   never truncated. Hunks are numbered in on-screen order, so 2.1 is always above 2.2.
+#   never truncated. Hunks are emitted and numbered in the order you list them, so
+#   narration order, screen order and codes agree. `all` and `rest` use file order.
 #
 #   Set TOUR_NEW=1 on the first chapter of a tour: it starts a fresh coverage ledger
 #   (<tour-file>.used), which is what makes `rest` and the coverage count meaningful.
@@ -160,7 +161,10 @@ while IFS= read -r path; do
   allcap=$(printf '%s' "$want" | tr ';' '\n' | sed -n 's/^[[:space:]]*all=//p' | head -1)
   case ";$want" in
     *";all;"*|*";all="*) wanted="$starts" ;;
-    *) wanted=$(printf '%s' "$want" | tr ';' '\n' | sed 's/=.*//; s/^[[:space:]]*+\?//; s/[[:space:]]*$//' | grep -v '^$' | sort -n -u)
+    *) # Deliberately unsorted: hunks appear in the order you list them, so narration
+       # order, screen order and code order are the same thing. `all` and `rest` fall
+       # back to file order below, since there is no stated order to honour.
+       wanted=$(printf '%s' "$want" | tr ';' '\n' | sed 's/=.*//; s/^[[:space:]]*+\?//; s/[[:space:]]*$//' | grep -v '^$' | awk '!seen[$0]++')
        for s in $wanted; do
          grep -qx "$s" <<<"$starts" || { echo "tour-set: no hunk at +$s in $path (try scripts/tour-hunks.sh)" >&2; exit 3; }
        done ;;
@@ -174,41 +178,35 @@ while IFS= read -r path; do
   done
 done <<< "$paths"
 
-# ---- pass 2: emit the hunks, rewriting only the @@ trailing text --------------------
+# ---- pass 2: emit the hunks in map order, rewriting only the @@ trailing text --------
 : > "$TMP"
-while IFS= read -r path; do
+lastpath=
+while IFS=$'\t' read -r path start code caption; do
   [ -n "$path" ] || continue
-  awk -F'\t' -v p="$path" '$1 == p { print $2 "\t" $3 "\t" $4 }' "$MAP" > "$MAP.one"
-  [ -s "$MAP.one" ] || continue
-
-  patch_of "$path" | awk -v mapfile="$MAP.one" '
-    BEGIN {
-      FS = "\t"
-      while ((getline line < mapfile) > 0) {
-        split(line, f, "\t"); sel[f[1]] = 1; code[f[1]] = f[2]; note[f[1]] = f[3]
-      }
-      FS = " "
-    }
-    /^diff --git/ { hdr = $0 "\n"; inhunk = 0; emitted = 0; inbody = 0; next }
+  patch_of "$path" | awk -v want="$start" -v code="$code" -v note="$caption" -v samefile="$([ "$path" = "$lastpath" ] && echo 1)" '
+    /^diff --git/ { hdr = $0 "\n"; inhunk = 0; inbody = 0; next }
     !inbody && /^(index |--- |\+\+\+ |new file |deleted file |old mode |new mode |similarity |rename )/ {
       hdr = hdr $0 "\n"; next
     }
     /^@@/ {
       inbody = 1
       match($0, /\+[0-9]+/); start = substr($0, RSTART + 1, RLENGTH - 1)
-      inhunk = (start in sel)
+      inhunk = (start == want)
       if (inhunk) {
-        if (!emitted) { printf "%s", hdr; emitted = 1 }
+        # Repeat the file header whenever the previous hunk came from another file, so
+        # each block still says which file it is in.
+        if (samefile == "") printf "%s", hdr
         match($0, /^@@[^@]*@@/)                       # keep the ranges byte-exact
         ranges = substr($0, RSTART, RLENGTH)
-        tail = note[start] != "" ? note[start] : substr($0, RSTART + RLENGTH + 1)
-        print (tail != "" ? ranges " " code[start] " · " tail : ranges " " code[start])
+        tail = note != "" ? note : substr($0, RSTART + RLENGTH + 1)
+        print (tail != "" ? ranges " " code " · " tail : ranges " " code)
       }
       next
     }
     inhunk { print }
   ' >> "$TMP"
-done <<< "$paths"
+  lastpath="$path"
+done < "$MAP"
 
 emitted=$(grep -c '^@@' "$TMP" || true)
 [ "$emitted" -eq "$n" ] || { echo "tour-set: internal error — assigned $n codes but emitted $emitted hunks" >&2; exit 4; }
