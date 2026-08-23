@@ -279,10 +279,10 @@ Markdown in a terminal session; rendered HTML in a session that renders it, from
 `delta` pipeline `export` uses. The reader can steer: every command works, and what they
 say changes what you write next.
 
-**`export`** — one self-contained HTML document, the whole report, no pauses. Written to a
-temporary directory; print the path. Real syntax highlighting, a chapter sidebar, and a
-file the reader can keep, reopen and send to someone else. Available from any session,
-terminal or not. Built as described in
+**`export`** — the same report as `inline`, written to one self-contained HTML file instead
+of printed, so a terminal reader gets the rendering an HTML session gets: real syntax
+highlighting, and a file they can keep, reopen and send on. No pauses, since they read it
+in a browser. Written to a temporary directory; print the path. Built as described in
 [references/html.md](references/html.md).
 
 **`viewer`** — narration here, chapter by chapter with pauses; diffs in a second terminal
