@@ -265,6 +265,29 @@ narrating on through hedged mush.
 
 Carry these forward to the wrap-up chapter, which is the only place they are collected.
 
+### Captions carry the story on their own
+
+In `viewer` and `export` the hunk captions are the only text on the reader's screen — your
+prose is in another window or another scroll position. So captions are a **light narration,
+not labels**: read top to bottom with the chat hidden, they should tell the same story, at
+lower resolution.
+
+- **The first caption of a chapter names the chapter's idea**, because nothing else on
+  screen does. `3.1 · one accessor per field question` orients; `3.1 · form.js changes`
+  does not.
+- **Each later caption says how its hunk follows from the one above.** "so the watch guard
+  reads through it too", "the same swap in the disable path". A caption that could sit
+  under any hunk in any order is doing nothing.
+- **Never write a caption that needs the chat open.** "as described above", "see my
+  explanation" — the reader may be looking only at the viewer.
+- **The test:** hide your own narration and read the captions in order. If the shape of the
+  chapter survives, they are doing their job. If they read as a list of file names, rewrite
+  them.
+
+Order is part of this, and the extractor honours it: hunks appear and are numbered in the
+order you list them, so what you narrate first is what the reader sees first. Never ask a
+reader to start at the bottom of their screen.
+
 **Gloss a term once, at first use, in a clause.** Where a project's own concept is
 unavoidable, define it in passing and move on. If the tour needs a glossary, the narration
 is failing.

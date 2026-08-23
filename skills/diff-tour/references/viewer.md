@@ -72,6 +72,9 @@ It prints the codes it assigned, and those are what your prose quotes:
 Hunks appear in the order you list them and are numbered in that order, so what you narrate
 first is what the reader sees first. Only `all` and `rest` fall back to file order.
 
+The captions are the reader's only text on that screen, so write them as a sequence rather
+than as labels — see [Captions carry the story on their own](../SKILL.md#captions-carry-the-story-on-their-own).
+
 It also reports what is still unshown, which is how you know what the Leftovers chapter
 will hold:
 
