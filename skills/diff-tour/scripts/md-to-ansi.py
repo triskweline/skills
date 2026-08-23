@@ -132,9 +132,13 @@ def main():
     out = []
     for kind, payload in blocks(sys.stdin):
         if out:
-            # Two blank lines before a heading, one between anything else, so a heading
-            # reads as the start of something rather than the next paragraph.
-            out.extend(["", ""] if kind == "heading" else [""])
+            # A chapter title gets three blank lines, any other heading two, anything else
+            # one — so the start of a chapter is visible while scrolling past, not just when
+            # you land on it.
+            if kind == "heading":
+                out.extend(["", "", ""] if payload[0] == 2 else ["", ""])
+            else:
+                out.append("")
         if kind == "heading":
             out.extend(render_heading(payload[0], payload[1], width))
         elif kind == "rule":

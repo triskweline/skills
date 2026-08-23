@@ -89,10 +89,15 @@ trim_blanks() {
 
 flush_prose() {
   [ -s "$prose" ] || return 0
-  # A heading gets two blank lines above it wherever it lands, including straight after a
-  # hunk — md-to-ansi does that between its own blocks, but cannot see across a hunk.
-  if [ -s "$OUT" ] && grep -qm1 '^#' <(grep -m1 '[^[:space:]]' "$prose"); then
-    printf '\n' >> "$OUT"
+  # A heading keeps its blank lines above it even straight after a hunk — md-to-ansi spaces
+  # its own blocks but cannot see across one. The hunk already contributed one blank, so
+  # top up to three for a chapter title and two for any other heading.
+  if [ -s "$OUT" ]; then
+    head=$(grep -m1 '[^[:space:]]' "$prose")
+    case "$head" in
+      '## '*) printf '\n\n' >> "$OUT" ;;
+      '#'*)   printf '\n' >> "$OUT" ;;
+    esac
   fi
   python3 "$HERE/md-to-ansi.py" --width "$WIDTH" < "$prose" | trim_blanks >> "$OUT"
   : > "$prose"
