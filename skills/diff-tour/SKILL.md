@@ -369,8 +369,12 @@ Two things to tell them while asking:
 - **`viewer` needs a second terminal** open before chapter 2 can be pushed, and the reader
   has to correlate two windows themselves. `ansi-export` is the answer when that is the
   objection.
-- **Both export modes end with one command to paste.** Print it on its own line and say
-  nothing after it, so it is the last thing on their screen.
+- **Both export modes end with one command to paste.** Print it on its own line so it is
+  the last thing on their screen. Above it, say two things: that they can ask you anything
+  about the change while they read, and that **every hunk carries a code like `3.2`** they
+  can quote to point at one. Without that, a reader holding a document has no idea the
+  conversation is still open — and the codes exist precisely so a question can name a hunk
+  instead of describing it.
 
 [Step B](#step-b-settle-the-presentation-mode) is where this happens, before any of the
 slow work.

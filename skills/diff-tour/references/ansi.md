@@ -39,9 +39,14 @@ sets it, so codes come out `3.1`, `3.2`. Hunks are recorded in the same ledger
 
 ## Handing it over
 
-The last line the script prints is the whole handover:
+The last line the script prints is the command to hand over:
 
-    less -R --mouse /tmp/tour.ansi
+    less -R /tmp/tour.ansi
 
-`-R` passes the escapes through, `--mouse` gives wheel scrolling. Print it on its own line
-and stop — a command with commentary after it is a command the reader has to hunt for.
+`-R` passes the escapes through. Deliberately no `--mouse`: it captures drag events, which
+stops the terminal selecting text to copy, and most terminals translate the wheel to arrow
+keys anyway.
+
+Before that line, tell the reader the conversation is still open — they can ask about
+anything as they read, and quote a hunk code like `3.2` to point at one. Then print the
+command last, with nothing after it.

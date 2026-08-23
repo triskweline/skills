@@ -23,7 +23,7 @@ set -euo pipefail
 OUT="$1"; SOURCE="$2"; DOC="$3"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK="$OUT.hunk.diff"
-WIDTH="${TOUR_WIDTH:-96}"
+WIDTH="${TOUR_WIDTH:-120}"
 
 for t in delta python3; do command -v "$t" >/dev/null || { echo "tour-ansi: needs $t" >&2; exit 1; }; done
 [ -f "$DOC" ] || { echo "tour-ansi: no such narration file: $DOC" >&2; exit 2; }
@@ -41,7 +41,7 @@ trim_blanks() {
     {
       line[++n] = $0
       bare = $0; gsub(/\033\[[0-9;]*m/, "", bare)
-      empty[n] = (bare ~ /^[[:space:]]*$/)
+      empty[n] = (bare == "")   # spaces on a coloured background are structure, not blank
     }
     END {
       s = 1; while (s <= n && empty[s]) s++
@@ -53,6 +53,11 @@ trim_blanks() {
 
 flush_prose() {
   [ -s "$prose" ] || return 0
+  # A heading gets two blank lines above it wherever it lands, including straight after a
+  # hunk — md-to-ansi does that between its own blocks, but cannot see across a hunk.
+  if [ -s "$OUT" ] && grep -qm1 '^#' <(grep -m1 '[^[:space:]]' "$prose"); then
+    printf '\n' >> "$OUT"
+  fi
   python3 "$HERE/md-to-ansi.py" --width "$WIDTH" < "$prose" | trim_blanks >> "$OUT"
   : > "$prose"
 }
@@ -72,7 +77,8 @@ while IFS= read -r line || [ -n "$line" ]; do
       if [ -s "$OUT" ]; then printf '\n' >> "$OUT"; fi
       delta --paging=never --line-numbers --width "$WIDTH" \
             --keep-plus-minus-markers --file-style omit \
-            --hunk-header-style 'bold yellow' --hunk-header-decoration-style 'yellow box' \
+            --hunk-header-style 'bold yellow file' \
+            --hunk-header-decoration-style 'yellow box' \
             < "$WORK" | trim_blanks >> "$OUT"
       printf '\n' >> "$OUT"
       ;;
@@ -88,4 +94,6 @@ flush_prose
 
 echo "tour-ansi: $(grep -c $'\033' "$OUT" || true) styled lines" >&2
 echo
-echo "less -R --mouse $OUT"
+# No --mouse: it captures drag events, which stops the terminal selecting text for copy.
+# Most terminals translate the wheel to arrow keys anyway, so scrolling still works.
+echo "less -R $OUT"
