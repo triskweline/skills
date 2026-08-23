@@ -16,12 +16,12 @@ import sys
 import textwrap
 
 R = "\x1b[0m"
-# Headings must outrank delta's hunk caption (bold yellow in a yellow box), and each other
-# at a glance. Hierarchy is carried by *height* first — a three-line bar, a one-line bar,
-# then plain text — and by hue second, so it survives an unusual colour scheme.
-H1_BG = "\x1b[48;5;25m\x1b[38;5;231m\x1b[1m"    # bold white on blue, three lines tall
-H2_BG = "\x1b[48;5;54m\x1b[38;5;231m\x1b[1m"    # bold white on purple, one line
-H3 = "\x1b[1;4;38;5;80m"                        # bold underlined teal, no bar
+# The page already carries delta's syntax highlighting and its yellow hunk caption. So the
+# headings spend almost no colour: one blue badge for the chapter mark, and otherwise
+# weight, capitals and grey rules. Hierarchy comes from structure, not hue.
+BADGE = "\x1b[48;5;25m\x1b[38;5;231m\x1b[1m"   # the chapter mark, e.g. " 3/9 "
+TITLE = "\x1b[1;38;5;231m"                     # bold white, no background
+H3 = "\x1b[1;38;5;231m"                        # subheading: bold white, nothing else
 BOLD = "\x1b[1m"
 DIM = "\x1b[2m"
 ITAL = "\x1b[3m"
@@ -47,17 +47,23 @@ def inline(text):
     return text
 
 
-def bar(text, style, width):
-    body = ("  " + text)[:width].ljust(width)
-    return style + body + R
+CHAPTER_MARK = re.compile(r"^\s*(\d+\s*/\s*\d+)\s*·\s*(.*)$")
 
 
 def render_heading(level, text, width):
+    rule = RULE + "─" * width + R
     if level == 1:
-        pad = bar("", H1_BG, width)
-        return [pad, bar(text, H1_BG, width), pad]
+        # The report title: no colour at all. Capitals between two rules, which reads as a
+        # title page rather than as another coloured band.
+        return [rule, "", TITLE + text.upper() + R, "", rule]
     if level == 2:
-        return [bar(text, H2_BG, width)]
+        # " 3/9 " as a badge, then the title in capitals with no background, then a rule.
+        m = CHAPTER_MARK.match(text)
+        if m:
+            head = BADGE + " " + m.group(1).replace(" ", "") + " " + R + " " + TITLE + m.group(2).upper() + R
+        else:
+            head = TITLE + text.upper() + R
+        return [head, rule]
     return [H3 + inline(text) + R]
 
 
