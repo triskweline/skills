@@ -70,7 +70,7 @@ here is breakage.
   doesn't get shown.
 - **Never hide an added or changed line.** Not for a new file, not for forty peer
   definitions, not because a chapter is long. Length is managed by navigation, not by
-  concealment — see [Nothing is hidden](references/rendering.md#nothing-is-hidden).
+  concealment — see [Nothing is hidden](#nothing-is-hidden).
 - **Keep the `@@` headers.** Every mode takes hunks from the extractor, so the ranges stay
   byte-exact and the enclosing-scope text is replaced by the hunk code and caption. That
   trade is deliberate: git's context text for a file like an IIFE module is the same
@@ -86,6 +86,53 @@ here is breakage.
 **The completeness guarantee.** Every added or changed line appears somewhere in the tour,
 and the mechanism is the ledger `tour-set.sh` keeps: chapters go through it in every mode,
 and `rest` before the wrap-up reports anything unshown. See [Step H](#step-h-the-leftovers-chapter).
+
+### Nothing is hidden
+
+**Every added or changed line appears somewhere in the tour. No exceptions.** Not for a
+new file, not for a hunk that adds forty peer definitions, not for a rewritten file, not
+because a chapter is getting long. A reader cannot be responsible for code they were never
+shown.
+
+**Never show one hunk as a representative of several.** That hides precisely the case the
+tour exists to catch: the seventh call site that differs.
+
+Length is managed by navigation, never by hiding: chapters divide the tour, the reader
+scrolls, and a dull chapter costs one keystroke. What you may compress is the *narration* —
+one caption for twenty similar hunks is fine, because the reader can see the twenty hunks
+it describes. A topic's own hunks stay in that topic's chapter however dull they are;
+Leftovers is only for hunks no topic claimed.
+
+A reader who scrolls past or leaves early has decided. Don't count it, don't remark on it,
+don't withhold the wrap-up over it.
+
+Context lines need no management either. `git diff` splits a hunk whenever the gap between
+changes exceeds twice the context setting, so the longest run of unchanged lines any hunk
+can hold is 6 at the default `-U3`. There is nothing to trim. The only surviving use of `…`
+is joining two adjacent hunks merged into one block, below.
+
+### Splitting and grouping hunks
+
+- **One `diff` block per idea.** If a single `git diff` hunk contains two unrelated changes, split it into two blocks with a line of framing each, keeping each block's lines verbatim. Repeating the `@@` header on both is fine.
+- **Merge adjacent hunks** from the same file when they're the same idea and close together, using `…` between them.
+- **Repetitive hunks** — the identical mechanical change in eight call sites — still all get shown, because the one that is subtly different is exactly the thing a tour exists to catch, and you cannot know which it is without looking. Explain the pattern once against the first block, then let the rest follow with a one-line caption each — **in the same chapter as the hunk you explained**, never deferred to Leftovers, because the explanation is what makes them readable and it is on this screen. Never write "and the same change in seven more files" in place of the hunks.
+- **Order within a cluster** follows the explanation, not the filesystem. Lead with the hunk that carries the idea, then the ones that follow from it.
+
+### Special cases
+
+**Pure renames** — `git diff` shows these as `rename from` / `rename to` with no body. Report them as a line of prose, not a `diff` block. If the rename came with edits, show only the edits.
+
+**Moved code** — a block deleted in one file and added in another shows up as a large `-` run and a large `+` run, which reads as a rewrite. Run `git diff --color-moved=zebra` (or diff the two regions) to confirm it's a move. If it is, say so in the narration and lead with whatever genuinely changed during the move. The added side still gets shown in full — it is code the reader has not reviewed — but one sentence saying "identical to the block removed above, except the two lines called out" saves them from reading it twice.
+
+**Whitespace-only or reformatting churn** — compare against `git diff -w`. Set formatting-only hunks aside, note the line count, and tour the substantive diff.
+
+**New files** — show the whole file. It is all new code, and none of it has been reviewed before. Say how long it is, and lead the narration with its shape — exported names, entry points — so the reader knows what they are scrolling through.
+
+**Deleted files** — show the signatures or behavior being removed, not the full body. The question the reader needs answered is what capability disappeared and who used it.
+
+**Binary files, lockfiles, generated code** — one line each, no blocks.
+
+**Very large single hunks** (rewritten file) — split by function or logical section into sub-steps within the chapter, each with its own block and explanation. Splitting is presentation; every line still appears.
 
 ## Clustering
 
@@ -148,6 +195,15 @@ well-commented change may deserve less prose than a bare surprising one.
 So a mechanical walk ("here we call `foo` with the new argument") is never the job. What
 the diff cannot supply is: what the code *meant* before, why this route and not another,
 what breaks elsewhere, what invariant appeared or vanished, and what the hunk is *for*.
+
+**Say what the code did before.** Describing only the new code leaves the reader to
+reverse-engineer the delta they were just shown, which is the expensive half of reviewing
+and the half you can do for them.
+
+**Aim at what a skim would miss.** The reliable candidates: a cross-file consequence, an
+invariant that disappeared, an assumption the code now makes implicitly, an ordering
+dependency. If a sentence would survive the reader skimming the hunk themselves, it is
+probably not worth writing.
 
 **Be proportional.** Length is signal. A hunk that surprises you deserves several
 sentences; an obvious one deserves a clause; a repeat of the hunk above deserves five
@@ -227,7 +283,7 @@ say changes what you write next.
 temporary directory; print the path. Real syntax highlighting, a chapter sidebar, and a
 file the reader can keep, reopen and send to someone else. Available from any session,
 terminal or not. Built as described in
-[references/rendering.md](references/rendering.md).
+[references/html.md](references/html.md).
 
 **`viewer`** — narration here, chapter by chapter with pauses; diffs in a second terminal
 running `delta`, which repaints as chapters advance. Terminal sessions only. Setup and the
@@ -282,23 +338,6 @@ the mode, and neither is a licence to loosen the others:
   a length tradeoff in any of them. `inline` pastes long hunks whole; the viewer and an
   exported document both scroll.
 
-### Nothing is hidden, and Leftovers is not a dumping ground
-
-A reader cannot be responsible for code they were never shown, so the tour never hides a
-hunk — not the repetitive ones, not the mechanical ones. Never show one hunk as a
-representative of several: that hides exactly the case the tour exists to catch, the
-seventh call site that differs.
-
-A topic's own hunks stay in that topic's chapter, however dull. Leftovers is for hunks no
-topic claimed — see [Step H](#step-h-the-leftovers-chapter).
-
-A reader who scrolls past or leaves early has decided. Don't count it, don't remark on it,
-don't withhold the wrap-up over it.
-
-[references/rendering.md](references/rendering.md) covers renames, moved code, new files
-and oversized hunks. All of it applies in every mode — none of its rules are about saving
-space.
-
 ### Hunk codes
 
 Every hunk carries a code so prose and screen can point at
@@ -335,11 +374,16 @@ ledger de-duplicates, so the completeness check is unaffected. `zoom` pushes not
 the context it adds is not in the diff, so it goes in the chat while the viewer keeps
 showing the chapter's hunks.
 
-`references/rendering.md` has the rules for grouping hunks, renames, moved code, new files, whitespace-only changes and very large hunks. **Read it before printing the first chapter** — in particular [Nothing is hidden](references/rendering.md#nothing-is-hidden), which is the rule most easily broken by an agent trying to be concise.
+Read [references/html.md](references/html.md) only if your output surface is HTML — `export` always, `inline` in a session that renders it.
 
 In paired-viewer mode the shape is the same minus the `diff` blocks: push the chapter's hunks to the viewer, then narrate against their [hunk codes](#hunk-codes) — one framing line and one explanation per code, in the same order the viewer shows them. Never narrate a hunk the reader cannot see: if a code is not on their screen, paste it inline. Do not push it — the tour file is single state, so pushing would replace the chapter they are reading.
 
 ## Procedure
+
+**A chapter's contents are specified in exactly one place: its step.** Anything else that
+mentions a chapter refers to it by name and number and never restates what is in it. Three
+copies of the wrap-up's contents once drifted into three different answers; this is the
+rule that prevents the next one.
 
 ## Step A: Help
 
@@ -482,9 +526,10 @@ pointers, not verified bugs.
 2. <cluster name> — <half-line> · `path/one.py`, `path/two.py`
 3. <cluster name> — <half-line> · `path/three.py`
 4. Leftovers — <N hunks, and in a half-line what they are>
-5. Wrap-up — what I verified, what I asserted, open questions
+5. Wrap-up — what to check yourself, and open questions
 
-Say `next` to start, `go <n>` to jump in, or `help` for the commands.
+<In a paused mode: how to start and where the commands are. In `export`: nothing —
+the reader is already holding the whole document.>
 ```
 
 Then stop and wait — unless the mode is `export`, which has no pauses.
