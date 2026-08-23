@@ -294,7 +294,7 @@ hunk's purpose. One sentence is enough, and "this is the same swap in the disabl
 a whole sentence. A reader who meets code before they are told why is reverse-engineering
 your intent from a diff, which is the work the tour exists to save them.
 This holds in every format. `ansi` is simply the one that can check it —
-`tour-ansi.sh` refuses to build a document where a hunk has no prose above it.
+`tour-report.sh` refuses to build a report where a hunk has no prose above it.
 
 **Prose after a hunk is about that hunk.** That is the default the reader can rely on, and it means a
 paragraph sitting between two hunks needs no preamble to be understood: it looks backwards.
@@ -310,37 +310,33 @@ is failing.
 
 ## Formats
 
-The report is one long document, always the same document. `--format` only decides how it
-is rendered.
+The report is one document, written once as a narration file and rendered by
+`scripts/tour-report.sh`. `--format` chooses the rendering and nothing else. The mechanics
+are in [references/rendering.md](references/rendering.md).
 
-**`markdown`** *(default)* — printed into this session. Diffs as fenced diff blocks. No
-syntax highlighting; accept that. Works everywhere, streams as you write it so the reader
-starts reading immediately, and stays in scrollback afterwards. Good for humans and for
-other agents. See [references/markdown.md](references/markdown.md).
+**`markdown`** *(default)* — prose and fenced diff blocks. Nothing to install, readable by a
+human or another agent, diffable, easy to paste anywhere.
 
-**`ansi`** — one text file styled with ANSI escapes, read in the terminal with `less -R`.
-Real syntax highlighting and a clear heading hierarchy, without leaving the terminal. Built
-by `scripts/tour-ansi.sh` — see [references/ansi.md](references/ansi.md).
+**`ansi`** — a terminal file with real syntax highlighting and a heading hierarchy markdown
+cannot express, read with `less -R`.
 
-**`html`** — one self-contained HTML file, opened in a browser. Same content, richest
-rendering, and a file the reader can keep and send on. See
-[references/html.md](references/html.md).
+**`html`** — the same as a self-contained page for a browser.
 
 **A format changes rendering, never content.** The same clusters, the same hunks in the same
 order, the same framing sentence above each one, the same admissions. Every rule in
-[Narration](#narration) and [Fidelity](#fidelity) applies to all three. Only `ansi` runs its
-content through a builder that can refuse, so it is the only format where some rules are
-checked rather than trusted; that is a difference in enforcement, not in what is required.
+[Narration](#narration) and [Fidelity](#fidelity) applies to all three, and one builder
+enforces the same checks for all three.
 
-**Both file formats cost the reader a wait.** `markdown` streams, so they read as you write.
-`ansi` and `html` produce nothing readable until the whole report exists — on a large change
-that is a long silence, and worth saying when you offer them.
+**You never emit diff bytes.** Write narration with `%%hunk` placeholders and let the builder
+splice the hunks. That is what keeps them byte-exact without trusting a copy-paste, and it is
+most of the cost of a large report: typing out a hundred-hunk diff is tens of thousands of
+output tokens spent on bytes you are not thinking about.
 
 ### Choosing the format
 
-**`markdown` is the default, including in a session that renders HTML.** Use it unless the
-reader asked for something else with `--format markdown|ansi|html`. Don't ask: the default
-works everywhere and the flag is there for the reader who wants more.
+**`markdown` is the default.** Use it unless the reader asked for something else with
+`--format markdown|ansi|html`. Don't ask: the default works everywhere and the flag is there
+for the reader who wants more. Every format writes a file and prints how to open it.
 
 **After the report, invite questions.** This is session output, not part of the report — for
 `ansi` and `html` the report is a file and cannot contain it. Say that they can ask about
@@ -479,6 +475,12 @@ returns more text than reading the whole repository — measured on one 52-file 
 **Don't read whole files for context.** The enclosing function or class of a hunk is already
 in git's `@@` header, once per hunk, free. Reading the file to rediscover what the diff told
 you is where unbounded cost comes from.
+
+**Don't read at depth what is going to Leftovers.** A second body of work, or churn in a
+subsystem the report is not about, needs *identifying*, not comprehending — it ends up as one
+`rest` group with one caption. `tour-hunks.sh` lists those hunks in milliseconds; reading
+their diffs costs thousands of input tokens to produce about ten words. Read the body you are
+touring at depth, and the rest by path only.
 
 **Delegate only when the reading is genuinely large.** If answering a cluster's questions
 needs substantially more code than the cluster contains, and several clusters need that
