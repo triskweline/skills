@@ -22,6 +22,12 @@ Everything that is not a placeholder goes through `md-to-ansi.py`. Every placeho
 replaced by that hunk, byte-exact from the patch and rendered by `delta`. The script prints
 one command as its last line; that command is what you hand the reader.
 
+Two things to get right in the narration itself, both covered in
+[Captions carry the story on their own](../SKILL.md#captions-carry-the-story-on-their-own):
+the chapter heading is already on screen, so a caption should describe its own hunk rather
+than restate the chapter; and prose between two hunks is read as commentary on the one
+above, so name a hunk by its code when you mean to introduce it.
+
 The chapter number comes from the narration's own headings — a line like `## 3/8 · <name>`
 sets it, so codes come out `3.1`, `3.2`. Hunks are recorded in the same ledger
 `tour-set.sh` keeps, so the completeness check works exactly as elsewhere: run

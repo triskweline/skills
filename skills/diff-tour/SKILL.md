@@ -272,9 +272,13 @@ prose is in another window or another scroll position. So captions are a **light
 not labels**: read top to bottom with the chat hidden, they should tell the same story, at
 lower resolution.
 
-- **The first caption of a chapter names the chapter's idea**, because nothing else on
-  screen does. `3.1 · one accessor per field question` orients; `3.1 · form.js changes`
-  does not.
+- **In `viewer`, the first caption of a chapter names the chapter's idea**, because nothing
+  else on that screen does. `3.1 · one accessor per field question` orients; `3.1 · form.js
+  changes` does not.
+- **In `export` and `ansi-export`, it does not** — the chapter heading is directly above it,
+  so restating it wastes the one line the reader is most likely to read. Say what *this
+  hunk* does: `3.1 · the four readers and writers`, not `3.1 · one accessor per field
+  question`.
 - **Each later caption says how its hunk follows from the one above.** "so the watch guard
   reads through it too", "the same swap in the disable path". A caption that could sit
   under any hunk in any order is doing nothing.
@@ -283,6 +287,14 @@ lower resolution.
 - **The test:** hide your own narration and read the captions in order. If the shape of the
   chapter survives, they are doing their job. If they read as a list of file names, rewrite
   them.
+
+**Where narration and hunks interleave — `inline`, `export`, `ansi-export` — prose after a
+hunk is about that hunk.** That is the default the reader can rely on, and it means a
+paragraph sitting between two hunks needs no preamble to be understood: it looks backwards.
+When you do want to set up the hunk below instead, **name it by its code** — "`3.4` then
+threads the same value through the validator" — so the direction is never something the
+reader has to infer from tone. Unnamed prose looks back; prose naming a code looks at that
+code.
 
 Order is part of this, and the extractor honours it: hunks appear and are numbered in the
 order you list them, so what you narrate first is what the reader sees first. Never ask a

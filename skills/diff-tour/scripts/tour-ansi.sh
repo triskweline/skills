@@ -34,9 +34,26 @@ prose=$(mktemp); trap 'rm -f "$prose"' EXIT
 first=1
 chapter=1; hunkno=0    # updated from headings like "## 3/8 · <name>", so codes come out 3.1, 3.2, …
 
+# Strip leading and trailing blank lines. Both the narration and delta bring their own,
+# and stacked they read as a gap rather than a separator.
+trim_blanks() {
+  awk '
+    {
+      line[++n] = $0
+      bare = $0; gsub(/\033\[[0-9;]*m/, "", bare)
+      empty[n] = (bare ~ /^[[:space:]]*$/)
+    }
+    END {
+      s = 1; while (s <= n && empty[s]) s++
+      e = n; while (e >= s && empty[e]) e--
+      for (i = s; i <= e; i++) print line[i]
+    }
+  '
+}
+
 flush_prose() {
   [ -s "$prose" ] || return 0
-  python3 "$HERE/md-to-ansi.py" --width "$WIDTH" < "$prose" >> "$OUT"
+  python3 "$HERE/md-to-ansi.py" --width "$WIDTH" < "$prose" | trim_blanks >> "$OUT"
   : > "$prose"
 }
 
@@ -51,11 +68,12 @@ while IFS= read -r line || [ -n "$line" ]; do
         TOUR_CODE_OFFSET="$hunkno" bash "$HERE/tour-set.sh" "$WORK" "$SOURCE" "$chapter" "$spec" >/dev/null
       fi
       hunkno=$((hunkno + 1))
-      printf '\n' >> "$OUT"
+      # Exactly one blank line on each side of a hunk.
+      if [ -s "$OUT" ]; then printf '\n' >> "$OUT"; fi
       delta --paging=never --line-numbers --width "$WIDTH" \
             --keep-plus-minus-markers --file-style omit \
             --hunk-header-style 'bold yellow' --hunk-header-decoration-style 'yellow box' \
-            < "$WORK" >> "$OUT"
+            < "$WORK" | trim_blanks >> "$OUT"
       printf '\n' >> "$OUT"
       ;;
     *)
