@@ -283,6 +283,10 @@ A caption that could sit under any hunk in any order is doing nothing. Hunks app
 numbered in the order you list them, so what you narrate first is what the reader sees first;
 never ask them to start at the bottom.
 
+**A caption is not framing, and neither is a heading.** Both are things the reader meets
+*at* the hunk or above the whole chapter; neither tells them why this hunk is coming. The
+framing is prose, in this chapter, above this hunk.
+
 **Every hunk is framed before the reader meets it.** A hunk never opens a chapter and never
 sits straight under a heading — there is always a sentence above it saying what it is for.
 A heading does not count: `ONE ACCESSOR PER FIELD QUESTION` names the chapter, not this
@@ -526,9 +530,11 @@ report.
 
 ## Step G: One chapter per cluster
 
-Write each cluster as a numbered chapter, in order. Open with the chapter heading, then
-narrate and show hunks interwoven: framing sentence, hunk, explanation, next framing
-sentence. Every hunk comes from `scripts/tour-set.sh` and is never retyped — push the
+Write each cluster as a numbered chapter, in order. Open with the chapter heading, **then
+the chapter's premise in a sentence or two — what this cluster is about — before any hunk.**
+After that, narrate and show hunks interwoven: framing sentence, hunk, explanation, next
+framing sentence. A chapter never goes heading straight to hunk, which is the most common
+way this comes out wrong, because the heading feels like it has already said the thing. Every hunk comes from `scripts/tour-set.sh` and is never retyped — push the
 chapter through it — always with the same `<tour-file>`, since the ledger lives beside it —
 and take the hunks from the file it writes. **Every chapter goes through
 the script**, with `TOUR_NEW=1` on the first, because its ledger is the only thing that makes

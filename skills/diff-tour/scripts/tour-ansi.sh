@@ -29,40 +29,45 @@ for t in delta python3; do command -v "$t" >/dev/null || { echo "tour-ansi: need
 [ -f "$DOC" ] || { echo "tour-ansi: no such narration file: $DOC" >&2; exit 2; }
 
 mkdir -p "$(dirname "$OUT")"
-: > "$OUT"
-prose=$(mktemp); trap 'rm -f "$prose"' EXIT
-first=1
-chapter=1; hunkno=0; framed=; sawchapter=   # `framed` tracks prose since the last hunk
-                       # updated from headings like "## 3/8 · <name>", so codes come out 3.1, 3.2, …
 
-# Strip leading and trailing blank lines. Both the narration and delta bring their own,
-# and stacked they read as a gap rather than a separator.
-trim_blanks() {
-  awk '
-    {
-      line[++n] = $0
-      bare = $0; gsub(/\033\[[0-9;]*m/, "", bare)
-      empty[n] = (bare == "")   # spaces on a coloured background are structure, not blank
-    }
-    END {
-      s = 1; while (s <= n && empty[s]) s++
-      e = n; while (e >= s && empty[e]) e--
-      for (i = s; i <= e; i++) print line[i]
-    }
-  '
-}
+# ---- pass 1: validate. Every problem is reported, so one edit round fixes the document.
+# Dying on the first would make the author rebuild once per mistake.
+problems=0
+framed=; sawchapter=; lineno=0
+while IFS= read -r line || [ -n "$line" ]; do
+  lineno=$((lineno + 1))
+  case "$line" in
+    '%%hunk '*)
+      if [ -z "$sawchapter" ]; then
+        echo "line $lineno: no numbered chapter heading yet — codes would all start at 1" >&2
+        echo "             $line" >&2
+        problems=$((problems + 1))
+      elif [ -z "$framed" ]; then
+        echo "line $lineno: no narration above this hunk in this chapter" >&2
+        echo "             $line" >&2
+        problems=$((problems + 1))
+      fi
+      framed= ;;
+    '#'*)
+      # A heading closes the previous chapter, so prose above it cannot frame a hunk below
+      # it. The first hunk of a chapter needs the chapter's own opening sentence.
+      framed=
+      printf '%s' "$line" | grep -qE '^#{1,6}[[:space:]]*[0-9]+[/ ]' && sawchapter=1 ;;
+    '') ;;
+    *) framed=1 ;;
+  esac
+done < "$DOC"
 
-flush_prose() {
-  [ -s "$prose" ] || return 0
-  # A heading gets two blank lines above it wherever it lands, including straight after a
-  # hunk — md-to-ansi does that between its own blocks, but cannot see across a hunk.
-  if [ -s "$OUT" ] && grep -qm1 '^#' <(grep -m1 '[^[:space:]]' "$prose"); then
-    printf '\n' >> "$OUT"
-  fi
-  python3 "$HERE/md-to-ansi.py" --width "$WIDTH" < "$prose" | trim_blanks >> "$OUT"
-  : > "$prose"
-}
+if [ "$problems" -gt 0 ]; then
+  echo >&2
+  echo "tour-ansi: $problems hunk(s) with nothing above them. Every hunk needs a sentence" >&2
+  echo "  saying what it is for, in its own chapter. A heading is not that sentence, and" >&2
+  echo "  neither is the hunk's own caption — the reader sees the caption only once they" >&2
+  echo "  have reached the code. Nothing written." >&2
+  exit 6
+fi
 
+# ---- pass 2: build.
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in
     '%%hunk '*)
@@ -74,11 +79,6 @@ while IFS= read -r line || [ -n "$line" ]; do
         echo "  ${line}" >&2
         echo "tour-ansi: a heading does not count. One sentence is enough." >&2
         exit 6
-      fi
-      if [ -z "$sawchapter" ]; then
-        echo "tour-ansi: no numbered chapter heading above this hunk — codes would all start" >&2
-        echo "  at 1. Give the chapter a heading like '## 3/9 · <name>' first." >&2
-        exit 7
       fi
       framed=
       flush_prose
@@ -108,11 +108,7 @@ while IFS= read -r line || [ -n "$line" ]; do
       case "$line" in
         \#*) # "## 3/9 · name" or "## 3 · name" — the number is what matters.
              n=$(printf '%s' "$line" | sed -n 's|^#\{1,6\}[[:space:]]*\([0-9]\{1,\}\)[/ ].*|\1|p')
-             if [ -n "$n" ] && [ "$n" != "$chapter" ]; then chapter="$n"; hunkno=0; sawchapter=1; fi ;;
-      esac
-      case "$line" in
-        '#'*|'') ;;                      # headings and blanks do not frame a hunk
-        *) framed=1 ;;
+             if [ -n "$n" ] && [ "$n" != "$chapter" ]; then chapter="$n"; hunkno=0; fi ;;
       esac
       printf '%s\n' "$line" >> "$prose" ;;
   esac
