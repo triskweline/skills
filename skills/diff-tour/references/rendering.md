@@ -34,7 +34,7 @@ collapsing into the prose:
   numbers; `· <caption>` becomes the caption above it.
 - A bare language (```` ```js ````) works when the code has no home in the tree.
 - In `ansi` and `html` the block goes through `delta` as a context-only diff, so it gets the
-  same highlighting and the same caption bar as a hunk, with no `+`/`-` tinting — which is
+  same highlighting and the same header as a hunk, minus the code, with no `+`/`-` tinting — which is
   right, since nothing changed there.
 
 A quoted block is **not** a hunk: it consumes no code, is not recorded in the ledger, and

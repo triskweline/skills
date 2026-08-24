@@ -100,6 +100,14 @@ render_prose() {           # stdin: markdown -> stdout: this format
   esac
 }
 
+# Colours for a header we assemble ourselves, so the report looks the same for everyone.
+C_CODE=$'\033[38;5;231m'    # hunk code: white
+C_PATH=$'\033[38;5;250m'    # path and line: light grey
+C_CAP=$'\033[38;5;231m'     # caption: white
+C_DOT=$'\033[38;5;250m'     # the separators: light grey, or they vanish
+C_RULE=$'\033[38;5;238m'    # the rule under the header: dark grey
+C_OFF=$'\033[0m'
+
 render_quote() {           # $QUOTE holds the code, $QINFO the fence info string
   # "```path/to/file.js:520 · caption", or "```js", or bare. A path gives delta the language
   # and real line numbers; anything else becomes quote.<lang>.
@@ -121,23 +129,20 @@ render_quote() {           # $QUOTE holds the code, $QINFO the fence info string
       lang=${path##*.}
       printf '`%s`\n\n```%s\n' "${info:-code}" "$lang"; cat "$QUOTE"; printf '```\n' ;;
     ansi|html)
+      # Same header the hunks get, minus the code — a quote has none. Rendered through delta
+      # as a context-only diff so it is syntax-highlighted without +/- tinting.
+      printf '    %s%s:%s%s %s·%s %s%s%s\n' \
+        "$C_PATH" "$info" "$start" "$C_OFF" "$C_DOT" "$C_OFF" \
+        "$C_CAP" "${cap:-quoted}" "$C_OFF"
+      printf '    %s%s%s\n' "$C_RULE" "$(printf '─%.0s' $(seq 1 $((WIDTH - 8))))" "$C_OFF"
       { printf 'diff --git a/%s b/%s\n--- a/%s\n+++ b/%s\n' "$path" "$path" "$path" "$path"
-        printf '@@ -%s,%s +%s,%s @@ %s\n' "$start" "$n" "$start" "$n" "${cap:-quoted from $info}"
-        sed 's/^/ /' "$QUOTE"; } | delta --paging=never --line-numbers --width "$WIDTH" \
-            --keep-plus-minus-markers --file-style omit \
-            --hunk-header-style 'file' --hunk-header-file-style '244' \
-            --hunk-header-decoration-style '238 ul' \
-        | { [ "$FMT" = html ] && python3 "$HERE/ansi-to-html.py" || trim_blanks; } ;;
+        printf '@@ -%s,%s +%s,%s @@\n' "$start" "$n" "$start" "$n"
+        sed 's/^/ /' "$QUOTE"; } \
+        | delta --no-gitconfig --dark --paging=never --width "$((WIDTH - 4))" \
+                --keep-plus-minus-markers --file-style omit --hunk-header-style omit \
+        | trim_blanks | sed 's/^/    /' ;;
   esac
 }
-
-# Colours for a header we assemble ourselves, so the report looks the same for everyone.
-C_CODE=$'\033[38;5;231m'    # hunk code: white
-C_PATH=$'\033[38;5;250m'    # path and line: light grey
-C_CAP=$'\033[38;5;231m'     # caption: white
-C_DOT=$'\033[38;5;250m'     # the separators: light grey, or they vanish
-C_RULE=$'\033[38;5;238m'    # the rule under the header: dark grey
-C_OFF=$'\033[0m'
 
 render_hunk() {            # $WORK holds this placeholder's hunks -> stdout
   case "$FMT" in
