@@ -135,15 +135,21 @@ def main():
         width = int(sys.argv[sys.argv.index("--width") + 1])
 
     out = []
+    prev = None
     for kind, payload in blocks(sys.stdin):
         if out:
             # A chapter title gets three blank lines, any other heading two, anything else
             # one — so the start of a chapter is visible while scrolling past, not just when
-            # you land on it.
+            # you land on it. A heading straight after a chapter title is the exception: the
+            # two belong together, so one blank keeps them as a unit.
             if kind == "heading":
-                out.extend(["", "", ""] if payload[0] == 2 else ["", ""])
+                if prev == "chapter":
+                    out.append("")
+                else:
+                    out.extend(["", "", ""] if payload[0] == 2 else ["", ""])
             else:
                 out.append("")
+        prev = "chapter" if kind == "heading" and payload[0] == 2 else kind
         if kind == "heading":
             out.extend(render_heading(payload[0], payload[1], width))
         elif kind == "rule":
