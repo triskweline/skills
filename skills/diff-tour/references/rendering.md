@@ -13,6 +13,8 @@ Write markdown, with one placeholder line wherever a hunk belongs:
 - `@<code>` pins a code instead of assigning the next one — for a chapter re-showing a hunk
   another chapter owns, so the hunk keeps one code across the whole report.
 - Several hunks in one placeholder: `path:12=first;48=second`.
+- `<path>:bin` selects a **binary** change. It renders as one line naming the file and its
+  kind, never as a diff, and the kind is derived from the diff rather than written by you.
 
 **Build it a chapter at a time, appending.** A validation failure then costs an edit rather
 than a regeneration — on a large report the narration is tens of thousands of tokens and

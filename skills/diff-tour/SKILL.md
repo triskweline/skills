@@ -130,7 +130,16 @@ is joining two adjacent hunks merged into one block, below.
 
 **Deleted files** — show the signatures or behavior being removed, not the full body. The question the reader needs answered is what capability disappeared and who used it.
 
-**Binary files, lockfiles, generated code** — one line each, no blocks.
+**Binary files** — never show a diff, in any format. Name the file and what happened to it:
+added, changed, deleted or moved. That is the whole of what a reviewer can act on, and a diff
+of bytes is noise at best. The builder does this for you: select the change as
+`<path>:bin` and it renders one line — `4.3 · assets/logo.png · changed (binary)` — deriving
+the kind from the diff, so it cannot be stated wrongly. `tour-hunks.sh` lists binary changes
+with `bin` where a line number would be, and they count towards coverage like any other
+change: a report that ignores a replaced image is not complete. A binary needs no framing
+sentence of its own, so one sentence can introduce a list of them.
+
+**Lockfiles and generated code** — one line each, no blocks.
 
 **Very large single hunks** (rewritten file) — split by function or logical section into sub-steps within the chapter, each with its own block and explanation. Splitting is presentation; every line still appears.
 

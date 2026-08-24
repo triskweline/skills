@@ -73,17 +73,34 @@ patch_of() {
   fi
 }
 
-starts_of() {   # +start lines of one path
-  patch_of "$1" | awk '/^@@/ { match($0, /\+[0-9]+/); print substr($0, RSTART + 1, RLENGTH - 1) }'
+starts_of() {   # the selectable keys of one path: +start per hunk, or "bin" for a binary
+  patch_of "$1" | awk '
+    /^Binary files/ { print "bin"; next }
+    /^@@/ { match($0, /\+[0-9]+/); print substr($0, RSTART + 1, RLENGTH - 1) }
+  '
 }
 
-all_pairs() {   # every path<TAB>+start in the whole diff, in diff order
+binary_kind() { # $1 = path -> added | deleted | moved | changed
+  patch_of "$1" | awk '
+    /^new file/ { k = "added" }
+    /^deleted file/ { k = "deleted" }
+    /^rename from/ { k = "moved" }
+    END { print (k == "" ? "changed" : k) }
+  '
+}
+
+all_pairs() {   # every path<TAB>key in the whole diff, in diff order. A binary change has no
+                # @@ line, so its key is the literal "bin" — without it the change would be
+                # absent from the ledger and the completeness check would pass while ignoring
+                # it entirely.
+                # NOTE: no apostrophes in these awk programs — they are single-quoted.
   patch_of "" | awk '
+    /^diff --git/ { gp = $NF; sub(/^b\//, "", gp); p = ""; next }
     /^--- / { minus = substr($0, 5); sub(/^[^\/]*\//, "", minus); sub(/\t.*$/, "", minus); next }
     /^\+\+\+ / { p = substr($0, 5); sub(/\t.*$/, "", p)
-                 # A deletion has "+++ /dev/null": the real path is on the --- line.
                  if (p == "/dev/null") p = minus; else sub(/^[^\/]*\//, "", p)
                  next }
+    /^Binary files/ { print (p != "" ? p : gp) "\tbin"; next }
     /^@@/ { match($0, /\+[0-9]+/); print p "\t" substr($0, RSTART + 1, RLENGTH - 1) }
   '
 }
@@ -120,6 +137,7 @@ if [ -n "$want_rest" ]; then
   while IFS=$'\t' read -r p s; do
     # Exact path first, then the longest matching prefix (rest:docs/=... covers a subtree).
     cap=$(awk -F'\t' -v p="$p" '$1 == p { print $2; exit }' "$RESTCAP")
+    if [ -z "$cap" ] && [ "$s" = bin ]; then cap="$(binary_kind "$p") (binary)"; fi
     [ -n "$cap" ] || cap=$(awk -F'\t' -v p="$p" 'index(p, $1) == 1 { if (length($1) > n) { n = length($1); c = $2 } } END { print c }' "$RESTCAP")
     if [ -z "$cap" ]; then
       cap="(leftover) not narrated"
@@ -181,6 +199,8 @@ while IFS= read -r path; do
     pin=$(printf '%s' "$item" | sed -n 's/^[0-9]*@\([^=]*\).*/\1/p')
     caption=$(printf '%s' "$item" | sed -n 's/^[^=]*=//p')
     [ -n "$caption" ] || caption="$allcap"
+    # A binary has no diff to describe, so its kind is the caption unless one was given.
+    if [ -z "$caption" ] && [ "$s" = bin ]; then caption="$(binary_kind "$path") (binary)"; fi
     if [ -n "$pin" ]; then
       # A re-shown hunk keeps the code its owning chapter gave it, and does not consume a
       # new one — a hunk has exactly one code in the whole report.
@@ -223,7 +243,8 @@ while IFS=$'\t' read -r path start code caption; do
 done < "$MAP"
 
 emitted=$(grep -c '^@@' "$TMP" || true)
-assigned=$((n - ${TOUR_CODE_OFFSET:-0} + pinned))
+bins=$(awk -F'\t' '$2 == "bin"' "$MAP" | wc -l)
+assigned=$((n - ${TOUR_CODE_OFFSET:-0} + pinned - bins))
 [ "$emitted" -eq "$assigned" ] || { echo "tour-set: internal error — assigned $assigned codes but emitted $emitted hunks" >&2; exit 4; }
 
 cut -f1,2 "$MAP" >> "$LEDGER"

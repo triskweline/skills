@@ -44,6 +44,14 @@ while IFS= read -r line || [ -n "$line" ]; do
   esac
   [ -n "$infence" ] && continue     # a code quote is not a framing sentence
   case "$line" in
+    '%%hunk '*:bin|'%%hunk '*:bin=*)
+      # A binary is named, not diffed, so it needs no framing sentence of its own — one
+      # sentence can introduce a whole list of them. It still has to be inside a chapter.
+      if [ -z "$sawchapter" ]; then
+        echo "line $lineno: no numbered chapter heading yet — codes would all start at 1" >&2
+        echo "             $line" >&2; problems=$((problems + 1))
+      fi
+      continue ;;
     '%%hunk '*)
       if [ -z "$sawchapter" ]; then
         echo "line $lineno: no numbered chapter heading yet — codes would all start at 1" >&2
@@ -144,9 +152,23 @@ render_quote() {           # $QUOTE holds the code, $QINFO the fence info string
   esac
 }
 
+render_binaries() {        # a binary change is named, never diffed
+  printf '%s\n' "$map" | awk '$3 == "+bin"' | while read -r code path key rest; do
+    case "$FMT" in
+      md) printf '`%s` · `%s` · %s\n' "$code" "$path" "$rest" ;;
+      ansi|html)
+        printf '    %s%s%s %s·%s %s%s%s %s·%s %s%s%s\n' \
+          "$C_CODE" "$code" "$C_OFF" "$C_DOT" "$C_OFF" \
+          "$C_PATH" "$path" "$C_OFF" "$C_DOT" "$C_OFF" \
+          "$C_CAP" "$rest" "$C_OFF" ;;
+    esac
+  done
+}
+
 render_hunk() {            # $WORK holds this placeholder's hunks -> stdout
   case "$FMT" in
-    md) printf '```diff\n'; cat "$WORK"; printf '```\n' ;;
+    md) [ -s "$WORK" ] || return 0        # binary-only placeholder: nothing to fence
+        printf '```diff\n'; cat "$WORK"; printf '```\n' ;;
     ansi|html)
       # One block per hunk, each with its own assembled header. A placeholder can resolve to
       # several hunks, so this cannot be one header for the file.
@@ -174,6 +196,8 @@ render_hunk() {            # $WORK holds this placeholder's hunks -> stdout
         inbody { print $0 > out }
       ' "$WORK"
 
+      # A binary-only placeholder writes no hunks, so there is nothing to iterate.
+      [ -s "$dir/meta" ] || return 0
       local i=0
       while IFS=$'\t' read -r code path start cap; do
         i=$((i + 1))
@@ -234,14 +258,16 @@ while IFS= read -r line || [ -n "$line" ]; do
       flush_prose
       spec="${line#'%%hunk '}"
       if [ -n "$first" ]; then
-        TOUR_NEW=1 TOUR_CODE_OFFSET="$hunkno" bash "$HERE/tour-set.sh" "$WORK" "$SOURCE" "$chapter" "$spec" >/dev/null; first=
+        map=$(TOUR_NEW=1 TOUR_CODE_OFFSET="$hunkno" bash "$HERE/tour-set.sh" "$WORK" "$SOURCE" "$chapter" "$spec"); first=
       else
-        TOUR_CODE_OFFSET="$hunkno" bash "$HERE/tour-set.sh" "$WORK" "$SOURCE" "$chapter" "$spec" >/dev/null
+        map=$(TOUR_CODE_OFFSET="$hunkno" bash "$HERE/tour-set.sh" "$WORK" "$SOURCE" "$chapter" "$spec")
       fi
-      hunkno=$((hunkno + $(grep -c '^@@' "$WORK")))
+      # Every coded entry advances the counter, including a binary — which gets a code but no
+      # hunk, so counting @@ lines alone would let the next code collide with it.
+      hunkno=$((hunkno + $(printf '%s\n' "$map" | grep -cE '^[0-9]+\.[0-9]+ ' || true)))
       if [ -s "$OUT" ]; then printf '\n' >> "$OUT"; fi
-      if [ "$FMT" = html ]; then render_hunk | python3 "$HERE/ansi-to-html.py" >> "$OUT"
-      else render_hunk >> "$OUT"; fi
+      if [ "$FMT" = html ]; then { render_binaries; render_hunk; } | python3 "$HERE/ansi-to-html.py" >> "$OUT"
+      else { render_binaries; render_hunk; } >> "$OUT"; fi
       printf '\n' >> "$OUT"
       ;;
     *)
