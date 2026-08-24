@@ -73,9 +73,28 @@ file.
 
 **`ansi`** — prose through `md-to-ansi.py`, hunks through `delta`. Real syntax highlighting
 and a heading hierarchy that a terminal markdown renderer cannot express: the report title in
-yellow over a heavy rule, a chapter title as a blue `3/9` badge with white capitals over a
-white rule, a section heading in bold, and delta's hunk caption over a grey rule. Read it
-with `less -R` — no `--mouse`, so text stays selectable. Needs `delta`, `less`, `python3`.
+yellow over a heavy rule, a chapter title as a blue chapter-number badge with white capitals
+over a white rule, and a section heading in bold. Read it with `less -R` — no `--mouse`, so
+text stays selectable. Needs `delta`, `less`, `python3`.
+
+Each hunk gets a header the builder assembles itself, rather than delta's:
+
+    4.1 · src/unpoly/classes/form_validator.js:218 · validation is not a submission
+    ────────────────────────────────────────────────────────────────────────────────
+         let dirtyFields = u.flatMap(dirtyOrigins, up.form.fields)
+    -    let dirtyNames = u.uniq(u.map(dirtyFields, 'name'))
+
+Code and caption in white, path and line in light grey, the separating dots light grey too —
+a dark dot at that size disappears — and the rule under it dark grey. **No line-number
+gutter:** the start line is appended to the path instead, where it is read once rather than
+repeated down the left edge, which leaves `+`/`-` and delta's tinting to carry the diff.
+Header, rule and code are indented four columns, so a hunk reads as a block inset from the
+prose.
+
+**Every `delta` call passes `--no-gitconfig --dark`.** Without it the report inherits whoever
+built it — `delta.features = line-numbers` in a personal gitconfig puts the gutter back, and
+the same report then looks different to the colleague it was sent to. The appearance is the
+builder's to decide, not the environment's.
 
 **`html`** — the same, converted again by `ansi-to-html.py`: diff state becomes a row
 background, syntax becomes `color` on spans inside it. Inline styles only, so it works from

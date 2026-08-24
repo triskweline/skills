@@ -131,15 +131,58 @@ render_quote() {           # $QUOTE holds the code, $QINFO the fence info string
   esac
 }
 
-render_hunk() {            # $WORK holds one chapter's hunks -> stdout
+# Colours for a header we assemble ourselves, so the report looks the same for everyone.
+C_CODE=$'\033[38;5;231m'    # hunk code: white
+C_PATH=$'\033[38;5;250m'    # path and line: light grey
+C_CAP=$'\033[38;5;231m'     # caption: white
+C_DOT=$'\033[38;5;250m'     # the separators: light grey, or they vanish
+C_RULE=$'\033[38;5;238m'    # the rule under the header: dark grey
+C_OFF=$'\033[0m'
+
+render_hunk() {            # $WORK holds this placeholder's hunks -> stdout
   case "$FMT" in
-    md)   printf '```diff\n'; cat "$WORK"; printf '```\n' ;;
+    md) printf '```diff\n'; cat "$WORK"; printf '```\n' ;;
     ansi|html)
-      delta --paging=never --line-numbers --width "$WIDTH" \
-            --keep-plus-minus-markers --file-style omit \
-            --hunk-header-style 'file' --hunk-header-file-style '244' \
-            --hunk-header-decoration-style '238 ul' \
-            < "$WORK" | { [ "$FMT" = html ] && python3 "$HERE/ansi-to-html.py" || trim_blanks; } ;;
+      # One block per hunk, each with its own assembled header. A placeholder can resolve to
+      # several hunks, so this cannot be one header for the file.
+      local dir; dir=$(mktemp -d); trap 'rm -rf "$dir"' RETURN
+      awk -v dir="$dir" '
+        /^diff --git/ { hdr = $0 "\n"; inbody = 0; next }
+        !inbody && /^(index |--- |\+\+\+ |new file |deleted file |old mode |new mode |similarity |rename )/ {
+          hdr = hdr $0 "\n"
+          if ($0 ~ /^\+\+\+ /) { path = substr($0, 5); sub(/^[^\/]*\//, "", path); sub(/\t.*$/, "", path) }
+          if ($0 ~ /^--- / && path == "") { minus = substr($0, 5); sub(/^[^\/]*\//, "", minus) }
+          next
+        }
+        /^@@/ {
+          inbody = 1; n++
+          match($0, /\+[0-9]+/); start = substr($0, RSTART + 1, RLENGTH - 1)
+          tail = $0; sub(/^@@[^@]*@@ ?/, "", tail)
+          code = tail; sub(/ · .*$/, "", code)
+          cap = tail; sub(/^[^ ]* · /, "", cap)
+          printf "%s\t%s\t%s\t%s\n", code, (path == "/dev/null" ? minus : path), start, cap > (dir "/meta")
+          out = dir "/" n ".diff"
+          printf "%s", hdr > out
+          print $0 > out
+          next
+        }
+        inbody { print $0 > out }
+      ' "$WORK"
+
+      local i=0
+      while IFS=$'\t' read -r code path start cap; do
+        i=$((i + 1))
+        if [ "$i" -gt 1 ]; then printf '\n'; fi
+        printf '    %s%s%s %s·%s %s%s:%s%s %s·%s %s%s%s\n' \
+          "$C_CODE" "$code" "$C_OFF" "$C_DOT" "$C_OFF" \
+          "$C_PATH" "$path" "$start" "$C_OFF" "$C_DOT" "$C_OFF" \
+          "$C_CAP" "$cap" "$C_OFF"
+        printf '    %s%s%s\n' "$C_RULE" "$(printf '─%.0s' $(seq 1 $((WIDTH - 8))))" "$C_OFF"
+        delta --no-gitconfig --dark --paging=never --width "$((WIDTH - 4))" \
+              --keep-plus-minus-markers --file-style omit --hunk-header-style omit \
+              < "$dir/$i.diff" | trim_blanks | sed 's/^/    /'
+      done < "$dir/meta"
+      ;;
   esac
 }
 
@@ -192,7 +235,8 @@ while IFS= read -r line || [ -n "$line" ]; do
       fi
       hunkno=$((hunkno + $(grep -c '^@@' "$WORK")))
       if [ -s "$OUT" ]; then printf '\n' >> "$OUT"; fi
-      render_hunk >> "$OUT"
+      if [ "$FMT" = html ]; then render_hunk | python3 "$HERE/ansi-to-html.py" >> "$OUT"
+      else render_hunk >> "$OUT"; fi
       printf '\n' >> "$OUT"
       ;;
     *)
