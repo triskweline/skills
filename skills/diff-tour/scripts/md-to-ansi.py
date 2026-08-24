@@ -49,7 +49,9 @@ def inline(text):
     return text
 
 
-CHAPTER_MARK = re.compile(r"^\s*(\d+\s*/\s*\d+)\s*·\s*(.*)$")
+# "3/9 · Name" or "3 · Name". Only the chapter number goes in the badge — the total is
+# useful in the source heading and noise in a badge.
+CHAPTER_MARK = re.compile(r"^\s*(\d+)(?:\s*/\s*\d+)?\s*·\s*(.*)$")
 
 
 def render_heading(level, text, width):
@@ -70,7 +72,7 @@ def render_heading(level, text, width):
         # " 3/9 " as a badge, then the title in capitals with no background, then a rule.
         m = CHAPTER_MARK.match(text)
         if m:
-            head = BADGE + " " + m.group(1).replace(" ", "") + " " + R + " " + TITLE + m.group(2).upper() + R
+            head = BADGE + " " + m.group(1) + " " + R + " " + TITLE + m.group(2).upper() + R
         else:
             head = TITLE + text.upper() + R
         return [head, bright]
