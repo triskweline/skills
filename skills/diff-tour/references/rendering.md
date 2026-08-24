@@ -18,6 +18,28 @@ Write markdown, with one placeholder line wherever a hunk belongs:
 than a regeneration — on a large report the narration is tens of thousands of tokens and
 rewriting it whole is the single most expensive mistake available.
 
+## Quoting code
+
+The narration often needs to show code that is not a hunk: a few lines of an existing
+function, or the two lines of a hunk another chapter owns. Use a fenced block, and put the
+file in the fence's info string so it renders like the rest of the report rather than
+collapsing into the prose:
+
+    ```src/unpoly/classes/params.js:520 · what fromForm does with it
+      static fromForm(form, options = {}) {
+        form = e.get(form)
+    ```
+
+- `<path>` gives the language and lets `delta` syntax-highlight it; `:<line>` gives real line
+  numbers; `· <caption>` becomes the caption above it.
+- A bare language (```` ```js ````) works when the code has no home in the tree.
+- In `ansi` and `html` the block goes through `delta` as a context-only diff, so it gets the
+  same highlighting and the same caption bar as a hunk, with no `+`/`-` tinting — which is
+  right, since nothing changed there.
+
+A quoted block is **not** a hunk: it consumes no code, is not recorded in the ledger, and
+does not count as the framing sentence a hunk needs above it.
+
 ## Building
 
     scripts/tour-report.sh <out-file> <source> <narration-file> [md|ansi|html]

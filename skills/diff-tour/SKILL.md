@@ -206,6 +206,11 @@ So a mechanical walk ("here we call `foo` with the new argument") is never the j
 the diff cannot supply is: what the code *meant* before, why this route and not another,
 what breaks elsewhere, what invariant appeared or vanished, and what the hunk is *for*.
 
+**Quote code when a sentence needs it**, whether it is in the diff or not — a few lines of
+the function a hunk sits in, or the two lines of a hunk another chapter owns. Use a fenced
+block with the file path in its info string and it renders like the rest of the report; see
+[references/rendering.md](references/rendering.md). Never paste code into a paragraph.
+
 **Say what the code did before.** Describing only the new code leaves the reader to
 reverse-engineer the delta they were just shown, which is the expensive half of reviewing
 and the half you can do for them.

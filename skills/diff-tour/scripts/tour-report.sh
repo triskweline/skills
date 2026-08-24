@@ -24,15 +24,25 @@ WIDTH="${TOUR_WIDTH:-120}"
 
 case "$FMT" in md|ansi|html) ;; *) echo "tour-report: unknown format: $FMT" >&2; exit 2 ;; esac
 [ -f "$DOC" ] || { echo "tour-report: no such narration file: $DOC" >&2; exit 2; }
+# Catch a bad source here rather than letting git say "fatal: bad revision" from inside a
+# hunk extraction, which reads as a script bug rather than a wrong argument.
+if [ ! -f "$SOURCE" ] && ! git rev-parse --quiet --verify "${SOURCE%%..*}" >/dev/null 2>&1; then
+  echo "tour-report: <source> is neither a patch file nor a git range: $SOURCE" >&2
+  exit 2
+fi
 need() { command -v "$1" >/dev/null || { echo "tour-report: needs $1 for --format $FMT" >&2; exit 1; }; }
 case "$FMT" in ansi|html) need delta; need python3 ;; esac
 
 mkdir -p "$(dirname "$OUT")"
 
 # ---- pass 1: validate. Every problem is reported, so one edit round fixes the document.
-problems=0; framed=; sawchapter=; lineno=0
+problems=0; framed=; sawchapter=; lineno=0; infence=
 while IFS= read -r line || [ -n "$line" ]; do
   lineno=$((lineno + 1))
+  case "$line" in
+    '```'*) if [ -n "$infence" ]; then infence=; else infence=1; fi; continue ;;
+  esac
+  [ -n "$infence" ] && continue     # a code quote is not a framing sentence
   case "$line" in
     '%%hunk '*)
       if [ -z "$sawchapter" ]; then
@@ -78,6 +88,37 @@ render_prose() {           # stdin: markdown -> stdout: this format
   esac
 }
 
+render_quote() {           # $QUOTE holds the code, $QINFO the fence info string
+  # "```path/to/file.js:520 · caption", or "```js", or bare. A path gives delta the language
+  # and real line numbers; anything else becomes quote.<lang>.
+  local info="$QINFO" cap path start lang n
+  cap=${info#* · }; [ "$cap" = "$info" ] && cap=
+  info=${info%% · *}
+  start=1
+  case "$info" in
+    *:[0-9]*) start=${info##*:}; info=${info%:*} ;;
+  esac
+  case "$info" in
+    ''|*[!a-zA-Z0-9]*) path="$info" ;;
+    *) path="quote.$info" ;;                       # a bare language name
+  esac
+  [ -n "$path" ] || path=quote.txt
+  n=$(wc -l < "$QUOTE")
+  case "$FMT" in
+    md)
+      lang=${path##*.}
+      printf '`%s`\n\n```%s\n' "${info:-code}" "$lang"; cat "$QUOTE"; printf '```\n' ;;
+    ansi|html)
+      { printf 'diff --git a/%s b/%s\n--- a/%s\n+++ b/%s\n' "$path" "$path" "$path" "$path"
+        printf '@@ -%s,%s +%s,%s @@ %s\n' "$start" "$n" "$start" "$n" "${cap:-quoted from $info}"
+        sed 's/^/ /' "$QUOTE"; } | delta --paging=never --line-numbers --width "$WIDTH" \
+            --keep-plus-minus-markers --file-style omit \
+            --hunk-header-style 'file' --hunk-header-file-style '244' \
+            --hunk-header-decoration-style '238 ul' \
+        | { [ "$FMT" = html ] && python3 "$HERE/ansi-to-html.py" || trim_blanks; } ;;
+  esac
+}
+
 render_hunk() {            # $WORK holds one chapter's hunks -> stdout
   case "$FMT" in
     md)   printf '```diff\n'; cat "$WORK"; printf '```\n' ;;
@@ -92,7 +133,7 @@ render_hunk() {            # $WORK holds one chapter's hunks -> stdout
 
 # ---- pass 2: build ------------------------------------------------------------------
 : > "$OUT"
-prose=$(mktemp); trap 'rm -f "$prose"' EXIT
+prose=$(mktemp)
 first=1; chapter=1; hunkno=0
 
 flush_prose() {
@@ -110,7 +151,24 @@ flush_prose() {
   : > "$prose"
 }
 
+QUOTE=$(mktemp); QINFO=; infence=
+trap 'rm -f "$prose" "$QUOTE"' EXIT
+
 while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in
+    '```'*)
+      if [ -n "$infence" ]; then
+        infence=
+        flush_prose
+        if [ -s "$OUT" ]; then printf '\n' >> "$OUT"; fi
+        render_quote >> "$OUT"
+        printf '\n' >> "$OUT"
+      else
+        infence=1; QINFO="${line#'```'}"; : > "$QUOTE"
+      fi
+      continue ;;
+  esac
+  if [ -n "$infence" ]; then printf '%s\n' "$line" >> "$QUOTE"; continue; fi
   case "$line" in
     '%%hunk '*)
       flush_prose
