@@ -36,7 +36,7 @@ case "$FMT" in ansi|html) need delta; need python3 ;; esac
 mkdir -p "$(dirname "$OUT")"
 
 # ---- pass 1: validate. Every problem is reported, so one edit round fixes the document.
-problems=0; framed=; sawchapter=; lineno=0; infence=
+problems=0; framed=; sawchapter=; lineno=0; infence=; frame=
 while IFS= read -r line || [ -n "$line" ]; do
   lineno=$((lineno + 1))
   case "$line" in
@@ -51,14 +51,25 @@ while IFS= read -r line || [ -n "$line" ]; do
       elif [ -z "$framed" ]; then
         echo "line $lineno: no narration above this hunk in this chapter" >&2
         echo "             $line" >&2; problems=$((problems + 1))
+      else
+        # A single-sentence frame introduces the hunk, so it ends with a colon. Count real
+        # sentence boundaries — a terminator followed by space and a capital — so an internal
+        # period like "form.elements" or "e.g." does not read as two sentences.
+        breaks=$(printf '%s' "$frame" | { grep -oE '[.!?][[:space:]]+[A-Z(]' || true; } | wc -l)
+        ends=$(printf '%s' "$frame" | grep -cE '\.$' || true)
+        if [ "$breaks" -eq 0 ] && [ "$ends" -eq 1 ]; then
+          echo "line $lineno: the single sentence above this hunk ends with '.' — use ':'" >&2
+          echo "             $frame" >&2; problems=$((problems + 1))
+        fi
       fi
-      framed= ;;
+      framed=; frame= ;;
     '#'*)
       # A heading closes the previous chapter, so prose above it cannot frame a hunk below.
       framed=
+      frame=
       printf '%s' "$line" | grep -qE '^#{1,6}[[:space:]]*[0-9]+[/ ]' && sawchapter=1 ;;
     '') ;;
-    *) framed=1 ;;
+    *) framed=1; frame="${frame:+$frame }$line" ;;
   esac
 done < "$DOC"
 
@@ -66,7 +77,8 @@ if [ "$problems" -gt 0 ]; then
   echo >&2
   echo "tour-report: $problems hunk(s) with nothing above them. Every hunk needs a sentence" >&2
   echo "  saying what it is for, in its own chapter. A heading is not that sentence, and" >&2
-  echo "  neither is the hunk's own caption. Nothing written." >&2
+  echo "  neither is the hunk's own caption. A single-sentence frame ends with a colon," >&2
+  echo "  since it introduces what follows. Nothing written." >&2
   exit 6
 fi
 

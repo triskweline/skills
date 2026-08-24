@@ -50,8 +50,8 @@ which is most of the cost of a large report, and it makes byte-exactness mechani
 of a promise.
 
 It validates first and writes nothing if the narration is wrong, reporting every problem at
-once: a hunk with no framing sentence above it in its chapter, or a hunk before any numbered
-chapter heading. Chapter numbers come from the headings themselves (`## 3/8 · <name>`), which
+once: a hunk with no framing sentence above it in its chapter, a hunk before any numbered
+chapter heading, or a single-sentence frame that ends with a full stop instead of a colon. Chapter numbers come from the headings themselves (`## 3/8 · <name>`), which
 is why that form is required in every format.
 
 Hunks are recorded in the ledger beside the out-file, so the completeness check is unchanged

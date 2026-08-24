@@ -288,6 +288,12 @@ A caption that could sit under any hunk in any order is doing nothing. Hunks app
 numbered in the order you list them, so what you narrate first is what the reader sees first;
 never ask them to start at the bottom.
 
+**A one-sentence frame ends with a colon.** It is introducing what follows, so punctuate it
+that way: "The guard walks `form.elements` and nothing else:" — not a full stop, which reads
+as a closed thought and leaves the hunk looking unannounced. A frame of two or more sentences
+ends normally; by then the paragraph has established itself and the colon would be fussy.
+The builder checks the single-sentence case.
+
 **A caption is not framing, and neither is a heading.** Both are things the reader meets
 *at* the hunk or above the whole chapter; neither tells them why this hunk is coming. The
 framing is prose, in this chapter, above this hunk.
