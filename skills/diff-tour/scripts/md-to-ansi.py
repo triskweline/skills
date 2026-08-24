@@ -102,7 +102,7 @@ def blocks(lines):
 
         if bullet:                        # continues a list, or starts one
             yield from flush() if para else ()
-            items.append(bullet)
+            items.append([bullet.group(1), bullet.group(2), bullet.group(3)])
             continue
         if not line.strip():              # blank ends whatever was open
             yield from flush()
@@ -119,8 +119,11 @@ def blocks(lines):
             yield from flush()
             yield ("quote", QUOTED.match(line).group(1))
             continue
-        if items:                         # text after a list ends the list
-            yield from flush()
+        if items:
+            # Lazy continuation: an unindented line after a list item belongs to that item.
+            # CommonMark allows it, and hard-wrapped narration produces it constantly.
+            items[-1][2] += " " + line.strip()
+            continue
         para.append(line.strip())         # continuation: accumulate, do not flush
 
     yield from flush()
@@ -147,7 +150,7 @@ def main():
             out.append(RULE + "─" * width + R)
         elif kind == "list":
             for item in payload:
-                indent, marker, text = item.group(1), item.group(2), item.group(3)
+                indent, marker, text = item
                 # Keep a numbered marker as written — the overview's chapter list is
                 # numbered, and its numbers are the chapter numbers.
                 lead = "·" if marker in ("-", "*") else marker
