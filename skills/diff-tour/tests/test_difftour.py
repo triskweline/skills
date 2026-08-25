@@ -1,0 +1,884 @@
+#!/usr/bin/env python3
+"""Tests for everything between the narration file and the HTML.
+
+    python3 tests/test_difftour.py
+
+Standard library only, like the code under test. Clustering and narration are
+judgement and are not testable here; everything after them is a pure function of
+two files on disk, which is the seam these tests sit on:
+
+    patch + narration  ->  parse  ->  AST  ->  render  ->  HTML
+"""
+
+import os
+import sys
+import time
+import unittest
+
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
+from difftour import code, narration, patch, prose, render   # noqa: E402
+
+
+def tour(*lines):
+    """A minimal well-formed narration file, with `lines` spliced into a cluster."""
+    head = ['%report T', '%intro Overview', '%beat What it does', 'Prose.',
+            '%chapter The cluster', 'An intro paragraph.', '%blast narrow', 'Evidence.']
+    tail = ['%closing Wrap-up', '%beat What to check', 'Prose.']
+    return '\n'.join(head + list(lines) + tail)
+
+
+def problems(text, p, root='.'):
+    rep, probs = narration.parse(text)
+    probs += narration.resolve(rep, p, root)
+    return rep, [str(x) for x in probs if x.fatal], [str(x) for x in probs if not x.fatal]
+
+
+# --------------------------------------------------------------------- patch.py
+
+SIMPLE = '''diff --git a/src/deep/a.js b/src/deep/a.js
+index 111..222 100644
+--- a/src/deep/a.js
++++ b/src/deep/a.js
+@@ -10,6 +10,7 @@ function outer() {
+ keep one
+ keep two
+-gone
++added one
++added two
+ keep three
+ keep four
+'''
+
+
+class TestPatch(unittest.TestCase):
+    def test_paths_keep_every_segment(self):
+        p = patch.parse(SIMPLE)
+        self.assertEqual([f.path for f in p.files], ['src/deep/a.js'])
+
+    def test_hunk_key_and_body(self):
+        h = patch.parse(SIMPLE).hunks[0]
+        self.assertEqual(h.key, '10')
+        self.assertEqual(len(h.lines), 7)
+        self.assertEqual(h.changed_offsets, [3, 4, 5])
+        self.assertEqual(h.heading, 'function outer() {')
+
+    def test_line_numbers(self):
+        h = patch.parse(SIMPLE).hunks[0]
+        old = [(l.kind, l.old) for l in h.lines]
+        new = [(l.kind, l.new) for l in h.lines]
+        self.assertEqual(old, [(' ', 10), (' ', 11), ('-', 12), ('+', None),
+                               ('+', None), (' ', 13), (' ', 14)])
+        self.assertEqual(new, [(' ', 10), (' ', 11), ('-', None), ('+', 12),
+                               ('+', 13), (' ', 14), (' ', 15)])
+
+    def test_deletion_gets_the_position_it_sits_before(self):
+        h = patch.parse(SIMPLE).hunks[0]
+        self.assertEqual(h.lines[2].new_pos, 12)
+        self.assertEqual(h.start_line(3, 3), 12)
+
+    def test_fragment_slicing_and_wholeness(self):
+        h = patch.parse(SIMPLE).hunks[0]
+        self.assertEqual([l.text for l in h.body(3, 4)], ['gone', 'added one'])
+        self.assertTrue(h.is_whole())
+        self.assertFalse(h.is_whole(3, 4))
+        self.assertEqual(h.slice(0, 999), (1, 7))       # clamped
+
+    def test_hunk_header_without_counts(self):
+        p = patch.parse('diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1 +1 @@\n-x\n+y\n')
+        h = p.hunks[0]
+        self.assertEqual((h.old_count, h.new_count), (1, 1))
+        self.assertEqual(h.changed_offsets, [1, 2])
+
+    def test_added_deleted_renamed_binary_and_mode(self):
+        p = patch.parse(
+            'diff --git a/new.js b/new.js\nnew file mode 100644\n--- /dev/null\n'
+            '+++ b/new.js\n@@ -0,0 +1,1 @@\n+hello\n'
+            'diff --git a/gone.js b/gone.js\ndeleted file mode 100644\n--- a/gone.js\n'
+            '+++ /dev/null\n@@ -1,1 +0,0 @@\n-bye\n'
+            'diff --git a/old/n.js b/new/n.js\nsimilarity index 100%\n'
+            'rename from old/n.js\nrename to new/n.js\n'
+            'diff --git a/l.png b/l.png\nindex 1..2 100644\n'
+            'Binary files a/l.png and b/l.png differ\n'
+            'diff --git a/bin/run b/bin/run\nold mode 100644\nnew mode 100755\n')
+        got = [(f.path, f.kind, f.binary, f.old_path, len(f.hunks)) for f in p.files]
+        self.assertEqual(got, [
+            ('new.js', 'added', False, None, 1),
+            ('gone.js', 'deleted', False, None, 1),
+            ('new/n.js', 'moved', False, 'old/n.js', 0),
+            ('l.png', 'changed', True, None, 0),
+            ('bin/run', 'changed', False, None, 0),
+        ])
+
+    def test_only_a_newline_ends_a_line(self):
+        # splitlines() also breaks on U+2028, form feed and U+0085, which silently
+        # truncates a diff line. Byte-exactness is the whole promise.
+        for ch in (' ', '\x0c', '\x85', ' '):
+            p = patch.parse('diff --git a/a.js b/a.js\n--- a/a.js\n+++ b/a.js\n'
+                            '@@ -1,1 +1,1 @@\n-old\n+let s = "a%sb"\n' % ch)
+            self.assertEqual(len(p.hunks[0].lines), 2)
+            self.assertEqual(p.hunks[0].lines[1].text, 'let s = "a%sb"' % ch)
+
+    def test_no_newline_marker_attaches_to_the_line_above(self):
+        p = patch.parse('diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1,1 +1,1 @@\n'
+                        '-old\n\\ No newline at end of file\n+new\n')
+        self.assertEqual(len(p.hunks[0].lines), 2)
+        self.assertTrue(p.hunks[0].lines[0].no_newline)
+
+    def test_combined_diff_does_not_pollute_the_previous_file(self):
+        p = patch.parse(SIMPLE +
+                        'diff --cc merged.js\nindex 1,2..3\n--- a/merged.js\n'
+                        '+++ b/merged.js\n@@@ -1,2 -1,2 +1,3 @@@\n  ctx\n++both\n')
+        self.assertEqual([f.path for f in p.files], ['src/deep/a.js'])
+        self.assertEqual(len(p.hunks[0].lines), 7)
+
+    def test_quoted_non_ascii_path(self):
+        p = patch.parse('diff --git "a/s\\303\\244ge.js" "b/s\\303\\244ge.js"\n'
+                        '--- "a/s\\303\\244ge.js"\n+++ "b/s\\303\\244ge.js"\n'
+                        '@@ -1,1 +1,1 @@\n-a\n+b\n')
+        self.assertEqual(p.files[0].path, 'säge.js')
+
+    def test_stats(self):
+        self.assertEqual(patch.parse(SIMPLE).stats(),
+                         dict(files=1, added=2, removed=1, hunks=1, binaries=0))
+
+
+# ---------------------------------------------------------------------- code.py
+
+class TestLanguages(unittest.TestCase):
+    def lang(self, path, lines=()):
+        fc = patch.FileChange(path=path)
+        if lines:
+            h = patch.Hunk(fc, 1, 1, 1, 1, '')
+            h.lines = [patch.Line('+', t, None, i, i) for i, t in enumerate(lines, 1)]
+            fc.hunks.append(h)
+        return code.language_of(fc)
+
+    def test_by_suffix_and_alias(self):
+        self.assertEqual(self.lang('a/b.js'), 'javascript')
+        self.assertEqual(self.lang('a/b.yml'), 'yaml')
+        self.assertEqual(self.lang('a/schema.sql.erb'), 'erb')
+
+    def test_by_name_and_shebang(self):
+        self.assertEqual(self.lang('Dockerfile'), 'docker')
+        self.assertEqual(self.lang('bin/run', ['#!/usr/bin/env node', 'x']), 'javascript')
+        self.assertEqual(self.lang('bin/run', ['#!/bin/bash']), 'bash')
+
+    def test_unknown_is_none_not_a_guess(self):
+        self.assertIsNone(self.lang('a/b.xyz'))
+        self.assertIsNone(self.lang('.gitignore'))
+
+    def test_the_bundle_is_complete_ordered_and_manual(self):
+        js, missing = code.bundle()
+        self.assertEqual(missing, [])
+        self.assertIn('manual = true', js)
+        self.assertGreater(len(js), 50000)
+        # GRAMMARS is a hand-kept topological order of Prism's require graph, so a
+        # grammar that extends another has to come after it. These are the pairs that
+        # matter; a reordering that breaks one of them fails silently in a browser.
+        for dep, lang in [('clike', 'javascript'), ('clike', 'ruby'), ('clike', 'java'),
+                          ('clike', 'c'), ('c', 'cpp'), ('javascript', 'typescript'),
+                          ('javascript', 'coffeescript'), ('markup', 'markdown'),
+                          ('markup', 'markup-templating'), ('markup-templating', 'php'),
+                          ('markup-templating', 'erb'), ('ruby', 'erb'),
+                          ('ruby', 'haml'), ('css', 'scss'), ('css', 'less'),
+                          ('java', 'scala'), ('jsx', 'tsx'), ('typescript', 'tsx'),
+                          ('markup', 'jsx'), ('javascript', 'jsx')]:
+            self.assertLess(code.GRAMMARS.index(dep), code.GRAMMARS.index(lang),
+                            '%s must load before %s' % (dep, lang))
+
+    def test_every_mapped_language_is_vendored(self):
+        for lang in set(code.BY_SUFFIX.values()) | set(code.BY_NAME.values()):
+            self.assertIn(lang, code.GRAMMARS, lang)
+
+
+# --------------------------------------------------------------------- prose.py
+
+class TestProse(unittest.TestCase):
+    def test_escaping_is_total(self):
+        self.assertEqual(prose.esc('a & b < c > d "q"'),
+                         'a &amp; b &lt; c &gt; d &quot;q&quot;')
+        self.assertEqual(prose.inline('`</script>`'), '<code>&lt;/script&gt;</code>')
+
+    def test_inline_marks(self):
+        self.assertEqual(prose.inline('**b** and *i* and `c`'),
+                         '<strong>b</strong> and <em>i</em> and <code>c</code>')
+        self.assertEqual(prose.inline('2*3*4'), '2*3*4')
+        self.assertEqual(prose.inline('**bold with `code`**'),
+                         '<strong>bold with <code>code</code></strong>')
+
+    def test_links_are_scheme_filtered(self):
+        self.assertEqual(prose.inline('[a](#3.2)'), '<a href="#3.2">a</a>')
+        self.assertEqual(prose.inline('[a](https://x)'), '<a href="https://x">a</a>')
+        self.assertNotIn('<a', prose.inline('[a](javascript:alert1)'))
+
+    def test_paragraphs_and_lists(self):
+        self.assertEqual(prose.render(['one', 'two', '', 'three']),
+                         '<p>one two</p>\n<p>three</p>')
+        self.assertEqual(prose.render(['- a', '  wrapped', '- b']),
+                         '<ul><li>a wrapped</li><li>b</li></ul>')
+        self.assertEqual(prose.render(['1. a', '2. b']),
+                         '<ol><li>a</li><li>b</li></ol>')
+
+    def test_a_list_switching_kind_starts_a_new_list(self):
+        self.assertEqual(prose.render(['- a', '1. b']),
+                         '<ul><li>a</li></ul>\n<ol><li>b</li></ol>')
+
+
+# ----------------------------------------------------------------- narration.py
+
+class TestNarrationStructure(unittest.TestCase):
+    def setUp(self):
+        self.p = patch.parse(SIMPLE)
+
+    def test_a_well_formed_file_has_no_problems(self):
+        rep, fatal, warn = problems(tour(
+            '%beat A beat', 'Prose.', '%hunk src/deep/a.js:10 = the whole hunk'), self.p)
+        self.assertEqual((fatal, warn), ([], []))
+        self.assertEqual([c.kind for c in rep.chapters],
+                         ['intro', 'chapter', 'closing'])
+        self.assertEqual(rep.title, 'T')
+
+    def test_codes_come_from_position(self):
+        rep, _, _ = problems(tour(
+            '%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 = one',
+            '%beat B', 'P.', '%hunk src/deep/a.js:10 #4-5 = two'), self.p)
+        self.assertEqual([c.code for c in rep.chapters[1].components], ['2.1', '2.2'])
+
+    def test_a_quote_earns_no_code(self):
+        rep, _, _ = problems(tour(
+            '%beat A', 'P.', '%code sh = a snippet', 'ls', '%end',
+            '%hunk src/deep/a.js:10 = real'), self.p)
+        self.assertEqual([c.code for c in rep.chapters[1].components], ['', '2.1'])
+
+    def test_the_first_prose_is_beat_prose_and_the_rest_are_notes(self):
+        rep, _, _ = problems(tour(
+            '%beat A', 'Beat prose.', '%hunk src/deep/a.js:10 #3-3 = x',
+            'A lead.', '%hunk src/deep/a.js:10 #4-5 = y'), self.p)
+        beat = rep.chapters[1].beats[0]
+        self.assertEqual(beat.prose, ['Beat prose.'])
+        self.assertEqual(beat.items[1], ('note', ['A lead.']))
+
+    def test_all_expands_to_one_component_per_hunk(self):
+        p = patch.parse(SIMPLE + 'diff --git a/src/deep/a.js b/src/deep/a.js\n'
+                        '--- a/src/deep/a.js\n+++ b/src/deep/a.js\n'
+                        '@@ -40,1 +41,1 @@\n-x\n+y\n')
+        rep, fatal, _ = problems(tour('%beat A', 'P.',
+                                      '%hunk src/deep/a.js:all = every hunk'), p)
+        self.assertEqual(fatal, [])
+        self.assertEqual([(c.key, c.code) for c in rep.chapters[1].components],
+                         [('10', '2.1'), ('41', '2.2')])
+
+    def test_fragments_of_one_hunk_cross_link(self):
+        rep, _, _ = problems(tour(
+            '%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 = one',
+            '%beat B', 'P.', '%hunk src/deep/a.js:10 #4-5 = two'), self.p)
+        a, b = rep.chapters[1].components
+        self.assertEqual((a.siblings, b.siblings), (['2.2'], ['2.1']))
+
+    def test_a_label_survives_a_reorder_but_its_code_does_not(self):
+        before = problems(tour(
+            '%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 @h1 = first',
+            '%hunk src/deep/a.js:10 #4-5 @h2 = second'), self.p)[0]
+        after = problems(tour(
+            '%beat A', 'P.', '%hunk src/deep/a.js:10 #4-5 @h2 = second',
+            '%hunk src/deep/a.js:10 #3-3 @h1 = first'), self.p)[0]
+        self.assertEqual(before.refs, {'h1': '2.1', 'h2': '2.2'})
+        self.assertEqual(after.refs, {'h2': '2.1', 'h1': '2.2'})
+
+    def test_a_key_is_content_not_position(self):
+        one = problems(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'), self.p)[0]
+        two = problems(tour('%beat Z', 'Q.', '%beat A', 'P.',
+                            '%hunk src/deep/a.js:10 = renamed caption'), self.p)[0]
+        self.assertEqual(one.components[0].key_hash, two.components[0].key_hash)
+
+    def test_percent_escape_and_comments(self):
+        rep, fatal, _ = problems(tour('%beat A', '%%s is a literal percent.',
+                                      '%# a comment',
+                                      '%hunk src/deep/a.js:10 = x'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertEqual(rep.chapters[1].beats[0].prose, ['%s is a literal percent.'])
+
+    def test_a_caption_may_contain_an_equals_sign(self):
+        rep, fatal, _ = problems(tour('%beat A', 'P.',
+                                      '%hunk src/deep/a.js:10 = why a = b now'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertEqual(rep.components[0].caption, 'why a = b now')
+
+
+class TestNarrationRejects(unittest.TestCase):
+    def setUp(self):
+        self.p = patch.parse(SIMPLE)
+
+    def assertRejects(self, needle, *lines):
+        _, fatal, _ = problems(tour(*lines), self.p)
+        self.assertTrue(any(needle in f for f in fatal),
+                        'expected %r among %r' % (needle, fatal))
+
+    def test_a_reference_to_no_label(self):
+        self.assertRejects('[[hzz]] names nothing',
+                           '%beat A', 'See [[hzz]].', '%hunk src/deep/a.js:10 = x')
+
+    def test_two_blocks_cannot_share_a_label(self):
+        self.assertRejects('already used',
+                           '%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 @h1 = a',
+                           '%hunk src/deep/a.js:10 #4-5 @h1 = b')
+
+    def test_a_quote_cannot_be_referenced(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        _, fatal, _ = problems(tour(
+            '%beat A', 'See [[q1]].',
+            '%quote test_difftour.py:1-2 @q1 = the top',
+            '%hunk src/deep/a.js:10 = x'), self.p, root=here)
+        self.assertTrue(any('has no code' in f for f in fatal), fatal)
+
+    def test_a_link_to_a_positional_code_is_refused(self):
+        self.assertRejects('reference the block by its @label',
+                           '%beat A', 'See [it](#2.1).', '%hunk src/deep/a.js:10 = x')
+
+    def test_unknown_directive(self):
+        self.assertRejects('unknown directive %beet', '%beet A', 'P.')
+
+    def test_component_outside_a_beat(self):
+        self.assertRejects('outside a beat', '%hunk src/deep/a.js:10 = x')
+
+    def test_beat_without_prose(self):
+        self.assertRejects('no prose', '%beat A', '%hunk src/deep/a.js:10 = x')
+
+    def test_missing_caption(self):
+        self.assertRejects('no caption', '%beat A', 'P.', '%hunk src/deep/a.js:10')
+        self.assertRejects('no caption', '%beat A', 'P.', '%code sh', 'ls', '%end')
+
+    def test_unknown_hunk_names_the_real_starts(self):
+        self.assertRejects('Its hunks start at 10',
+                           '%beat A', 'P.', '%hunk src/deep/a.js:999 = x')
+
+    def test_unknown_file_suggests_a_near_match(self):
+        self.assertRejects('Did you mean src/deep/a.js?',
+                           '%beat A', 'P.', '%hunk src/shallow/a.js:10 = x')
+
+    def test_fragment_out_of_range(self):
+        self.assertRejects('outside this hunk',
+                           '%beat A', 'P.', '%hunk src/deep/a.js:10 #1-99 = x')
+
+    def test_context_only_fragment(self):
+        self.assertRejects('all context and changes nothing',
+                           '%beat A', 'P.', '%hunk src/deep/a.js:10 #1-2 = x')
+
+    def test_backwards_fragment(self):
+        self.assertRejects('runs backwards',
+                           '%beat A', 'P.', '%hunk src/deep/a.js:10 #5-3 = x')
+
+    def test_all_cannot_take_a_fragment(self):
+        self.assertRejects('cannot take a #1-3 fragment',
+                           '%beat A', 'P.', '%hunk src/deep/a.js:all #1-3 = x')
+
+    def test_file_needs_a_bodyless_change(self):
+        self.assertRejects('%file is for a change with no diff body',
+                           '%beat A', 'P.', '%file src/deep/a.js = x')
+
+    def test_hunk_refuses_a_bodyless_change(self):
+        p = patch.parse('diff --git a/l.png b/l.png\n'
+                        'Binary files a/l.png and b/l.png differ\n')
+        _, fatal, _ = problems(tour('%beat A', 'P.', '%hunk l.png:1 = x'), p)
+        self.assertTrue(any('use %file' in f for f in fatal), fatal)
+
+    def test_a_code_left_open_at_the_end_of_the_file(self):
+        _, fatal, _ = problems('\n'.join(
+            ['%report T', '%intro O', '%beat B', 'P.', '%code sh = x', 'ls']),
+            self.p)
+        self.assertTrue(any('never closed' in f for f in fatal), fatal)
+
+    def test_a_code_left_open_before_a_directive_is_caught_there(self):
+        self.assertRejects('forgotten %end', '%beat A', 'P.', '%code sh = x', 'ls')
+
+    def test_a_forgotten_end_is_caught_at_the_swallowed_line(self):
+        self.assertRejects('forgotten %end', '%beat A', 'P.', '%code sh = x', 'ls',
+                           '%hunk src/deep/a.js:10 = would be swallowed')
+
+    def test_heading_in_prose(self):
+        self.assertRejects('markdown heading in prose', '%beat A', '### nope')
+
+    def test_bad_blast_level(self):
+        self.assertRejects('%blast wants one of', '%beat A', 'P.', '%blast severe')
+
+    def test_blast_outside_a_cluster_chapter(self):
+        _, fatal, _ = problems(
+            '\n'.join(['%report T', '%intro O', '%blast wide', '%beat B', 'P.',
+                       '%closing W', '%beat W', 'P.']), self.p)
+        self.assertTrue(any('not to intro' in f for f in fatal), fatal)
+
+    def test_the_plus_spelling_tour_hunks_prints_is_accepted(self):
+        _, fatal, _ = problems(tour('%beat A', 'P.',
+                                    '%hunk src/deep/a.js:+10 = x'), self.p)
+        self.assertEqual(fatal, [])
+
+    def test_a_quote_out_of_range(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        _, fatal, _ = problems(tour('%beat A', 'P.',
+                                    '%quote test_difftour.py:1-999999 = x'),
+                               self.p, root=here)
+        self.assertTrue(any('out of range' in f for f in fatal), fatal)
+
+    def test_a_quote_of_a_file_that_is_not_there(self):
+        _, fatal, _ = problems(tour('%beat A', 'P.',
+                                    '%quote nope/nope.js:1-2 = x'), self.p)
+        self.assertTrue(any('cannot read' in f for f in fatal), fatal)
+
+
+class TestNarrationWarns(unittest.TestCase):
+    def setUp(self):
+        self.p = patch.parse(SIMPLE)
+
+    def test_shape_problems_are_warnings_so_a_draft_still_builds(self):
+        _, fatal, warn = problems('\n'.join(
+            ['%report T', '%intro O', '%beat B', 'Prose.']), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('no %closing' in w for w in warn), warn)
+
+    def test_a_cluster_chapter_without_a_blast_warns(self):
+        _, fatal, warn = problems('\n'.join(
+            ['%report T', '%intro O', '%beat B', 'P.', '%chapter C', 'Intro.',
+             '%beat B', 'P.', '%closing W', '%beat W', 'P.']), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('no %blast' in w for w in warn), warn)
+
+    def test_a_cluster_chapter_without_an_intro_paragraph_warns(self):
+        _, fatal, warn = problems('\n'.join(
+            ['%report T', '%intro O', '%beat B', 'P.', '%chapter C', '%blast narrow',
+             'E.', '%beat B', 'P.', '%closing W', '%beat W', 'P.']), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('introductory paragraph' in w for w in warn), warn)
+
+    def test_overlapping_fragments_warn(self):
+        _, fatal, warn = problems(tour(
+            '%beat A', 'P.', '%hunk src/deep/a.js:10 #3-4 = one',
+            '%beat B', 'P.', '%hunk src/deep/a.js:10 #4-5 = two'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('overlaps' in w for w in warn), warn)
+
+    def test_a_blank_line_after_a_block_is_not_trailing_prose(self):
+        # A beat that simply ends with its block, followed by a blank line, must not
+        # look like it has prose with nothing to introduce.
+        _, fatal, warn = problems(tour(
+            '%beat A', 'Beat prose.', '%hunk src/deep/a.js:10 = x', '',
+            '%beat B', 'More prose.'), self.p)
+        self.assertEqual((fatal, warn), ([], []))
+
+    def test_prose_after_the_last_block_has_nothing_to_introduce(self):
+        _, fatal, warn = problems(tour(
+            '%beat A', 'Beat prose.', '%hunk src/deep/a.js:10 = x',
+            'Trailing prose.'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('nothing to introduce' in w for w in warn), warn)
+
+    def test_a_label_reference_resolves_and_does_not_warn(self):
+        rep, fatal, warn = problems(tour(
+            '%beat A', 'See [[h1]] and [the guard](#h1).',
+            '%hunk src/deep/a.js:10 @h1 = x'), self.p)
+        self.assertEqual((fatal, warn), ([], []))
+        self.assertEqual(rep.refs, {'h1': '2.1'})
+
+
+# --------------------------------------------------------------------- coverage
+
+BODYLESS = (SIMPLE +
+            'diff --git a/l.png b/l.png\nindex 1..2 100644\n'
+            'Binary files a/l.png and b/l.png differ\n')
+
+
+class TestCoverage(unittest.TestCase):
+    def cov(self, p, *lines):
+        rep, fatal, _ = problems(tour(*lines), p)
+        self.assertEqual(fatal, [])
+        return narration.coverage(rep, p)
+
+    def test_a_whole_hunk_covers_everything(self):
+        p = patch.parse(SIMPLE)
+        self.assertEqual(self.cov(p, '%beat A', 'P.',
+                                  '%hunk src/deep/a.js:10 = all of it'),
+                         (3, 3, []))
+
+    def test_a_fragment_leaves_the_rest_as_a_gap(self):
+        p = patch.parse(SIMPLE)
+        shown, total, gaps = self.cov(
+            p, '%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 = only the deletion')
+        self.assertEqual((shown, total), (1, 3))
+        self.assertEqual(gaps, [('src/deep/a.js', '10', 4, 5, '2.1')])
+
+    def test_a_shown_line_between_two_misses_breaks_the_run(self):
+        p = patch.parse(SIMPLE)
+        shown, total, gaps = self.cov(
+            p, '%beat A', 'P.', '%hunk src/deep/a.js:10 #4-4 = the middle one')
+        self.assertEqual((shown, total), (1, 3))
+        self.assertEqual([(g[2], g[3]) for g in gaps], [(3, 3), (5, 5)])
+
+    def test_two_fragments_together_can_cover_a_hunk(self):
+        p = patch.parse(SIMPLE)
+        self.assertEqual(self.cov(p, '%beat A', 'P.',
+                                  '%hunk src/deep/a.js:10 #3-3 = a',
+                                  '%beat B', 'P.',
+                                  '%hunk src/deep/a.js:10 #4-5 = b'),
+                         (3, 3, []))
+
+    def test_a_bodyless_change_is_a_coverage_item(self):
+        p = patch.parse(BODYLESS)
+        shown, total, gaps = self.cov(p, '%beat A', 'P.',
+                                      '%hunk src/deep/a.js:10 = the code')
+        self.assertEqual((shown, total), (3, 4))
+        self.assertEqual(gaps, [('l.png', None, None, None, None)])
+
+    def test_naming_the_binary_closes_it(self):
+        p = patch.parse(BODYLESS)
+        self.assertEqual(self.cov(p, '%beat A', 'P.',
+                                  '%hunk src/deep/a.js:10 = the code',
+                                  '%file l.png = the logo'),
+                         (4, 4, []))
+
+    def test_context_lines_are_never_a_gap(self):
+        p = patch.parse(SIMPLE)
+        _, total, _ = self.cov(p, '%beat A', 'P.', '%hunk src/deep/a.js:10 = x')
+        self.assertEqual(total, 3)          # 3 changed lines, not 7 body lines
+
+    def test_coverage_is_linear(self):
+        # A lockfile refresh is one enormous hunk, and coverage runs on every build.
+        big = ['diff --git a/lock b/lock', '--- a/lock', '+++ b/lock',
+               '@@ -1,1 +1,20001 @@', ' ctx']
+        big += ['+line %d' % i for i in range(20000)]
+        p = patch.parse('\n'.join(big) + '\n')
+        rep, fatal, _ = problems(tour('%beat A', 'P.',
+                                      '%hunk lock:1 #2-100 = the head of it'), p)
+        self.assertEqual(fatal, [])
+        started = time.time()
+        shown, total, gaps = narration.coverage(rep, p)
+        self.assertLess(time.time() - started, 1.0)
+        self.assertEqual((shown, total, len(gaps)), (99, 20000, 1))
+
+
+# --------------------------------------------------------------------- render.py
+
+class TestRender(unittest.TestCase):
+    def build(self, text, src=SIMPLE, root='.'):
+        p = patch.parse(src)
+        rep, probs = narration.parse(text)
+        probs += narration.resolve(rep, p, root)
+        self.assertEqual([str(x) for x in probs if x.fatal], [])
+        html, missing = render.page(rep, p.stats(), 'a..b', '2026-01-01', 'uid')
+        self.assertEqual(missing, [])
+        return html
+
+    def test_the_page_is_self_contained(self):
+        import re
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertEqual(re.findall(r'(?:src|href)="([^"#]+)"', html), [])
+        self.assertIn('<style>', html)
+        self.assertIn('window.Prism', html)
+
+    def test_the_fixtures_own_explanation_is_not_shipped(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertNotIn('the page shell', html)
+
+    def test_diff_text_is_escaped_not_interpreted(self):
+        evil = ('diff --git a/a.js b/a.js\n--- a/a.js\n+++ b/a.js\n@@ -1,1 +1,1 @@\n'
+                '-old\n+</code></pre><script>alert(1)</script>\n')
+        html = self.build(tour('%beat A', 'P.', '%hunk a.js:1 = evil'), src=evil)
+        self.assertNotIn('<script>alert(1)</script>', html)
+        self.assertIn('&lt;script&gt;alert(1)&lt;/script&gt;', html)
+
+    def test_a_caption_is_escaped_too(self):
+        html = self.build(tour('%beat A', 'P.',
+                               '%hunk src/deep/a.js:10 = a <script>x</script> caption'))
+        self.assertNotIn('<script>x</script>', html)
+
+    def test_a_title_is_never_a_regex_replacement(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x')
+                          .replace('%report T', r'%report Handle \d and \g<0>'))
+        self.assertIn(r'<title>Handle \d and \g&lt;0&gt;</title>', html)
+
+    def test_a_hunks_id_is_its_code(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertIn('id="2.1"', html)
+        self.assertIn('data-code="2.1"', html)
+
+    def test_a_fragment_says_what_it_is_a_fragment_of(self):
+        html = self.build(tour('%beat A', 'P.',
+                               '%hunk src/deep/a.js:10 #4-5 = the added pair'))
+        self.assertIn('lines 4–5 of 7', html)
+        self.assertIn('3 more lines above', html)
+        self.assertIn('2 more lines below', html)
+        self.assertIn('src/deep/a.js:12', html)      # the new-file line it starts at
+
+    def test_a_pure_deletion_shows_the_old_files_line(self):
+        html = self.build(tour('%beat A', 'P.',
+                               '%hunk src/deep/a.js:10 #3-3 = the removal'))
+        self.assertIn('src/deep/a.js:12', html)
+
+    def test_line_counts_are_in_the_caption(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertIn('+2 −1', html)
+
+    def test_a_renamed_and_edited_file_says_where_it_came_from(self):
+        src = ('diff --git a/old/n.js b/new/n.js\nsimilarity index 80%\n'
+               'rename from old/n.js\nrename to new/n.js\n'
+               '--- a/old/n.js\n+++ b/new/n.js\n@@ -1,1 +1,1 @@\n-a\n+b\n')
+        html = self.build(tour('%beat A', 'P.', '%hunk new/n.js:1 = moved and edited'),
+                          src=src)
+        self.assertIn('was <code>old/n.js</code>', html)
+        self.assertIn('tag moved', html)
+
+    def test_bodyless_kinds_are_stated_from_the_diff(self):
+        src = ('diff --git a/l.png b/l.png\nBinary files a/l.png and b/l.png differ\n'
+               'diff --git a/o.js b/n.js\nrename from o.js\nrename to n.js\n'
+               'diff --git a/e.js b/e.js\nnew file mode 100644\n'
+               'diff --git a/m b/m\nold mode 100644\nnew mode 100755\n')
+        html = self.build(tour('%beat A', 'P.', '%file l.png = a', '%file n.js = b',
+                               '%file e.js = c', '%file m = d'), src=src)
+        self.assertIn('This binary file changed.', html)
+        self.assertIn('Renamed from <code>o.js</code>', html)
+        self.assertIn('A new empty file.', html)
+        self.assertIn('a file mode change', html)
+
+    def test_a_no_newline_change_is_visible(self):
+        src = ('diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1,1 +1,1 @@\n'
+               '-old\n\\ No newline at end of file\n+new\n')
+        html = self.build(tour('%beat A', 'P.', '%hunk a:1 = x'), src=src)
+        self.assertIn('no newline at end of file', html)
+
+    def test_a_folded_beat_is_marked_for_the_javascript(self):
+        html = self.build(tour('%beat A', 'P.', '%fold',
+                               '%hunk src/deep/a.js:10 = x'))
+        self.assertIn('class="beat fold"', html)
+
+    def test_a_beat_with_no_blocks_is_full_width(self):
+        self.assertIn('class="beat solo"', self.build(tour('%beat A', 'Only prose.')))
+
+    def test_a_note_introduces_the_block_below_it_not_the_one_above(self):
+        html = self.build(tour('%beat A', 'Beat prose.',
+                               '%hunk src/deep/a.js:10 #3-3 = first',
+                               'This introduces the second one.',
+                               '%hunk src/deep/a.js:10 #4-5 = second'))
+        show = html[html.index('<div class="show">'):]
+        first = show.index('id="2.1"')
+        note = show.index('<div class="note">')
+        second = show.index('id="2.2"')
+        self.assertLess(first, note)
+        self.assertLess(note, second)
+        self.assertIn('<p>This introduces the second one.</p>', html)
+
+    def test_the_language_class_comes_from_the_files_extension(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertIn('class="language-diff-javascript diff-highlight"', html)
+
+    def test_an_unknown_extension_still_renders_a_diff(self):
+        src = ('diff --git a/a.xyz b/a.xyz\n--- a/a.xyz\n+++ b/a.xyz\n'
+               '@@ -1,1 +1,1 @@\n-a\n+b\n')
+        html = self.build(tour('%beat A', 'P.', '%hunk a.xyz:1 = x'), src=src)
+        self.assertIn('class="language-diff-none diff-highlight"', html)
+
+    def test_a_quote_reads_the_file_rather_than_being_retyped(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        html = self.build(tour('%beat A', 'P.',
+                               '%quote test_difftour.py:1-2 = the top of this file'),
+                          root=here)
+        self.assertIn('#!/usr/bin/env python3', html)
+        self.assertIn('class="hunk quote"', html)
+
+    def test_two_identical_quotes_do_not_share_an_id(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        html = self.build(tour('%beat A', 'P.',
+                               '%quote test_difftour.py:1-2 = once',
+                               '%quote test_difftour.py:1-2 = twice'), root=here)
+        import re
+        ids = re.findall(r'<figure class="hunk quote" id="([^"]+)"', html)
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_a_snippet_language_goes_through_the_alias_table(self):
+        html = self.build(tour('%beat A', 'P.', '%code sh = how to run it',
+                               'bin/test', '%end'))
+        self.assertIn('class="language-bash"', html)
+        html = self.build(tour('%beat A', 'P.', '%code nosuchlang = x', 'y', '%end'))
+        self.assertIn('class="language-none"', html)
+
+    def test_the_metadata_line_reports_the_patch_not_the_report(self):
+        html = self.build(tour('%beat A', 'P.',
+                               '%hunk src/deep/a.js:10 #3-3 = part of it'))
+        self.assertIn('<b>1</b> file ', html)
+        self.assertIn('<b>+2</b> <b>−1</b>', html)
+        self.assertIn('<b>1</b> hunk ', html)
+
+    def test_chapters_are_numbered_from_position(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertIn('<section class="chapter" id="ch1">', html)
+        self.assertIn('<section class="chapter" id="ch3">', html)
+        self.assertIn('<span class="n">2</span>', html)
+
+    def test_the_blast_level_reaches_the_markup(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertIn('<aside class="blast narrow" data-level="narrow">', html)
+
+
+# ------------------------------------------------------------------ the commands
+
+class TestHunksCommand(unittest.TestCase):
+    """bin/tour-hunks.py is the read Step D is built on, so its filtering matters."""
+
+    def setUp(self):
+        import subprocess, tempfile
+        self.bin = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), 'bin', 'tour-hunks.py')
+        self.patch = tempfile.NamedTemporaryFile('w', suffix='.patch', delete=False)
+        self.patch.write(
+            SIMPLE +
+            'diff --git a/src/deep/b.js b/src/deep/b.js\n--- a/src/deep/b.js\n'
+            '+++ b/src/deep/b.js\n@@ -1,1 +1,2 @@\n keep\n+added\n'
+            'diff --git a/other/c.js b/other/c.js\n--- a/other/c.js\n'
+            '+++ b/other/c.js\n@@ -1,1 +1,2 @@\n keep\n+added\n')
+        self.patch.close()
+        self.run = lambda *a: subprocess.run(
+            [sys.executable, self.bin, self.patch.name] + list(a),
+            capture_output=True, text=True)
+
+    def tearDown(self):
+        os.unlink(self.patch.name)
+
+    def test_a_prefix_selects_a_subtree(self):
+        out = self.run('src/deep').stdout
+        self.assertIn('src/deep/a.js', out)
+        self.assertIn('src/deep/b.js', out)
+        self.assertNotIn('other/c.js', out)
+
+    def test_not_excludes_what_a_prefix_would_have_included(self):
+        out = self.run('src/deep', '--not', 'src/deep/a.js').stdout
+        self.assertNotIn('src/deep/a.js', out)
+        self.assertIn('src/deep/b.js', out)
+
+    def test_not_works_without_any_prefix(self):
+        out = self.run('-x', 'src/deep').stdout
+        self.assertIn('other/c.js', out)
+        self.assertNotIn('src/deep', out)
+
+    def test_not_needs_a_value(self):
+        r = self.run('--not')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('needs a path', r.stderr)
+
+    def test_the_list_states_what_reading_a_file_would_cost(self):
+        out = self.run('src/deep/a.js').stdout
+        self.assertIn('1 hunk · 7 body lines, 3 changed', out)
+
+    def test_the_list_carries_no_diff_body(self):
+        # The point of the cheap read: it says what is there without quoting it. The
+        # size ratio only holds at scale, so assert the invariant instead.
+        out = self.run().stdout
+        self.assertNotIn('added one', out)
+        self.assertNotIn('gone', out)
+        self.assertIn('@10', out)
+        self.assertIn('added one', self.run('--body').stdout)
+
+    def test_body_prints_offsets_a_fragment_selector_can_use(self):
+        out = self.run('--body', 'src/deep/a.js').stdout
+        self.assertIn('    3 -gone', out)
+        self.assertIn('    4 +added one', out)
+
+
+class TestSkeletonCommand(unittest.TestCase):
+    """bin/tour-skeleton.py is the only command that edits the narration file."""
+
+    def setUp(self):
+        import subprocess, tempfile
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.cmd = os.path.join(root, 'bin', 'tour-skeleton.py')
+        self.dir = tempfile.mkdtemp()
+        self.patch = os.path.join(self.dir, 'p.patch')
+        with open(self.patch, 'w') as f:
+            f.write(SIMPLE +
+                    'diff --git a/src/deep/b.js b/src/deep/b.js\n--- a/src/deep/b.js\n'
+                    '+++ b/src/deep/b.js\n@@ -1,1 +1,3 @@\n keep\n+one\n+two\n')
+        self.doc = os.path.join(self.dir, 'n.tour')
+        self._run = lambda: subprocess.run(
+            [sys.executable, self.cmd, self.patch, self.doc],
+            capture_output=True, text=True)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def write(self, *lines):
+        with open(self.doc, 'w') as f:
+            f.write(tour(*lines))
+
+    def read(self):
+        with open(self.doc) as f:
+            return f.read()
+
+    def test_it_labels_every_block_that_lacks_one(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = the swap',
+                   '%hunk src/deep/b.js:1 = the other')
+        r = self._run()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('%hunk src/deep/a.js:10 @h1 = the swap', self.read())
+        self.assertIn('%hunk src/deep/b.js:1 @h2 = the other', self.read())
+        self.assertIn('labelled 2 blocks', r.stderr)
+
+    def test_it_leaves_an_existing_label_alone_and_does_not_collide(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 @h1 = kept',
+                   '%hunk src/deep/b.js:1 = minted')
+        self.assertEqual(self._run().returncode, 0)
+        body = self.read()
+        self.assertIn('@h1 = kept', body)
+        self.assertIn('@h2 = minted', body)
+
+    def test_it_is_idempotent(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = x')
+        self._run()
+        once = self.read()
+        r = self._run()
+        self.assertEqual(self.read(), once)
+        self.assertNotIn('labelled', r.stderr)
+
+    def test_it_does_not_label_an_all_directive(self):
+        self.write('%beat A', '%hunk src/deep/a.js:all = every hunk',
+                   '%hunk src/deep/b.js:1 = the other')
+        self.assertEqual(self._run().returncode, 0)
+        self.assertIn('%hunk src/deep/a.js:all = every hunk', self.read())
+        self.assertIn('src/deep/b.js:1 @h1 =', self.read())
+
+    def test_the_table_pairs_labels_with_the_codes_they_resolve_to(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = the swap')
+        out = self._run().stdout
+        self.assertIn('[[h1]]', out)
+        self.assertIn('2.1', out)
+        self.assertIn('the swap', out)
+
+    def test_missing_prose_is_expected_and_not_an_error(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = x',
+                   '%hunk src/deep/b.js:1 = y')
+        r = self._run()
+        self.assertEqual(r.returncode, 0)
+        self.assertNotIn('no prose', r.stderr)
+        self.assertIn('still need prose', r.stderr)
+
+    def test_a_structural_error_stops_it_and_writes_nothing(self):
+        self.write('%beat A', '%hunk src/deep/a.js:999 = nope')
+        before = self.read()
+        r = self._run()
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('no hunk at +999', r.stderr)
+        self.assertEqual(self.read(), before)
+
+    def test_incomplete_coverage_exits_1_and_says_so(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = only this one')
+        r = self._run()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('still unplaced', r.stderr)
+
+    def test_complete_coverage_exits_0(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = one',
+                   '%hunk src/deep/b.js:1 = two')
+        r = self._run()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('Coverage is settled', r.stderr)
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
