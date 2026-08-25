@@ -127,7 +127,7 @@ nothing if the structure is wrong. Its exit code is 0 when every changed line is
 
 ## Building
 
-    bin/tour-build.py <out.html> <patch> <narration> [--root DIR] [--source LABEL]
+    bin/tour-build.py <patch> <narration> <out.html> [--root DIR] [--source LABEL]
 
     --root    the checkout %quote reads from (default: the current directory)
     --source  what the metadata line calls the diff, e.g. main..HEAD
@@ -135,6 +135,10 @@ nothing if the structure is wrong. Its exit code is 0 when every changed line is
 **Build after every chapter you append.** It takes under a second, and a validation failure
 then costs an edit rather than a regeneration — on a large change the narration is tens of
 thousands of tokens and rewriting it whole is the most expensive mistake available.
+
+A chapter being narrated in isolation — by a fork, per SKILL Step G — cannot build, because
+it holds one chapter of an unbuildable document. It is spliced back over the skeleton first,
+and the build happens there.
 
 It validates first and **writes nothing** if anything is wrong, reporting every problem at
 once: an unknown directive, a block outside a beat, a beat outside a chapter, a beat with no
@@ -174,9 +178,9 @@ disk with no network and no server. Expect roughly three times the patch's size,
 
     python3 tests/test_difftour.py
 
-89 tests over everything between the narration file and the HTML — the diff parser, this
-format and each of its refusals, the coverage arithmetic, the prose subset, and the rendered
-markup. Run it after changing any of `lib/difftour/`.
+The suite covers everything between the narration file and the HTML — the diff parser, this
+format and each of its refusals, the coverage arithmetic, the prose subset, the commands, and
+the rendered markup. Run it after changing anything in `lib/difftour/` or `bin/`.
 
 ## Changing the design
 

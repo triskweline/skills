@@ -64,9 +64,8 @@ with where a block actually sits. What you write instead is a **label**: `@h17`,
 `[[h17]]` — and the builder renders whatever code that block currently sits at.
 
 That split is what makes a chapter safe to reorder while it is being narrated. A label
-names one block forever and moves with it; a code is only ever a position. Use codes in
-prose the way you would a figure number — "the `??` in `[[h17]]` is doing precise work" —
-and let the builder print the number.
+names one block forever and moves with it; a code is only ever a position. Reference a block in prose the way you would a figure — "the `??` in `[[h17]]` is doing
+precise work" — and let the builder print the number. What you write is always the label.
 
 ## Rulesets
 
@@ -111,8 +110,8 @@ Length is managed by structure, never by hiding: chapters divide the report, the
 lets the reader skip, a dull chapter is cheap to scroll past, and `%fold` starts a block
 collapsed with its size still on screen. What you may compress is the *narration* — one
 caption for twenty similar hunks is fine, because the reader can see the twenty hunks it
-describes. A topic's own hunks stay in that topic's chapter however dull they are;
-Leftovers is only for hunks no topic claimed.
+describes. A topic's own hunks stay in that topic's chapter however dull they are — see
+[pass 2](#how-to-find-them) for what does belong in Leftovers.
 
 A reader who scrolls past a chapter has decided. Don't remark on it.
 
@@ -292,7 +291,11 @@ only because of it, and judging by the prose sends all twelve to Leftovers.
   topic that *documents* the change if the diff has one, and is otherwise its own small
   cluster. Place it early either way and read it as stated intent: it is usually the best
   account of the author's own understanding in the whole diff.
-- A change no topic claims is a **leftover** — no idea in the diff would lose it if reverted.
+- A change no topic claims is a **leftover** — no idea in the diff would lose it if
+  reverted. That, and only that, is what Leftovers holds: not the boring changes, and never
+  a topic's own follow-ups. What lands there is the genuinely unaffiliated — a `.gitignore`
+  line, an editor config, a dependency bump, churn in a subsystem the tour is not about, or
+  a second body of work you named in the overview and are not touring.
 - A change with no good home may instead be **evidence of a topic you missed**. Check that
   first. Adding a topic is cheap; misfiling real work as fallout is not.
 
@@ -470,7 +473,7 @@ Step F. It is short, and you will not guess the directive set.
 
 ## Where things are
 
-`bin/` holds the four commands this procedure runs, and `lib/difftour/` holds what they
+`bin/` holds the commands this procedure runs, and `lib/difftour/` holds what they
 import. Nothing in `lib/` is ever run directly.
 
 | Command | Turns | Into |
@@ -593,6 +596,14 @@ The tour is only as good as this step, and it happens before any output.
    On a small diff the ladder collapses to one `--body` of the whole patch, which is
    correct. The staging is for the range that holds more than you are touring.
 
+   **This rung and Step E interleave**, and reading them as strictly sequential is what
+   makes the ladder look circular: you cannot know what to read in full until you know what
+   you are touring, and you cannot name topics from a list alone. The loop is: read the
+   list → name candidate topics from it and from the commit log → `--body` the areas those
+   topics live in → let what you read correct the topic list → repeat for anything that
+   moved. Step E's three passes are the second half of this, not a stage that begins after
+   it.
+
 2. **Read the enclosing function or class for each hunk.** Behavior usually lives in the
    unchanged lines around a change — a two-line diff inside a retry loop means something
    different than the same two lines in a constructor.
@@ -665,9 +676,16 @@ blocks freely**, and you should when writing reveals a better order — "order f
 explanation" is the rule, and you sometimes only find the explanation by writing it. Labels
 move with their blocks, so nothing that points at them breaks.
 
-What you may **not** do is move a block to another chapter. That is re-clustering: it
-invalidates the coverage the skeleton just proved, and it breaks the one assumption a
-chapter narrated on its own is allowed to make.
+Two things are frozen once the skeleton is checked:
+
+- **A block stays in its chapter.** Moving one is re-clustering — a Step E decision, not a
+  narration one — and it breaks the single assumption a chapter narrated on its own is
+  allowed to make: that its own blocks are its own. (Coverage would survive it, since
+  coverage is chapter-agnostic. The reason is the assumption, not the arithmetic.)
+- **Chapter order stays as it is.** `[[ch5]]` resolves by position, so moving a chapter
+  after any prose exists silently repoints every reference to it. Chapter order is also
+  part of the report's argument — "understandable from its predecessors alone" — so a
+  reordering here is a clustering change and belongs in Step E.
 
 Write the skeleton for every chapter, in order — `%intro`, the clusters, `%leftovers`,
 `%closing` — even though the first and last get their prose last.
@@ -680,16 +698,23 @@ alternative — all of that is [Narration](#narration) and [Beats](#beats).
 
 **Narrate the chapters in parallel when there is enough prose to divide and you have an
 agent tool that can fork.** A fork inherits your context, so it already holds the patch
-reads, the caller index and the skeleton — there is nothing to brief it on. Give each fork
-one cluster chapter and have it write only that chapter, to its own file, so nothing races:
+reads, the caller index and the skeleton — there is nothing to brief it on. Tell each fork:
 
-- Tell it **which chapter** and pass **the whole skeleton table**, so it can point at a
-  block in another chapter by label.
-- Tell it that it may reorder within its chapter and may not move a block out of it.
-- Have it write `<work>/ch<n>.tour`, containing that chapter and nothing else.
+- **which chapter** it owns, and that the skeleton table is how it names a block in any
+  other chapter;
+- that it may reorder beats and blocks inside its chapter and may not move one out;
+- to write **only its own chapter** — its `%chapter` line, its `%blast`, its beats — into
+  `<narration>.ch<n>`, beside the narration file. One file each, so nothing races. No
+  `%report`, no other chapter;
+- to **end its report to you with its admissions**: what it could not explain, what looked
+  wrong, what it took from a comment rather than from code, each with its block's label.
+  Step I has to collect those, and without this you would have to re-read every word the
+  forks wrote — which is the cost forking just paid to avoid.
 
-Then concatenate the chapter files in chapter order and carry on to Step H. If there is no
-agent tool, write them yourself in order — the result is the same file either way.
+Then **splice each chapter file over its counterpart in the skeleton** — replacing that
+chapter's block, keeping `%report`, `%intro`, `%leftovers` and `%closing` where they are.
+Do not concatenate the chapter files: they are the middle of a document, not the whole of
+one, and a missing `%report` or `%intro` is only a warning, so a botched merge would build.
 
 **Judge it by the prose, not by the chapter count.** Wall clock is the *longest* chapter,
 not the sum of them, so what makes forking pay is several chapters that each hold real
@@ -711,13 +736,9 @@ The groups are already in the skeleton. Each one needs prose saying **what it is
 topic claimed it** — that is what makes a scroll-past an informed decision. `%fold` them; nobody reads a dependency bump line by line, and the size stays on
 screen.
 
-**Leftovers are the changes pass 2 assigned to no topic** — not the boring ones, and never a
-topic's own follow-ups. What lands here is the genuinely unaffiliated: a `.gitignore` line,
-an editor config, a dependency bump, churn in a subsystem the tour is not about, or a second
-body of work you named in the overview and are not touring.
-
 Saying why a group belongs to no topic is also the check on the classification: if you
-cannot, it probably belongs to one — go back to pass 2.
+cannot, it probably belongs to one — go back to [pass 2](#how-to-find-them), which is where
+what counts as a leftover is defined.
 
 ## Step I: The overview and the wrap-up
 
@@ -764,7 +785,8 @@ knows which half of the branch the report covers.
 
 ## Step J: Hand it over
 
-Build, check that the coverage line says everything is shown and that there are no warnings,
+Build. **A report with an unshown line or a single warning is not finished** — the builder
+writes the file either way, so this gate is yours to hold, not its. Fix, rebuild, and only
 then say three things and stop:
 
 - **What the page has**, in a clause: chapters in the sidebar, a viewed mark per block.
