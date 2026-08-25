@@ -336,6 +336,26 @@ class TestNarrationRejects(unittest.TestCase):
         self.assertRejects('reference the block by its @label',
                            '%beat A', 'See [it](#2.1).', '%hunk src/deep/a.js:10 = x')
 
+    def test_an_at_sign_in_a_path_is_part_of_the_path(self):
+        # Scoped packages and @types directories are everywhere; an @ with no space
+        # before it is never a label.
+        p = patch.parse(
+            'diff --git a/src/@types/a.ts b/src/@types/a.ts\n--- a/src/@types/a.ts\n'
+            '+++ b/src/@types/a.ts\n@@ -1,1 +1,2 @@\n keep\n+added\n'
+            'diff --git a/x/logo@2x.png b/x/logo@2x.png\n'
+            'Binary files a/x/logo@2x.png and b/x/logo@2x.png differ\n')
+        rep, fatal, _ = problems(tour(
+            '%beat A', 'P.', '%hunk src/@types/a.ts:1 @h1 = the types file',
+            '%file x/logo@2x.png @h2 = the retina asset'), p)
+        self.assertEqual(fatal, [])
+        self.assertEqual([c.path for c in rep.components],
+                         ['src/@types/a.ts', 'x/logo@2x.png'])
+        self.assertEqual([c.label for c in rep.components], ['h1', 'h2'])
+
+    def test_a_label_may_not_impersonate_a_chapter(self):
+        self.assertRejects('already means chapter 3',
+                           '%beat A', 'P.', '%hunk src/deep/a.js:10 @ch3 = x')
+
     def test_unknown_directive(self):
         self.assertRejects('unknown directive %beet', '%beet A', 'P.')
 
@@ -449,6 +469,27 @@ class TestNarrationWarns(unittest.TestCase):
              'E.', '%beat B', 'P.', '%closing W', '%beat W', 'P.']), self.p)
         self.assertEqual(fatal, [])
         self.assertTrue(any('introductory paragraph' in w for w in warn), warn)
+
+    def test_two_whole_copies_of_one_hunk_warn(self):
+        _, fatal, warn = problems(tour(
+            '%beat A', 'P.', '%hunk src/deep/a.js:10 = once',
+            '%beat B', 'P.', '%hunk src/deep/a.js:10 = twice'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('overlaps' in w for w in warn), warn)
+
+    def test_a_backticked_code_in_prose_warns(self):
+        _, fatal, warn = problems(tour(
+            '%beat A', 'The guard in `2.1` matters.',
+            '%hunk src/deep/a.js:10 @h1 = x'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('is a position, not a name' in w for w in warn), warn)
+
+    def test_a_bracketed_code_in_prose_warns(self):
+        _, fatal, warn = problems(tour(
+            '%beat A', 'The guard in [[2.1]] matters.',
+            '%hunk src/deep/a.js:10 @h1 = x'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertTrue(any('is a position, not a name' in w for w in warn), warn)
 
     def test_overlapping_fragments_warn(self):
         _, fatal, warn = problems(tour(
@@ -844,11 +885,55 @@ class TestSkeletonCommand(unittest.TestCase):
         self.assertIn('src/deep/b.js:1 @h1 =', self.read())
 
     def test_the_table_pairs_labels_with_the_codes_they_resolve_to(self):
-        self.write('%beat A', '%hunk src/deep/a.js:10 = the swap')
+        self.write('%beat A', '%hunk src/deep/a.js:10 = the swap',
+                   '%hunk src/deep/b.js:1 = the other')
         out = self._run().stdout
-        self.assertIn('[[h1]]', out)
-        self.assertIn('2.1', out)
-        self.assertIn('the swap', out)
+        # One line, so a table that pairs them wrongly cannot pass.
+        row = [l for l in out.split('\n') if 'the swap' in l]
+        self.assertEqual(len(row), 1, out)
+        self.assertRegex(row[0], r'\[\[h1\]\]\s+2\.1\s+the swap\s+src/deep/a\.js:10')
+
+    def test_an_at_sign_in_a_caption_does_not_pass_for_a_label(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = strip the @media hack',
+                   '%hunk src/deep/b.js:1 = the other')
+        r = self._run()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('@h1 = strip the @media hack', self.read())
+
+    def test_it_labels_a_file_directive_and_a_fragment(self):
+        with open(self.patch, 'a') as f:
+            f.write('diff --git a/l.png b/l.png\n'
+                    'Binary files a/l.png and b/l.png differ\n')
+        self.write('%beat A', '%hunk src/deep/a.js:10 #3-3 = a fragment',
+                   '%hunk src/deep/a.js:10 #4-5 = the rest',
+                   '%hunk src/deep/b.js:1 = whole', '%file l.png = the asset')
+        r = self._run()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = self.read()
+        self.assertIn('#3-3 @h1 = a fragment', body)
+        self.assertIn('#4-5 @h2 = the rest', body)
+        self.assertIn('%file l.png @h4 = the asset', body)
+
+    def test_a_directive_inside_a_code_body_is_refused_as_a_missing_end(self):
+        # A deliberate limitation: a snippet cannot contain a line that opens a
+        # directive, because a forgotten %end is the far likelier reading. The
+        # refusal is what keeps the labeller from ever seeing such a line.
+        self.write('%beat A', '%code sh = how to run it',
+                   '%hunk not/a/real.js:1 = a snippet line', '%end',
+                   '%hunk src/deep/a.js:10 = a', '%hunk src/deep/b.js:1 = b')
+        r = self._run()
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('forgotten %end', r.stderr)
+
+    def test_a_code_body_line_that_merely_starts_like_a_directive_is_untouched(self):
+        # `%hunkish` passes validation (the recovery is word-bounded) but would be
+        # labelled by a prefix match, so the labeller tracks %code bodies itself.
+        self.write('%beat A', '%code sh = how to run it', '%hunkish --flag', '%end',
+                   '%hunk src/deep/a.js:10 = a', '%hunk src/deep/b.js:1 = b')
+        r = self._run()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('%hunkish --flag', self.read())
+        self.assertNotIn('%hunkish --flag @', self.read())
 
     def test_missing_prose_is_expected_and_not_an_error(self):
         self.write('%beat A', '%hunk src/deep/a.js:10 = x',
@@ -878,6 +963,156 @@ class TestSkeletonCommand(unittest.TestCase):
         r = self._run()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('Coverage is settled', r.stderr)
+
+
+class _CommandCase(unittest.TestCase):
+    """A patch and a narration file on disk, and the commands run against them."""
+
+    EXTRA = ''
+
+    def setUp(self):
+        import subprocess, tempfile
+        self.root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.dir = tempfile.mkdtemp()
+        self.patch = os.path.join(self.dir, 'p.patch')
+        with open(self.patch, 'w') as f:
+            f.write(SIMPLE +
+                    'diff --git a/src/deep/b.js b/src/deep/b.js\n--- a/src/deep/b.js\n'
+                    '+++ b/src/deep/b.js\n@@ -1,1 +1,3 @@\n keep\n+one\n+two\n'
+                    + self.EXTRA)
+        self.doc = os.path.join(self.dir, 'n.tour')
+        self.out = os.path.join(self.dir, 'r.html')
+        self.sub = subprocess
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def write(self, *lines):
+        with open(self.doc, 'w') as f:
+            f.write(tour(*lines))
+
+    def raw(self, text):
+        with open(self.doc, 'w') as f:
+            f.write(text)
+
+    def build(self, *extra):
+        return self.run_cmd('tour-build.py', self.out, *extra)
+
+    def run_cmd(self, name, *extra):
+        return self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', name),
+             self.patch, self.doc] + list(extra),
+            capture_output=True, text=True)
+
+
+class TestRestCommand(_CommandCase):
+    """bin/tour-rest.py is where Step F sends you when coverage is short."""
+
+    def test_it_reports_nothing_left_when_everything_is_placed(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.run_cmd('tour-rest.py')
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('every file accounted for', r.stdout)
+
+    def test_it_runs_on_a_skeleton_which_has_no_prose_at_all(self):
+        # The stage Step F prescribes. Prose has no bearing on coverage, so a
+        # skeleton must not be refused here.
+        self.raw('\n'.join(['%report T', '%intro O', '%beat B', '%chapter C',
+                            '%blast narrow', '%beat B',
+                            '%hunk src/deep/a.js:10 = a',
+                            '%closing W', '%beat W']))
+        r = self.run_cmd('tour-rest.py')
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertNotIn('does not parse', r.stderr)
+        self.assertIn('%hunk src/deep/b.js:1 = ', r.stdout)
+
+    def test_it_still_refuses_a_narration_that_does_not_parse(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:999 = nope')
+        r = self.run_cmd('tour-rest.py')
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('does not parse', r.stderr)
+
+    def test_it_names_a_whole_hunk_rather_than_a_slice_of_it(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')
+        out = self.run_cmd('tour-rest.py').stdout
+        self.assertIn('%hunk src/deep/b.js:1 = ', out)
+        self.assertNotIn('#', out.split('src/deep/b.js:1')[1].split('\n')[0])
+
+    def test_it_suggests_widening_a_fragment_it_sits_next_to(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 = part',
+                   '%hunk src/deep/b.js:1 = b')
+        out = self.run_cmd('tour-rest.py').stdout
+        self.assertIn('widen that fragment', out)
+        self.assertIn('2.1', out)
+
+    def test_its_output_can_be_pasted_back_without_syntax_errors(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')
+        out = self.run_cmd('tour-rest.py').stdout
+        for line in out.split('\n'):
+            if line.strip() and not line.startswith(('%#', '%hunk', '%file')):
+                self.fail('not pasteable: %r' % line)
+
+
+class TestBuildCommand(_CommandCase):
+
+    def test_a_good_narration_builds_and_prints_its_path(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), os.path.abspath(self.out))
+        self.assertTrue(os.path.exists(self.out))
+        self.assertIn('all 5 changed lines shown', r.stderr)
+
+    def test_a_bad_narration_writes_nothing_and_exits_6(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:999 = nope')
+        r = self.build()
+        self.assertEqual(r.returncode, 6)
+        self.assertFalse(os.path.exists(self.out))
+        self.assertIn('Nothing written', r.stderr)
+
+    def test_it_reports_every_problem_at_once(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:999 = one',
+                   '%hunk src/deep/nope.js:1 = two', '%blast severe')
+        r = self.build()
+        self.assertGreaterEqual(r.stderr.count('error line'), 3, r.stderr)
+
+    def test_it_says_how_much_is_still_unshown(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')
+        r = self.build()
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('3 of 5 changed lines shown', r.stderr)
+        self.assertIn('tour-rest.py', r.stderr)
+
+    def test_a_missing_narration_file_is_an_argument_error(self):
+        r = self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-build.py'),
+             self.patch, os.path.join(self.dir, 'nope.tour'), self.out],
+            capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('no such narration file', r.stderr)
+
+    def test_it_warns_when_a_quote_would_read_the_wrong_checkout(self):
+        # tour-fetch.sh records the commit a diff ends at; a %quote reads the
+        # checkout, so the two disagreeing means the quote is byte-exact from the
+        # wrong version. --root has to be a real checkout for this to be checkable.
+        with open(self.patch + '.head', 'w') as f:
+            f.write('0' * 40 + '\n')
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b',
+                   '%quote SKILL.md:1-2 = the top of the guide')
+        r = self.build('--root', self.root)
+        self.assertIn('%quote reads the checkout', r.stderr)
+
+    def test_it_does_not_warn_when_there_is_no_recorded_head(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b',
+                   '%quote SKILL.md:1-2 = the top of the guide')
+        r = self.build('--root', self.root)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn('%quote reads the checkout', r.stderr)
 
 
 if __name__ == '__main__':
