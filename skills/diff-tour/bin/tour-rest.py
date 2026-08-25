@@ -9,7 +9,8 @@ mode change. A reader cannot be responsible for code they were never shown.
 
 This is a pure function of the patch and the narration — no ledger, nothing to
 go stale, and safe to run as often as you like. It prints directives ready to
-paste, and exits 0 when nothing is left.
+paste, and exits 0 when nothing is left. It works on a skeleton as well as on a
+finished narration, since prose has no bearing on what is covered.
 
 Where a gap sits next to a fragment you already show, the fix is to widen that
 fragment, not to paste an orphan two-line component into Leftovers. It says so
@@ -38,7 +39,9 @@ def main(argv):
     with open(doc, encoding='utf-8') as f:
         rep, problems = narration.parse(f.read())
     problems += narration.resolve(rep, p, '.')
-    fatal = [x for x in problems if x.fatal]
+    # Missing prose does not affect coverage, and this command's whole job is to be
+    # useful on a skeleton — which by definition has none yet.
+    fatal = [x for x in problems if x.fatal and not x.prose_gap]
     if fatal:
         for x in fatal:
             print(x, file=sys.stderr)

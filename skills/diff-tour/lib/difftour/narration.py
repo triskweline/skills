@@ -9,6 +9,9 @@ Everything here reports *every* problem it finds and writes nothing, because a
 narration file for a large change is tens of thousands of tokens and a rewrite
 is the single most expensive mistake available. One edit round should fix it.
 
+`resolve()` mutates the report it is given — it expands `path:all` in place — so
+it runs once per parse. A command that needs a fresh view re-parses.
+
 An unrecognised directive is an error rather than prose. A mistyped %beat would
 otherwise merge two beats silently, and no other check would see it.
 
@@ -43,6 +46,15 @@ class Problem:
 
     def __str__(self):
         return '%s line %d: %s' % ('error' if self.fatal else 'warning', self.line, self.text)
+
+    @property
+    def prose_gap(self):
+        """Missing prose, which is expected while a skeleton is still a skeleton.
+
+        Defined once, because two commands run before the prose exists and both
+        have to agree about which complaints are premature rather than wrong.
+        """
+        return 'no prose' in self.text or 'introductory paragraph' in self.text
 
 
 @dataclass
@@ -108,7 +120,10 @@ class Report:
 
 SPEC_FRAG = re.compile(r'^\s*#\s*(\d+)\s*-\s*(\d+)\s*$')
 RANGE = re.compile(r'^\s*(\d+)\s*-\s*(\d+)\s*$')
-LABEL = re.compile(r'@([A-Za-z][A-Za-z0-9_-]*)')
+# A label is its own whitespace-delimited token. Anchoring it that way is what keeps
+# an @ inside a path — `src/@types/a.ts`, `node_modules/@babel/core`, `logo@2x.png` —
+# from being mistaken for one.
+LABEL = re.compile(r'(?:(?<=\s)|^)@([A-Za-z][A-Za-z0-9_-]*)(?=\s|$)')
 # A reference in prose: [[h17]] on its own, or [prose label](#h17).
 REF = re.compile(r'\[\[([A-Za-z][A-Za-z0-9_-]*)\]\]|\]\(#([A-Za-z][A-Za-z0-9_-]*)\)')
 
@@ -483,15 +498,15 @@ def resolve(rep, patch, root='.'):
         if comp.kind == 'hunk' and comp.hunk is not None:
             groups.setdefault((comp.path, comp.key), []).append(comp)
     for (path, key), comps in groups.items():
-        partial = [c for c in comps if not c.hunk.is_whole(c.lo, c.hi)]
         if len(comps) > 1:
             for c in comps:
                 c.siblings = [o.code for o in comps if o is not c and o.code]
-        # An overlap is legitimate when a chapter deliberately re-shows three lines
-        # another chapter owns, and an off-by-one when it is not. Only the author
-        # knows which, so warn.
-        for i, a in enumerate(partial):
-            for b in partial[i + 1:]:
+        # An overlap is legitimate when a chapter deliberately re-shows lines another
+        # chapter owns, and an off-by-one when it is not. Only the author knows which,
+        # so warn. Two whole copies of one hunk overlap too — splitting is supposed to
+        # have replaced re-showing, so that is worth saying out loud.
+        for i, a in enumerate(comps):
+            for b in comps[i + 1:]:
                 alo, ahi = a.hunk.slice(a.lo, a.hi)
                 blo, bhi = b.hunk.slice(b.lo, b.hi)
                 if alo <= bhi and blo <= ahi:
@@ -509,6 +524,10 @@ def resolve(rep, patch, root='.'):
     for comp in rep.components:
         if not comp.label:
             continue
+        if re.match(r'^ch\d+$', comp.label):
+            err(comp.line, '@%s cannot be a label: [[%s]] already means chapter %s'
+                % (comp.label, comp.label, comp.label[2:]))
+            continue
         if comp.label in seen:
             err(comp.line, 'label @%s is already used on line %d. A label names one '
                            'block, so two blocks cannot share one'
@@ -519,23 +538,33 @@ def resolve(rep, patch, root='.'):
             rep.refs[comp.label] = comp.code
 
     chapters = {'ch%d' % ch.number for ch in rep.chapters}
+    # The title is prose too, and a reference in it would otherwise go unchecked.
+    everywhere = [(rep.title, 1)]
     for ch in rep.chapters:
-        for text, line in _prose_blocks(ch):
-            for bad in re.findall(r'\]\(#(\d+\.\d+)\)', text):
-                err(line, 'a link points at #%s. A code says where a block sits now, '
-                          'so it breaks as soon as anything is reordered — reference '
-                          'the block by its @label instead' % bad)
-            for a, b in REF.findall(text):
-                name = a or b
-                if name in rep.refs or name in chapters:
-                    continue
-                if name in seen:
-                    err(line, '[[%s]] names a block that has no code — a %%quote or '
-                              '%%code illustrates, so nothing can point at it' % name)
-                else:
-                    err(line, '[[%s]] names nothing. Labels come from '
-                              'bin/tour-skeleton.py; run it and use the names it '
-                              'prints' % name)
+        everywhere.extend(_prose_blocks(ch))
+
+    for text, line in everywhere:
+        for bad in re.findall(r'\]\(#(\d+\.\d+)\)', text):
+            err(line, 'a link points at #%s. A code says where a block sits now, so it '
+                      'breaks as soon as anything is reordered — reference the block by '
+                      'its @label instead' % bad)
+        # `2.9` and [[2.9]] are the same mistake in different clothes: the first
+        # renders as a number that quietly stops matching, the second as literal
+        # brackets.
+        for a, b in re.findall(r'`(\d+\.\d+)`|\[\[(\d+\.\d+)\]\]', text):
+            err(line, 'prose says %s, which is a position, not a name. It stops matching '
+                      'the moment anything is reordered — write [[<label>]] and let the '
+                      'builder print the code' % (a or b), fatal=False)
+        for a, b in REF.findall(text):
+            name = a or b
+            if name in rep.refs or name in chapters:
+                continue
+            if name in seen:
+                err(line, '[[%s]] names a block that has no code — a %%quote or %%code '
+                          'illustrates, so nothing can point at it' % name)
+            else:
+                err(line, '[[%s]] names nothing. Labels come from bin/tour-skeleton.py; '
+                          'run it and use the names it prints' % name)
     return problems
 
 

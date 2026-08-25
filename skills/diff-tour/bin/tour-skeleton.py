@@ -30,6 +30,7 @@ invalidates the coverage this command just proved.
 import os
 import re
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
@@ -64,10 +65,14 @@ def _label_in_place(path, existing):
             in_code = True
             out.append(line)
             continue
+        # Look for an existing label in the spec only. A caption is prose and may
+        # well contain an @ — "strip the @media hack" — and reading that as a label
+        # would leave the block permanently unlabelable, silently.
+        spec = line.split('=', 1)[0]
         # `path:all` is one directive standing for many blocks, so no single label
         # can name them; those blocks are shown, not discussed individually.
-        if (line.startswith(LABELLED) and not narration.LABEL.search(line)
-                and not re.search(r':all\b', line.split('=')[0])):
+        if (line.startswith(LABELLED) and not narration.LABEL.search(spec)
+                and not re.search(r':all\b', spec)):
             # Before the caption if there is one, at the end otherwise.
             if '=' in line:
                 spec, cap = line.split('=', 1)
@@ -78,8 +83,18 @@ def _label_in_place(path, existing):
         out.append(line)
 
     if n:
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(out))
+        # Replace atomically. Opening the narration for writing in place would
+        # truncate someone's half-written report if anything failed mid-write.
+        d = os.path.dirname(os.path.abspath(path))
+        fd, tmp = tempfile.mkstemp(dir=d, prefix='.tour-skeleton-')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(out))
+            os.replace(tmp, path)
+        except BaseException:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
     return n
 
 
@@ -108,11 +123,6 @@ def main(argv):
 
     p = patchmod.load(src)
 
-    # A skeleton has no prose yet, so those two complaints are expected here — they
-    # are precisely what the next stage is for.
-    def is_prose_gap(x):
-        return 'no prose' in x.text or 'introductory paragraph' in x.text
-
     def check():
         with open(doc, encoding='utf-8') as f:
             rep, problems = narration.parse(f.read())
@@ -122,9 +132,11 @@ def main(argv):
     # Validate before touching the file. This is the only command that writes to
     # someone else's narration, so it does not write to a broken one.
     rep, problems = check()
-    fatal = [x for x in problems if x.fatal and not is_prose_gap(x)]
+    # A skeleton has no prose yet, so those complaints are premature here — they are
+    # precisely what the next stage is for.
+    fatal = [x for x in problems if x.fatal and not x.prose_gap]
     for x in sorted(problems, key=lambda x: (not x.fatal, x.line)):
-        if not is_prose_gap(x):
+        if not x.prose_gap:
             print(x, file=sys.stderr)
     if fatal:
         print('\ntour-skeleton: %d problem%s in %s. Nothing written; fix these '
@@ -132,10 +144,25 @@ def main(argv):
               file=sys.stderr)
         return 6
 
-    added = _label_in_place(doc, [c.label for c in rep.components if c.label])
+    try:
+        added = _label_in_place(doc, [c.label for c in rep.components if c.label])
+    except OSError as e:
+        print('tour-skeleton: cannot write %s: %s' % (doc, e.strerror or e),
+              file=sys.stderr)
+        return 2
     if added:
         rep, problems = check()
-    pending = [x for x in problems if is_prose_gap(x)]
+        # Labelling is additive, so this cannot fail — but printing a table built
+        # from a report we just broke would be worse than saying so.
+        broke = [x for x in problems if x.fatal and not x.prose_gap]
+        if broke:
+            for x in broke:
+                print(x, file=sys.stderr)
+            print('\ntour-skeleton: labelling %s produced the problems above, which '
+                  'is a bug in this script. The labels are written; the report is not '
+                  'buildable until they are fixed.' % doc, file=sys.stderr)
+            return 6
+    pending = [x for x in problems if x.prose_gap]
 
     if added:
         print('tour-skeleton: labelled %d block%s in %s'
