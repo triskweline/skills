@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Build the report: a narration file plus a patch -> one self-contained .html.
 
-  tour-build.py <out.html> <patch> <narration> [--root DIR] [--source LABEL]
+  tour-build.py <patch> <narration> <out.html> [--root DIR] [--source LABEL]
+
+Every command in bin/ takes <patch> <narration> in that order, so they can be
+retyped from one another without thinking about it.
 
     --root    the checkout %quote reads context from (default: the current directory)
     --source  what the metadata line calls the diff (default: the patch's name)
@@ -64,7 +67,7 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
 
-    out, src, doc = args
+    src, doc, out = args
     for path, what in ((src, 'patch file'), (doc, 'narration file')):
         if not os.path.isfile(path):
             print('tour-build: no such %s: %s' % (what, path), file=sys.stderr)
