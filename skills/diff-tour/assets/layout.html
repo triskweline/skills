@@ -1,0 +1,229 @@
+<!doctype html>
+<!--
+  diff tour — the page shell, and the design fixture.
+
+  This file opens standalone in a browser: it links report.css and report.js by
+  relative path and script-tags the vendored Prism, and the block inside the
+  REPORT markers below holds one of every component with sample content. So the
+  design can be worked on without generating a tour: edit report.css, reload
+  this file.
+
+  tour-build.py assembles a report from exactly this file. It replaces what sits
+  between each pair of markers — PRISM, CSS, JS, REPORT, NAVTITLE, NAVMETA — with
+  inline content, so a report is a single file with no external requests.
+
+  THE COMPONENTS, and which narration directive produces each:
+
+    h1 + p.meta                    %report            the report's title and the diff's shape
+    section.chapter > h2           %intro %chapter %leftovers %closing
+    div.intro                      prose under %chapter
+    aside.blast                    %blast narrow|moderate|wide
+    section.beat                   %beat              two columns: .say left, .show right
+      div.say  > h3 + prose        the beat's subtitle and narration
+      div.show > figure.hunk       %hunk              a diff, or a fragment of one
+                 figure.hunk.file  %file              a change with no diff body
+                 figure.hunk.quote %quote %code       code that is not part of the change
+                 div.note          prose between two components: the lead for the
+                                   component *below* it
+    section.beat.solo              a beat with no components — full width
+
+  A hunk's id IS its code, so [the guard](#3.2) in narration just works.
+
+  Every control — the chapter nav, the viewed toggles, the theme switch — is
+  injected by report.js, so the report's own markup stays minimal.
+
+  Two independent states on a block: .seen is the reader's viewed mark and only
+  adds a green edge, .collapsed hides the diff and is what clicking a caption
+  toggles. A %fold-ed beat starts .collapsed but not .seen.
+
+  Diff highlighting is Prism's diff-highlight plugin: it groups a run of
+  same-sign lines into one .token.inserted / .token.deleted span and highlights
+  the run with the file's real grammar. Language colour is those inner tokens;
+  the green/red tint is a background on the run itself. Known limitation: a token
+  that opens above the hunk, or spans a context run and a changed run, colours
+  wrong — every diff highlighter has this, and it is not a build bug.
+-->
+<html lang="en" data-uid="fixture">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>diff tour</title>
+<!--PRISM-->
+<script>window.Prism = { manual: true };</script>
+<script src="../vendor/prism/prism-core.min.js"></script>
+<script src="../vendor/prism/prism-clike.min.js"></script>
+<script src="../vendor/prism/prism-javascript.min.js"></script>
+<script src="../vendor/prism/prism-ruby.min.js"></script>
+<script src="../vendor/prism/prism-diff.min.js"></script>
+<script src="../vendor/prism/prism-diff-highlight.min.js"></script>
+<!--/PRISM-->
+<!--CSS-->
+<link rel="stylesheet" href="report.css">
+<!--/CSS-->
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-head">
+    <b><!--NAVTITLE-->Layout fixture<!--/NAVTITLE--></b>
+    <span><!--NAVMETA-->sample content · not a real tour<!--/NAVMETA--></span>
+  </div>
+  <ol></ol>
+  <div class="nav-foot">
+    <span class="tally">0/0</span>
+    <span class="bar"><i></i></span>
+    <button class="plain reset" type="button" title="clear every viewed mark">reset</button>
+    <button class="plain theme" type="button" title="light or dark">◐</button>
+  </div>
+</nav>
+
+<main>
+<!--REPORT-->
+<h1>Thread the tenant id through the cache key</h1>
+<p class="meta"><b>12</b> files · <b>+204</b> <b>−58</b> · <b>31</b> hunks · <code>main..HEAD</code> · 2026-08-25</p>
+
+<section class="chapter" id="ch1">
+  <h2><span class="n">1</span><span class="t">Overview</span></h2>
+  <section class="beat solo">
+    <div class="say">
+      <h3 id="b1-1">What it does</h3>
+      <p>Cache entries were keyed by resource id alone, so two tenants asking for
+      resource <code>7</code> shared one entry. This threads the tenant through every
+      key and adds a backfill for the entries already written.</p>
+      <ul>
+        <li>a bullet, to show list spacing</li>
+        <li>a second one that is long enough to wrap onto a second line so the
+        leading looks right</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="chapter" id="ch2">
+  <h2><span class="n">2</span><span class="t">One accessor per field question</span></h2>
+  <div class="intro"><p>The chapter's introductory paragraph. It says what this cluster
+  is about before any code appears, and it is the only prose in the chapter that is not
+  attached to a beat.</p></div>
+  <aside class="blast moderate" data-level="moderate"><p>Reaches <code>src/reader.js</code>
+  and the two call sites in <code>billing/</code> that the caller index found.</p></aside>
+
+  <section class="beat">
+    <div class="say">
+      <h3 id="b2-1">Why absence and not falseness</h3>
+      <p>The old code read <code>form.disabled</code> directly, which conflated
+      &ldquo;not set&rdquo; with &ldquo;set to false&rdquo;. <strong>3.1</strong> splits
+      the two, and the <code>??</code> is doing precise work: an explicit
+      <code>false</code> has to survive.</p>
+      <p>A second paragraph, so the sticky column has something to be sticky about.</p>
+    </div>
+    <div class="show">
+      <figure class="hunk" id="2.1" data-code="2.1" data-key="deadbeef">
+        <figcaption>
+          <span class="code">2.1</span>
+          <span class="cap">the four readers and writers</span>
+          <span class="where"><a href="#2.1">src/unpoly/form.js:233</a></span>
+          <span class="tools"><span class="tag changed">changed</span></span>
+        </figcaption>
+        <pre class="diff"><code class="language-diff-javascript diff-highlight"> function fields(root) {
+-  let fields = up.form.fields(root)
+-  return u.map(fields, 'name')
++  /* Absence and falseness are different answers here, and the
++     old reader could not tell them apart. */
++  let fields = readFields(root)
++  return u.map(fields, (f) =&gt; f.name ?? null)
+ }
+</code></pre>
+      </figure>
+      <div class="note"><p>An annotation: prose between two components lands here, above
+      the block it introduces, so a paragraph between two blocks can never be read as
+      belonging to the wrong one.</p></div>
+      <figure class="hunk" id="2.2" data-code="2.2" data-key="cafebabe">
+        <figcaption>
+          <span class="code">2.2</span>
+          <span class="cap">the disable path, same swap</span>
+          <span class="where"><a href="#2.2">src/unpoly/form.js:410</a> · lines 12–26 of 31 · also <a href="#4.1">4.1</a></span>
+          <span class="tools"><span class="tag changed">changed</span></span>
+        </figcaption>
+        <pre class="diff"><code class="language-diff-javascript diff-highlight">   let submitter = form.querySelector('[type=submit]')
+-  if (submitter.disabled) return
++  if (readDisabled(submitter)) return
+</code></pre>
+      </figure>
+    </div>
+  </section>
+
+  <section class="beat">
+    <div class="say">
+      <h3 id="b2-2">A shorter beat</h3>
+      <p>One sentence, one hunk, and a caption that carries the framing.</p>
+    </div>
+    <div class="show">
+      <figure class="hunk quote" id="q2-1" data-key="0badf00d">
+        <figcaption>
+          <span class="code">quote</span>
+          <span class="cap">what fromForm does with it</span>
+          <span class="where">src/unpoly/params.rb:512–516</span>
+          <span class="tools"></span>
+        </figcaption>
+        <pre class="code"><code class="language-ruby">def self.from_form(form, **options)
+  form = Element.get(form)
+  new(form.serialize)
+end</code></pre>
+      </figure>
+      <figure class="hunk file" id="2.3" data-code="2.3" data-key="feedface">
+        <figcaption>
+          <span class="code">2.3</span>
+          <span class="cap">the retina asset, replaced wholesale</span>
+          <span class="where">assets/logo@2x.png</span>
+          <span class="tools"><span class="tag changed">changed</span></span>
+        </figcaption>
+        <div class="binary">A binary file. Nothing a diff of bytes could tell a reviewer,
+        so it is named and not shown.</div>
+      </figure>
+    </div>
+  </section>
+</section>
+
+<section class="chapter" id="ch3">
+  <h2><span class="n">3</span><span class="t">Leftovers</span></h2>
+  <section class="beat">
+    <div class="say">
+      <h3 id="b3-1">Editor and ignore files</h3>
+      <p>No topic in the change would lose these if it were reverted.</p>
+    </div>
+    <div class="show">
+      <figure class="hunk seen" id="3.1" data-code="3.1" data-key="12345678">
+        <figcaption>
+          <span class="code">3.1</span>
+          <span class="cap">a build artefact directory</span>
+          <span class="where"><a href="#3.1">.gitignore:17</a></span>
+          <span class="tools"><span class="tag changed">changed</span></span>
+        </figcaption>
+        <pre class="diff"><code class="language-diff-none diff-highlight"> node_modules/
++tmp/build/
+</code></pre>
+      </figure>
+    </div>
+  </section>
+</section>
+
+<section class="chapter" id="ch4">
+  <h2><span class="n">4</span><span class="t">Wrap-up</span></h2>
+  <section class="beat solo">
+    <div class="say">
+      <h3 id="b4-1">What you still need to check yourself</h3>
+      <ul>
+        <li><code>2.2</code> — I could not find what reads the value this writes.</li>
+        <li>I did not run the tests.</li>
+      </ul>
+    </div>
+  </section>
+</section>
+<!--/REPORT-->
+</main>
+
+<!--JS-->
+<script src="report.js" defer></script>
+<!--/JS-->
+</body>
+</html>

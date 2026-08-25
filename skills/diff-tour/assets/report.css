@@ -1,0 +1,427 @@
+/* diff tour — report styles.
+   Edit this file and reload assets/layout.html in a browser; the builder inlines it
+   verbatim, so what the fixture shows is what a report looks like. */
+
+:root {
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --bg: #fbfbfc;
+  --panel: #fff;
+  --panel-2: #f5f6f8;
+  --ink: #1b1f24;
+  --ink-2: #3d4650;
+  --muted: #6a737d;
+  --faint: #99a1ab;
+  --line: #e2e5e9;
+  --line-2: #eceef1;
+  --accent: #2f6feb;
+  --accent-soft: #e8f0fe;
+
+  --add-bg: #e6ffec;
+  --add-edge: #6fd28a;
+  --del-bg: #ffebe9;
+  --del-edge: #f0a7a1;
+
+  --tok-comment: #8a919b;
+  --tok-keyword: #a626a4;
+  --tok-string: #3f8f3f;
+  --tok-function: #3b6fd4;
+  --tok-number: #96660a;
+  --tok-class: #a2740c;
+  --tok-operator: #4b5560;
+  --tok-punct: #6a737d;
+  --tok-variable: #c25b3a;
+
+  --blast-narrow: #2da44e;
+  --blast-moderate: #bf8700;
+  --blast-wide: #cf222e;
+
+  --seen: #2c2;
+
+  --nav-w: 268px;
+}
+
+/* The light palette above is the base. Dark is applied when the system asks for it
+   and no explicit choice was made, and again when the toggle asks for it, so the
+   toggle wins in both directions. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --bg: #0f1116;
+  --panel: #16191f;
+  --panel-2: #1b1f26;
+  --ink: #e6e9ef;
+  --ink-2: #c3c9d3;
+  --muted: #8b949e;
+  --faint: #6e7681;
+  --line: #262b33;
+  --line-2: #1e232a;
+  --accent: #6ea8ff;
+  --accent-soft: #16233a;
+
+  --add-bg: rgba(63, 185, 80, .13);
+  --add-edge: rgba(63, 185, 80, .55);
+  --del-bg: rgba(248, 81, 73, .12);
+  --del-edge: rgba(248, 81, 73, .5);
+
+  --tok-comment: #7d8590;
+  --tok-keyword: #c678dd;
+  --tok-string: #98c379;
+  --tok-function: #61afef;
+  --tok-number: #d19a66;
+  --tok-class: #e5c07b;
+  --tok-operator: #56b6c2;
+  --tok-punct: #9aa3ae;
+  --tok-variable: #e0836c;
+
+  --blast-narrow: #3fb950;
+  --blast-moderate: #d29922;
+  --blast-wide: #f85149;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1116;
+  --panel: #16191f;
+  --panel-2: #1b1f26;
+  --ink: #e6e9ef;
+  --ink-2: #c3c9d3;
+  --muted: #8b949e;
+  --faint: #6e7681;
+  --line: #262b33;
+  --line-2: #1e232a;
+  --accent: #6ea8ff;
+  --accent-soft: #16233a;
+
+  --add-bg: rgba(63, 185, 80, .13);
+  --add-edge: rgba(63, 185, 80, .55);
+  --del-bg: rgba(248, 81, 73, .12);
+  --del-edge: rgba(248, 81, 73, .5);
+
+  --tok-comment: #7d8590;
+  --tok-keyword: #c678dd;
+  --tok-string: #98c379;
+  --tok-function: #61afef;
+  --tok-number: #d19a66;
+  --tok-class: #e5c07b;
+  --tok-operator: #56b6c2;
+  --tok-punct: #9aa3ae;
+  --tok-variable: #e0836c;
+
+  --blast-narrow: #3fb950;
+  --blast-moderate: #d29922;
+  --blast-wide: #f85149;
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: light; }
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16.5px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------------------------------------------------------------- navigation */
+
+#nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--nav-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  font-size: 13.5px;
+  z-index: 10;
+}
+#nav .nav-head {
+  padding: 1.35rem 1.25rem 1rem;
+  border-bottom: 1px solid var(--line-2);
+}
+#nav .nav-head b { display: block; font-size: 13px; letter-spacing: .02em; }
+#nav .nav-head span { display: block; margin-top: .2rem; color: var(--faint); font-size: 11.5px; }
+#nav ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: .6rem 0; }
+#nav li a {
+  display: flex; align-items: baseline; gap: .55rem;
+  padding: .38rem 1.25rem .38rem 1rem;
+  color: var(--ink-2); text-decoration: none;
+  border-left: 3px solid transparent;
+  line-height: 1.4;
+}
+#nav li a:hover { background: var(--panel-2); color: var(--ink); }
+#nav li a .n { color: var(--faint); font: 500 11.5px/1.5 var(--mono); min-width: 1.1em; }
+#nav li a .t { flex: 1; }
+#nav li a .c { color: var(--faint); font: 11px/1.5 var(--mono); white-space: nowrap; }
+#nav li a[aria-current] {
+  color: var(--accent); background: var(--accent-soft);
+  border-left-color: var(--accent); font-weight: 550;
+}
+#nav li a[aria-current] .n { color: var(--accent); }
+#nav li a.done .c { color: var(--seen); }
+#nav .nav-foot {
+  border-top: 1px solid var(--line-2);
+  padding: .7rem .85rem;
+  display: flex; gap: .4rem; align-items: center;
+}
+#nav .nav-foot .bar {
+  flex: 1; height: 4px; border-radius: 2px; background: var(--line);
+  overflow: hidden;
+}
+#nav .nav-foot .bar i { display: block; height: 100%; width: 0; background: var(--seen); }
+
+button.plain {
+  font: inherit; font-size: 11.5px;
+  color: var(--muted); background: none;
+  border: 1px solid var(--line); border-radius: 5px;
+  padding: .2rem .45rem; cursor: pointer;
+}
+button.plain:hover { color: var(--ink); border-color: var(--muted); }
+
+/* ---------------------------------------------------------------------- page */
+
+main {
+  margin-left: var(--nav-w);
+  max-width: 1560px;
+  padding: 3.2rem 3rem 8rem;
+}
+
+h1 {
+  font-size: 2.05rem; line-height: 1.2; font-weight: 650;
+  letter-spacing: -.015em; margin: 0;
+}
+p.meta {
+  margin: .7rem 0 0; color: var(--muted);
+  font: 12.5px/1.6 var(--mono);
+}
+p.meta b { color: var(--ink-2); font-weight: 500; }
+
+section.chapter { margin-top: 4.5rem; scroll-margin-top: 1.5rem; }
+section.chapter h2 {
+  display: flex; align-items: baseline; gap: .75rem;
+  font-size: 1.5rem; line-height: 1.25; font-weight: 600;
+  letter-spacing: -.01em;
+  margin: 0 0 1.4rem;
+  padding-bottom: .7rem;
+  border-bottom: 2px solid var(--line);
+}
+section.chapter h2 .n {
+  font: 600 1.1rem/1 var(--mono); color: var(--faint);
+}
+
+.intro, .blast { max-width: 900px; }
+.intro > :first-child, .blast > :first-child { margin-top: 0; }
+.intro > :last-child, .blast > :last-child { margin-bottom: 0; }
+
+.blast {
+  margin: 1.3rem 0 0;
+  padding: .85rem 1.1rem;
+  border-left: 3px solid var(--edge, var(--muted));
+  background: var(--panel-2);
+  border-radius: 0 6px 6px 0;
+  font-size: 15.5px;
+}
+.blast::before {
+  content: attr(data-level) " blast radius";
+  display: block;
+  font: 600 10.5px/1 var(--sans);
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--edge, var(--muted));
+  margin-bottom: .45rem;
+}
+.blast.narrow { --edge: var(--blast-narrow); }
+.blast.moderate { --edge: var(--blast-moderate); }
+.blast.wide { --edge: var(--blast-wide); }
+
+/* --------------------------------------------------------------------- beats */
+
+.beat {
+  display: grid;
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+  gap: 2.6rem;
+  margin-top: 2.9rem;
+  /* Full width, across both columns, so a beat reads as one unit and the next one
+     as another. Not drawn where the chapter heading's own rule is already there. */
+  border-top: 1px solid var(--line-2);
+  padding-top: 2.9rem;
+}
+section.chapter > h2 + .beat { border-top: none; padding-top: 0; }
+.beat > .say { position: sticky; top: 1.5rem; align-self: start; }
+.beat > .show { min-width: 0; }
+.beat.solo { display: block; }
+.beat.solo > .say { position: static; }
+
+.beat h3 {
+  font-size: 1.12rem; line-height: 1.35; font-weight: 600;
+  margin: 0 0 .55rem; scroll-margin-top: 1.5rem;
+}
+.beat h3 + p { margin-top: 0; }
+
+.say, .note { font-size: 15.5px; color: var(--ink-2); max-width: 900px; }
+/* The lead paragraph of the block under it, so it sits close to what it introduces. */
+.note { margin: 0 0 .6rem; }
+.note > :first-child { margin-top: 0; }
+.note > :last-child { margin-bottom: 0; }
+figure.hunk + .note { margin-top: 1.4rem; }
+.say p, .note p { margin: .8rem 0; }
+.say ul, .say ol, .note ul, .note ol { margin: .8rem 0; padding-left: 1.35rem; }
+.say li, .note li { margin: .3rem 0; }
+.say strong, .note strong { color: var(--ink); font-weight: 600; }
+.say a, .note a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+/* A cross-reference to a block: reads as its code, behaves as a link. */
+a.ref { text-decoration: none; }
+a.ref > code {
+  color: var(--accent); background: var(--accent-soft);
+  border-color: transparent;
+}
+a.ref:hover > code { text-decoration: underline; }
+.say code, .note code, .meta code, .cap code {
+  font: 0.86em/1.4 var(--mono);
+  background: var(--panel-2); border: 1px solid var(--line-2);
+  border-radius: 4px; padding: .1em .3em;
+}
+
+/* --------------------------------------------------------------------- hunks */
+
+figure.hunk {
+  margin: 0 0 1.4rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+figure.hunk:last-child { margin-bottom: 0; }
+
+figure.hunk > figcaption {
+  padding: .6rem .85rem;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--panel-2);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "code cap  tools" "code path tools";
+  gap: 0 .6rem;
+  align-items: baseline;
+}
+figcaption .code {
+  grid-area: code; align-self: center;
+  font: 600 12px/1 var(--mono);
+  color: var(--accent); background: var(--accent-soft);
+  border-radius: 5px; padding: .32rem .42rem;
+}
+figcaption .cap {
+  grid-area: cap;
+  font-size: 14.5px; font-weight: 550; color: var(--ink);
+}
+figcaption .where {
+  grid-area: path;
+  font: 11.5px/1.5 var(--mono); color: var(--muted);
+  overflow-wrap: anywhere;
+}
+figcaption .where a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--faint); }
+figcaption .where a:hover { color: var(--accent); }
+figcaption .sz { color: var(--faint); }
+figcaption .tools {
+  grid-area: tools; align-self: center;
+  display: flex; align-items: center; gap: .4rem;
+}
+
+.tag {
+  font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
+  padding: .3rem .42rem; border-radius: 4px;
+  color: var(--muted); background: var(--bg); border: 1px solid var(--line);
+}
+.tag.added { color: var(--blast-narrow); border-color: var(--add-edge); }
+.tag.deleted { color: var(--blast-wide); border-color: var(--del-edge); }
+.tag.moved, .tag.copied { color: var(--accent); border-color: var(--accent); }
+
+button.seen {
+  font: 11.5px/1 var(--sans); color: var(--muted);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+  padding: .34rem .5rem; cursor: pointer; white-space: nowrap;
+}
+button.seen:hover { color: var(--ink); border-color: var(--muted); }
+/* Viewed is a mark, not a disappearance: the diff stays exactly as readable and the
+   block wears a green edge. Collapsing is the separate, deliberate act of clicking a
+   caption. */
+figure.hunk.seen { border-color: var(--seen); }
+figure.hunk.seen > figcaption { border-bottom-color: var(--seen); }
+figure.hunk.collapsed > pre,
+figure.hunk.collapsed > .binary,
+figure.hunk.collapsed > .gap { display: none; }
+figure.hunk > figcaption { cursor: pointer; }
+figure.hunk > figcaption:hover .cap { color: var(--accent); }
+figure.hunk > figcaption:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Following a #3.2 link on a 200-block page has to say where you landed. The ring
+   only, not the border, so a block that is both viewed and the current target still
+   shows its green edge. */
+figure.hunk:target { box-shadow: 0 0 0 3px var(--accent); }
+figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
+
+figure.hunk .binary {
+  padding: .8rem .85rem; color: var(--muted); font-size: 14.5px;
+}
+
+/* ------------------------------------------------------------------ the diff */
+
+pre.diff, pre.code {
+  margin: 0;
+  overflow-x: auto;
+  padding: .5rem 0;
+  font: 12.5px/1.58 var(--mono);
+  tab-size: 2;
+}
+pre.diff > code, pre.code > code {
+  display: inline-block;
+  min-width: 100%;
+  font: inherit;
+}
+/* Prism's diff plugin groups a run of same-sign lines into one token span, so a
+   run tinted as a block is exactly one tint per line, and a block comment across
+   four added lines still tokenises as one comment. */
+pre.diff > code > .token.inserted:not(.prefix),
+pre.diff > code > .token.deleted:not(.prefix),
+pre.diff > code > .token.unchanged:not(.prefix) {
+  display: block;
+  padding: 0 .85rem;
+  border-left: 3px solid transparent;
+}
+pre.diff > code > .token.inserted:not(.prefix) {
+  background: var(--add-bg); border-left-color: var(--add-edge);
+}
+pre.diff > code > .token.deleted:not(.prefix) {
+  background: var(--del-bg); border-left-color: var(--del-edge);
+}
+pre.diff > code > .token.coord { display: block; padding: 0 .85rem; color: var(--faint); }
+pre.code > code { padding: 0 .85rem; }
+/* Before Prism runs, and if it never does, the raw diff still reads correctly. */
+pre.diff > code:not(.highlighted) { padding: 0 .85rem; white-space: pre; }
+.token.prefix { color: var(--faint); user-select: none; }
+
+.gap {
+  display: block; padding: .1rem .85rem;
+  color: var(--faint); font: 12.5px/1.58 var(--mono);
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+}
+
+/* Prism tokens. One palette, ours, so a report looks the same everywhere. */
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--tok-comment); font-style: italic; }
+.token.punctuation { color: var(--tok-punct); }
+.token.operator, .token.entity, .token.url { color: var(--tok-operator); }
+.token.keyword, .token.atrule, .token.important, .token.rule { color: var(--tok-keyword); }
+.token.boolean, .token.number, .token.constant, .token.symbol { color: var(--tok-number); }
+.token.string, .token.char, .token.attr-value, .token.regex { color: var(--tok-string); }
+.token.function, .token.method, .token.tag { color: var(--tok-function); }
+.token.class-name, .token.builtin, .token.namespace, .token.selector, .token.property, .token.attr-name { color: var(--tok-class); }
+.token.variable, .token.interpolation, .token.parameter { color: var(--tok-variable); }
+.token.bold { font-weight: 600; }
+.token.italic { font-style: italic; }
+/* Never let a grammar's own inserted/deleted token repaint a diff row. */
+pre.code > code .token.inserted { color: var(--blast-narrow); }
+pre.code > code .token.deleted { color: var(--blast-wide); }

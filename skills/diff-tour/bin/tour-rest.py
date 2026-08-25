@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""What the narration does not show yet.
+
+  tour-rest.py <patch> <narration>
+
+Every added or changed line has to appear somewhere in the report, and so does
+every change a diff can carry without a body: a binary file, a pure rename, a
+mode change. A reader cannot be responsible for code they were never shown.
+
+This is a pure function of the patch and the narration — no ledger, nothing to
+go stale, and safe to run as often as you like. It prints directives ready to
+paste, and exits 0 when nothing is left.
+
+Where a gap sits next to a fragment you already show, the fix is to widen that
+fragment, not to paste an orphan two-line component into Leftovers. It says so
+per gap.
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
+from difftour import narration, patch as patchmod   # noqa: E402
+
+
+def main(argv):
+    if len(argv) != 2:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    src, doc = argv
+    for path, what in ((src, 'patch file'), (doc, 'narration file')):
+        if not os.path.isfile(path):
+            print('tour-rest: no such %s: %s' % (what, path), file=sys.stderr)
+            return 2
+
+    p = patchmod.load(src)
+    with open(doc, encoding='utf-8') as f:
+        rep, problems = narration.parse(f.read())
+    problems += narration.resolve(rep, p, '.')
+    fatal = [x for x in problems if x.fatal]
+    if fatal:
+        for x in fatal:
+            print(x, file=sys.stderr)
+        print('\ntour-rest: the narration does not parse, so coverage cannot be '
+              'trusted. Fix the above first.', file=sys.stderr)
+        return 6
+
+    shown, total, gaps = narration.coverage(rep, p)
+    if not gaps:
+        print('tour-rest: all %d changed lines shown, and every file accounted for.'
+              % total)
+        return 0
+
+    # %# is the narration file's comment directive, so this block can be pasted whole.
+    print('%%# %d of %d changed lines shown. %d place%s left:\n'
+          % (shown, total, len(gaps), '' if len(gaps) == 1 else 's'))
+    by_file = {}
+    for path, key, lo, hi, near in gaps:
+        by_file.setdefault(path, []).append((key, lo, hi, near))
+    for path in sorted(by_file):
+        print('%# ' + path)
+        for key, lo, hi, near in by_file[path]:
+            if key is None:
+                print('%%file %s = ' % path)
+                continue
+            hunk = p.hunk(path, key)
+            # If the run covers every changed line of the hunk, name the hunk rather
+            # than a slice of it: a fragment selector here would be noise, and the
+            # point of this output is that it can be pasted.
+            whole = hunk is not None and not [o for o in hunk.changed_offsets
+                                              if not lo <= o <= hi]
+            if near:
+                print('%%#   %d-%d sits next to %s — widen that fragment rather than '
+                      'showing these lines on their own.' % (lo, hi, near))
+            if whole:
+                print('%%hunk %s:%s = ' % (path, key))
+            else:
+                print('%%hunk %s:%s #%d-%d = ' % (path, key, lo, hi))
+        print()
+    print('%# Captions are required. A leftover group also says why no topic claimed it.')
+    return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

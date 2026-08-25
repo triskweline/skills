@@ -12,13 +12,33 @@
 #       https://…/merge_requests/<n> a GitLab merge request
 #       <path>.patch  <path>.diff    an existing patch file, copied through
 #
-# Everything downstream — tour-hunks.sh, tour-set.sh, tour-ansi.sh — consumes the patch
-# file, never the target. That is what makes a tour immune to the branch moving under
-# it, and it is why every source type only has to be understood here.
+# Everything downstream — tour-hunks.py, tour-build.py, tour-rest.py — consumes the
+# patch file, never the target. That is what makes a tour immune to the branch moving
+# under it, and it is why every source type only has to be understood here.
+#
+# It also writes <out-file>.head with the commit the diff ends at, when there is one.
+# tour-build.py compares that against the checkout it reads %quote context from, so a
+# tour of someone else's PR cannot quote the wrong version of a file.
 #
 # If a host has an MCP server for GitHub or GitLab, fetching the diff through that and
 # saving it to <out-file> is equivalent — this script is a convenience, not a gate.
 set -euo pipefail
+
+# A patch's *shape* must not depend on whoever ran this. diff.noprefix drops the a/ b/
+# that every path parser downstream relies on, diff.context changes how much unchanged
+# text a hunk carries, and an external diff driver replaces the output wholesale. Pin
+# the first two by config; the third has no config that unsets it, so a "diff" argument
+# gets --no-ext-diff. (Setting diff.external to the empty string makes git try to *run*
+# it, which is a different and much louder failure.)
+git() {
+  local args=() a
+  for a in "$@"; do
+    args+=("$a")
+    [ "$a" = diff ] && args+=(--no-ext-diff)
+  done
+  command git -c diff.noprefix=false -c diff.mnemonicPrefix=false -c diff.context=3 \
+              "${args[@]}"
+}
 
 [ $# -ge 1 ] || { echo "usage: tour-fetch.sh <out-file> [<target>]" >&2; exit 2; }
 OUT="$1"; TARGET="${2:-}"
@@ -93,5 +113,16 @@ case "$TARGET" in
 esac
 
 [ -s "$OUT" ] || { echo "tour-fetch: the diff is empty" >&2; exit 3; }
+
+# The commit the diff ends at, for the %quote check in tour-build.py. A patch file from
+# elsewhere has no such commit here, and then there is nothing to compare.
+rm -f "$OUT.head"
+case "$TARGET" in
+  *.patch|*.diff|*://*) ;;
+  *..*) git -C "$REPO" rev-parse --verify --quiet "${TARGET##*..}^{commit}" > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
+  "") git -C "$REPO" rev-parse --verify --quiet 'HEAD^{commit}' > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
+  *) git -C "$REPO" rev-parse --verify --quiet "$TARGET^{commit}" > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
+esac
+
 echo "$OUT"
 echo "tour-fetch: $(grep -c '^@@' "$OUT") hunks, $(grep -c '^diff --git' "$OUT") files -> $OUT" >&2
