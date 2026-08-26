@@ -132,11 +132,12 @@ def main(argv):
     # Validate before touching the file. This is the only command that writes to
     # someone else's narration, so it does not write to a broken one.
     rep, problems = check()
-    # A skeleton has no prose yet, so those complaints are premature here — they are
-    # precisely what the next stage is for.
-    fatal = [x for x in problems if x.fatal and not x.prose_gap]
+    # A skeleton has no prose and no references yet. Both absences are premature
+    # complaints here, not problems — and the reference one has to be deferred or
+    # this command deadlocks against itself.
+    fatal = [x for x in problems if x.fatal and not x.premature]
     for x in sorted(problems, key=lambda x: (not x.fatal, x.line)):
-        if not x.prose_gap:
+        if not x.premature:
             print(x, file=sys.stderr)
     if fatal:
         print('\ntour-skeleton: %d problem%s in %s. Nothing written; fix these '
@@ -154,7 +155,7 @@ def main(argv):
         rep, problems = check()
         # Labelling is additive, so this cannot fail — but printing a table built
         # from a report we just broke would be worse than saying so.
-        broke = [x for x in problems if x.fatal and not x.prose_gap]
+        broke = [x for x in problems if x.fatal and not x.premature]
         if broke:
             for x in broke:
                 print(x, file=sys.stderr)
@@ -162,7 +163,8 @@ def main(argv):
                   'is a bug in this script. The labels are written; the report is not '
                   'buildable until they are fixed.' % doc, file=sys.stderr)
             return 6
-    pending = [x for x in problems if x.prose_gap]
+    pending = [x for x in problems if x.premature]
+    dangling = [x for x in pending if 'names nothing' in x.text]
 
     if added:
         print('tour-skeleton: labelled %d block%s in %s'
@@ -198,9 +200,15 @@ def main(argv):
     else:
         print('tour-skeleton: all %d changed lines placed. Coverage is settled; '
               'narrate.' % total, file=sys.stderr)
-    if pending:
+    prose_pending = [x for x in pending if x not in dangling]
+    if prose_pending:
         print('tour-skeleton: %d place%s still need prose, which is the next step.'
-              % (len(pending), '' if len(pending) == 1 else 's'), file=sys.stderr)
+              % (len(prose_pending), '' if len(prose_pending) == 1 else 's'),
+              file=sys.stderr)
+    if dangling:
+        print('tour-skeleton: %d reference%s does not resolve yet. Use the labels in '
+              'the table above; the build will refuse any that still do not.'
+              % (len(dangling), '' if len(dangling) == 1 else 's'), file=sys.stderr)
     return 1 if gaps else 0
 
 

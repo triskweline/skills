@@ -573,6 +573,11 @@ both to the reader, so a wrong guess is visible. If the host has a GitHub or Git
 server, fetching the diff through that and saving it to the same path is equivalent; the
 script is a convenience, not a gate.
 
+**Run it from inside the repository you are touring.** It resolves a git target against the
+current directory unless `TOUR_REPO` says otherwise, so running it from somewhere else
+silently produces a patch of the wrong repository — or an empty one, if that directory is
+not a checkout at all.
+
 Two traps it avoids, which matter if you ever bypass it: the no-target base is the branch
 point, never `@{upstream}` (on a pushed branch that covers only unpushed commits); and a
 branch target needs three dots, or you diff the working tree against it.
@@ -692,7 +697,14 @@ hunks carry two ideas, and which lines go where.
 ## Step F: The skeleton
 
 **Write the whole report's structure before any of its prose.** Every chapter, every beat
-subtitle, every block with its caption — and not one sentence of narration. Then:
+subtitle, every block with its caption — and not one sentence of narration.
+
+**No `[[label]]` references either**, because the labels do not exist yet: this is the
+command that mints them. Writing one here is harmless — the skeleton defers the check and
+tells you — but you cannot know the right name until the table is printed. References are
+Step G's business.
+
+Then:
 
     bin/tour-skeleton.py <patch> <narration> [--root DIR]
 
@@ -729,9 +741,14 @@ Write the skeleton for every chapter, in order — `%intro`, the clusters, `%lef
 
 ## Step G: Narrate the cluster chapters
 
-Fill in the prose: the chapter's introductory paragraph, its `%blast` evidence, and each
-beat's narration. How much to say, where to say nothing, what to admit, when to name an
-alternative — all of that is [Narration](#narration) and [Beats](#beats).
+Fill in the prose: the chapter's introductory paragraph, its `%blast` evidence, each beat's
+narration, and each block's own indented prose. How much to say, where to say nothing, what
+to admit, when to name an alternative — all of that is [Narration](#narration) and
+[Beats](#beats).
+
+**This is where references get written**, using the labels Step F printed. That ordering is
+not a preference: a label is minted by the skeleton, so prose is the first stage that can
+name one.
 
 **Narrate the chapters in parallel when there is enough prose to divide and you have an
 agent tool that can fork.** A fork inherits your context, so it already holds the patch

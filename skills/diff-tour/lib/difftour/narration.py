@@ -48,13 +48,21 @@ class Problem:
         return '%s line %d: %s' % ('error' if self.fatal else 'warning', self.line, self.text)
 
     @property
-    def prose_gap(self):
-        """Missing prose, which is expected while a skeleton is still a skeleton.
+    def premature(self):
+        """True when this cannot be judged until the narration is finished.
 
-        Defined once, because two commands run before the prose exists and both
-        have to agree about which complaints are premature rather than wrong.
+        Two commands run before the prose exists — tour-skeleton and tour-rest —
+        and both have to agree about which complaints are early rather than wrong.
+        Two kinds qualify:
+
+        - missing prose, which the next stage is for;
+        - a reference to a label, because tour-skeleton is what mints the labels.
+          Without this, writing [[h1]] into a skeleton deadlocks: the command that
+          would create the label refuses to run because the label is missing.
         """
-        return 'no prose' in self.text or 'introductory paragraph' in self.text
+        return ('no prose' in self.text
+                or 'introductory paragraph' in self.text
+                or 'names nothing' in self.text)
 
 
 @dataclass

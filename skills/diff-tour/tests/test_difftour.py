@@ -909,6 +909,10 @@ class TestSkeletonCommand(unittest.TestCase):
         with open(self.doc, 'w') as f:
             f.write(tour(*lines))
 
+    def raw(self, text):
+        with open(self.doc, 'w') as f:
+            f.write(text)
+
     def read(self):
         with open(self.doc) as f:
             return f.read()
@@ -1004,6 +1008,28 @@ class TestSkeletonCommand(unittest.TestCase):
         self.assertNotIn('no prose', r.stderr)
         self.assertIn('still need prose', r.stderr)
 
+    def test_a_reference_does_not_deadlock_the_command_that_mints_labels(self):
+        # Writing [[h1]] before the labels exist must not stop the command that
+        # creates them, or there is no way out.
+        self.raw('\n'.join(['%report T', '%intro O', '%beat B', '%chapter C',
+                            '%blast narrow', '%beat B', 'See [[h1]] for the swap.',
+                            '%hunk src/deep/a.js:10 = a',
+                            '%hunk src/deep/b.js:1 = b',
+                            '%closing W', '%beat W']))
+        r = self._run()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('@h1 = a', self.read())
+
+    def test_it_says_when_a_reference_still_will_not_resolve(self):
+        self.raw('\n'.join(['%report T', '%intro O', '%beat B', '%chapter C',
+                            '%blast narrow', '%beat B', 'See [[hzz]].',
+                            '%hunk src/deep/a.js:10 = a',
+                            '%hunk src/deep/b.js:1 = b',
+                            '%closing W', '%beat W']))
+        r = self._run()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('reference does not resolve yet', r.stderr)
+
     def test_a_structural_error_stops_it_and_writes_nothing(self):
         self.write('%beat A', '%hunk src/deep/a.js:999 = nope')
         before = self.read()
@@ -1076,6 +1102,16 @@ class TestRestCommand(_CommandCase):
         r = self.run_cmd('tour-rest.py')
         self.assertEqual(r.returncode, 0)
         self.assertIn('every file accounted for', r.stdout)
+
+    def test_it_defers_an_unresolved_reference_like_it_defers_prose(self):
+        self.raw('\n'.join(['%report T', '%intro O', '%beat B', '%chapter C',
+                            '%blast narrow', '%beat B', 'See [[h1]].',
+                            '%hunk src/deep/a.js:10 = a',
+                            '%hunk src/deep/b.js:1 = b',
+                            '%closing W', '%beat W']))
+        r = self.run_cmd('tour-rest.py')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn('does not parse', r.stderr)
 
     def test_it_runs_on_a_skeleton_which_has_no_prose_at_all(self):
         # The stage Step F prescribes. Prose has no bearing on coverage, so a
@@ -1155,23 +1191,36 @@ class TestBuildCommand(_CommandCase):
         self.assertEqual(r.returncode, 2)
         self.assertIn('no such narration file', r.stderr)
 
+    def _checkout(self):
+        """A throwaway git repo to point --root at, so this test does not depend on
+        where the skill itself happens to live."""
+        d = os.path.join(self.dir, 'co')
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, 'quoted.js'), 'w') as f:
+            f.write('line one\nline two\nline three\n')
+        for args in (['init', '-q'], ['add', 'quoted.js'],
+                     ['-c', 'user.email=t@t', '-c', 'user.name=t',
+                      'commit', '-qm', 'x']):
+            self.sub.run(['git', '-C', d] + args, capture_output=True)
+        return d
+
     def test_it_warns_when_a_quote_would_read_the_wrong_checkout(self):
         # tour-fetch.sh records the commit a diff ends at; a %quote reads the
         # checkout, so the two disagreeing means the quote is byte-exact from the
-        # wrong version. --root has to be a real checkout for this to be checkable.
+        # wrong version of the file.
         with open(self.patch + '.head', 'w') as f:
             f.write('0' * 40 + '\n')
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
                    '%hunk src/deep/b.js:1 = b',
-                   '%quote SKILL.md:1-2 = the top of the guide')
-        r = self.build('--root', self.root)
+                   '%quote quoted.js:1-2 = the top of the file')
+        r = self.build('--root', self._checkout())
         self.assertIn('%quote reads the checkout', r.stderr)
 
     def test_it_does_not_warn_when_there_is_no_recorded_head(self):
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
                    '%hunk src/deep/b.js:1 = b',
-                   '%quote SKILL.md:1-2 = the top of the guide')
-        r = self.build('--root', self.root)
+                   '%quote quoted.js:1-2 = the top of the file')
+        r = self.build('--root', self._checkout())
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn('%quote reads the checkout', r.stderr)
 

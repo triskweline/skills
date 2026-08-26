@@ -41,7 +41,7 @@ def main(argv):
     problems += narration.resolve(rep, p, '.')
     # Missing prose does not affect coverage, and this command's whole job is to be
     # useful on a skeleton — which by definition has none yet.
-    fatal = [x for x in problems if x.fatal and not x.prose_gap]
+    fatal = [x for x in problems if x.fatal and not x.premature]
     if fatal:
         for x in fatal:
             print(x, file=sys.stderr)

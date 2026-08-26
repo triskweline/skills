@@ -99,6 +99,11 @@ from position at build time.
 `[[h4]]` renders as a link showing whatever code `h4` resolves to; `[label](#h4)` is the
 same link with your own prose as its text. `[[ch5]]` and `[label](#ch5)` point at a chapter.
 
+**The order matters and only goes one way:** structure and captions → `tour-skeleton.py`
+mints the labels and prints them → prose that references them. A skeleton written with
+references in it cannot know the right names; the skeleton stage defers those and says so,
+and the build refuses any that still do not resolve.
+
 **Never write a code.** A link to `#2.9` is refused, because it breaks the moment anything
 is reordered. Only `path:all` cannot be labelled — one directive standing for many blocks
 cannot have one name.
