@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 HUNK_RE = re.compile(r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$')
 
 
-def _unprefix(p):
+def _unprefix(p, prefixed=True):
     """Strip git's a/ b/ from a --- or +++ path, and unquote it."""
     if p.startswith('"') and p.endswith('"'):
         # git octal-escapes the *bytes* of a non-ASCII path, so decode the escapes
@@ -29,6 +29,8 @@ def _unprefix(p):
     if p == '/dev/null':
         return None
     p = p.split('\t', 1)[0]
+    if not prefixed:
+        return p
     return p.split('/', 1)[1] if '/' in p else p
 
 
@@ -94,6 +96,7 @@ class FileChange:
     old_path: str | None = None
     kind: str = 'changed'               # added | deleted | moved | copied | changed
     binary: bool = False
+    mode: tuple | None = None           # (old, new) when the file mode changed
     hunks: list[Hunk] = field(default_factory=list)
 
     @property
@@ -144,9 +147,11 @@ class Patch:
 def parse(text):
     """A unified diff -> Patch. Tolerant: anything unrecognised is skipped."""
     files, cur, hunk = [], None, None
+    prefixed = True
     old_n = new_n = 0
     minus = plus = None
     renamed_from = None
+    old_mode = None
 
     def close_file():
         nonlocal cur, minus, plus, renamed_from
@@ -182,7 +187,7 @@ def parse(text):
             else:
                 files.append(cur)
         cur = None
-        minus = plus = renamed_from = None
+        minus = plus = renamed_from = old_mode = None
 
     for raw in text.split('\n'):
         # Any "diff " line starts a new section, not just "diff --git": a combined
@@ -194,7 +199,12 @@ def parse(text):
             if not raw.startswith('diff --git '):
                 continue
             m = re.match(r'^diff --git (.+?) (.+)$', raw)
-            b = _unprefix(m.group(2)) if m else None
+            # `git diff --no-prefix` (or diff.noprefix) names the same path twice with
+            # no a/ b/. Stripping a segment then silently renames every file —
+            # `src/a.js` becomes `a.js` — and every caption in the report is wrong.
+            prefixed = not (m and m.group(1) == m.group(2)
+                            and not m.group(1).startswith(('a/', 'i/', 'c/', 'w/')))
+            b = _unprefix(m.group(2), prefixed) if m else None
             cur = FileChange(path=b or '?')
             continue
         if cur is None:
@@ -202,13 +212,20 @@ def parse(text):
 
         if hunk is None or not raw or raw[0] not in ' +-\\':
             if raw.startswith('--- '):
-                minus = _unprefix(raw[4:]); continue
+                minus = _unprefix(raw[4:], prefixed); continue
             if raw.startswith('+++ '):
-                plus = _unprefix(raw[4:]); continue
+                plus = _unprefix(raw[4:], prefixed); continue
             if raw.startswith('new file mode'):
                 cur.kind = 'added'; continue
             if raw.startswith('deleted file mode'):
                 cur.kind = 'deleted'; continue
+            # A mode change can ride along with content hunks — a script gaining +x
+            # while being edited. Without this it is invisible in the report and
+            # uncounted by coverage, which is a hole in "nothing is hidden".
+            if raw.startswith('old mode'):
+                old_mode = raw.split()[-1]; continue
+            if raw.startswith('new mode'):
+                cur.mode = (old_mode, raw.split()[-1]); continue
             if raw.startswith('rename from'):
                 cur.kind = 'moved'
                 renamed_from = raw[len('rename from'):].strip() or None
