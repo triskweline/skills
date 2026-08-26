@@ -434,6 +434,90 @@ class TestEmphasisFlanking(unittest.TestCase):
         self.assertNotIn('<em>', body)
 
 
+class TestProseShapesRealNarrationsUse(unittest.TestCase):
+    """Shapes taken from two real tours that no hand-written test had covered.
+
+    Counted across a 159-block and a 70-block narration: 73 chapter references, 21
+    emphasis spans broken by a hard wrap, 104 code spans broken by one, and angle
+    brackets, ampersands and unicode throughout. Prose is rendered per *paragraph*,
+    which is why a marker can span a line at all — and why nothing here would survive
+    a refactor that rendered line by line.
+    """
+
+    P = patch.parse(DISTINCT)
+
+    def render(self, *body):
+        rep, problems = narration.parse('\n'.join(
+            ['%report T', '%intro Overview', '%beat What', 'Prose.',
+             '%chapter First', 'Premise.', '%blast narrow', 'E.', '%beat A']
+            + list(body)
+            + ['%hunk z.js:1 = one', '%hunk z.js:41 = two',
+               '%closing Wrap-up', '%beat Check', 'Prose.']))
+        problems += narration.resolve(rep, self.P, '.')
+        html, _ = render.page(rep, self.P.stats(), 's', '2026-01-01', 'u')
+        body_html = html[html.index('<!--REPORT-->'):html.index('<!--/REPORT-->')]
+        return body_html, [str(x) for x in problems if x.fatal]
+
+    def test_a_chapter_reference_links_to_the_chapter(self):
+        html, fatal = self.render('The policy is stated in [[ch2]].')
+        self.assertEqual([], fatal)
+        self.assertIn('href="#ch2"', html)
+        self.assertIn('chapter 2', html)
+
+    def test_a_reference_to_a_chapter_that_does_not_exist_is_refused(self):
+        html, fatal = self.render('See [[ch99]] for the rest.')
+        self.assertTrue(any('ch99' in f for f in fatal), fatal)
+
+    def test_emphasis_survives_a_hard_wrap(self):
+        """A paragraph is joined before it is rendered, so a marker may span lines."""
+        html, fatal = self.render('So for a card that *already has',
+                                  'prose*, ticking the box does nothing.')
+        self.assertEqual([], fatal)
+        self.assertIn('<em>already has prose</em>', html)
+
+    def test_a_code_span_survives_a_hard_wrap(self):
+        """It stays one span, and the line break inside it becomes a space.
+
+        That is what CommonMark does with a line ending in a code span, and it is
+        checked here so the behaviour is chosen rather than accidental: an agent that
+        wraps mid-token gets `a= b`, not two broken spans. Across 126 code spans in two
+        real narrations it never happened — agents wrap between tokens — so the join is
+        left alone. Wrap outside the backticks if the exact bytes matter.
+        """
+        html, fatal = self.render('It matches `card_prose(target,',
+                                  'options)` on every call.')
+        self.assertEqual([], fatal)
+        self.assertIn('<code>card_prose(target, options)</code>', html)
+        self.assertEqual(1, html.count('<code>card_prose'))
+
+    def test_bold_survives_a_hard_wrap(self):
+        html, fatal = self.render('**This is the place in the diff I would',
+                                  'look at hardest.** A disabled field is not submitted.')
+        self.assertEqual([], fatal)
+        self.assertIn('<strong>This is the place in the diff I would look at '
+                      'hardest.</strong>', html)
+
+    def test_markup_characters_in_prose_are_escaped_not_rendered(self):
+        html, fatal = self.render('A disabled `<textarea>` is not submitted at all, '
+                                  'and A & B differ.')
+        self.assertEqual([], fatal)
+        self.assertIn('&lt;textarea&gt;', html)
+        self.assertIn('A &amp; B', html)
+        self.assertNotIn('<textarea>', html)
+
+    def test_a_code_span_may_contain_quotes(self):
+        html, fatal = self.render("""It matches `'.depends-on-external-link'` today.""")
+        self.assertEqual([], fatal)
+        self.assertIn("<code>'.depends-on-external-link'</code>", html)
+
+    def test_unicode_passes_through_unharmed(self):
+        html, fatal = self.render('Chapters 2–6 are the upgrade — "Card link" '
+                                  'stays… as it was.')
+        self.assertEqual([], fatal)
+        for ch in ('–', '—', '…'):
+            self.assertIn(ch, html)
+
+
 class TestNarrationStructure(unittest.TestCase):
     def setUp(self):
         self.p = patch.parse(SIMPLE)
