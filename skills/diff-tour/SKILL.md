@@ -437,9 +437,11 @@ problem, not the prose.
 Carry these forward to the wrap-up chapter, which is the only place they are collected.
 Give each one its block's label, so the reader can go back to it.
 
-**Gloss a term once, at first use, in a clause.** Where a project's own concept is
-unavoidable, define it in passing and move on. If the tour needs a glossary, the narration
-is failing.
+**Gloss a term once per chapter, at first use, in a clause.** Where a project's own concept
+is unavoidable, define it in passing and move on. Once *per chapter*, not once per report,
+because chapters are written concurrently and none of them can know what another already
+explained — and because a reader who starts at chapter 5 gets the same help as one who
+started at chapter 1. If the tour needs a glossary, the narration is failing.
 
 **Say "change", not "hunk".** A hunk is a unit of `git diff` output and the word means
 nothing to most readers; this skill uses it throughout because it is talking to you, and the
@@ -587,9 +589,15 @@ reading the diff, clustering it and building the skeleton all happen before a wo
 narration exists. Without that the reader is watching an idle session and wondering whether
 it is stuck.
 
-**If the commit log shows the range holds more than one body of work, name them here** — and
-then tour all of them. Don't ask which they want. They cannot answer yet; they have not seen
-the diff, and you have only just seen it yourself.
+**If the commit log shows the range holds more than one body of work, name them** — and then
+tour all of them. Don't ask which they want. They cannot answer yet; they have not seen the
+diff, and you have only just seen it yourself.
+
+That means **doing [Step C](#step-c-acquire-the-diff) first when you cannot yet say what the
+range holds.** Fetching the diff and reading the log takes seconds, and it is what turns
+"this will take a few minutes" into "this range holds two things, an auth refactor and a
+lockfile bump; I am touring both" — which is the difference between a warning and an
+orientation. Announce once, after you know.
 
 If the reader *volunteers* that they only want part of a range, don't tour the rest as
 leftovers — **narrow the patch**: `bin/tour-fetch.sh <out> <target> -- <paths>`. Then the
@@ -932,7 +940,14 @@ Then put them back:
     bin/tour-splice.py <narration> <narration>.ch2 <narration>.ch5 …
 
 It matches each file on its chapter *title*, so a fork cannot land its work on the wrong
-chapter and the order you pass them in does not matter.
+chapter and the order you pass them in does not matter. It validates every file before it
+places any, and refuses one that dropped a label — so a fork's format error stops here
+rather than surfacing at your build, in prose you never read.
+
+**Then check coverage again.** A splice replaces a chapter's directives with whatever the
+fork wrote, so the coverage Step F proved is not proof any more: a fork that dropped a block
+while rewriting its beats has silently unshown those lines. `bin/tour-rest.py <patch>
+<narration>` answers in one call, and it is the only moment where the fix is still cheap.
 
 **Then, and only then, act on any misfit a fork reported.** Once every fork has returned, the
 freeze that stopped them moving blocks has nothing left to protect — no sibling is reading
@@ -1015,6 +1030,13 @@ overview is still chapter 1 in the document.
     %beat The chapters
     One half-line per chapter, saying what it is about. The sidebar gives their
     names; this gives their purpose, which is how a reader decides what to read.
+
+**Rank those pointers by `%blast` and then by evidence.** Each came from a fork that saw
+one chapter; you have seen none of them at depth, so you cannot compare their severity by
+reading them. What you do hold is every chapter's blast level — the one judgement made on
+comparable terms across the whole tour — so a `wide` chapter's pointer outranks a `narrow`
+one's, and within a level the pointer whose fork brought back a call site or a failing case
+outranks the one that brought back a feeling.
 
 There is no Scope section: the metadata line under the title already gives the file count,
 the line counts and the block count, and two places stating the same numbers is how they
