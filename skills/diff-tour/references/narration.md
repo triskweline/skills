@@ -174,6 +174,10 @@ files — no ledger, nothing to go stale.
 
 ## What the page does
 
+- A header naming the repository folder and its branch, the diff's shape, and one fixed
+  paragraph saying what the document is. The builder writes all of it — you write only the
+  `%report` title.
+
 - Chapters in a fixed sidebar, with a per-chapter viewed count and the current chapter
   marked.
 - A viewed mark per block — a green edge on the block, kept in `localStorage` under a key

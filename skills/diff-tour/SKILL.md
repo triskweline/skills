@@ -110,8 +110,10 @@ Length is managed by structure, never by hiding: chapters divide the report, the
 lets the reader skip, a dull chapter is cheap to scroll past, and `%fold` starts a block
 collapsed with its size still on screen. What you may compress is the *narration* — one
 caption for twenty similar hunks is fine, because the reader can see the twenty hunks it
-describes. A topic's own hunks stay in that topic's chapter however dull they are — see
-[pass 2](#how-to-find-them) for what does belong in Leftovers.
+describes. A topic's own hunks stay in that topic's chapter however dull they are, and
+substantial work gets a chapter however unrelated it is — see
+[Step H](#step-h-narrate-the-leftovers) for the two narrow kinds of thing Leftovers is
+for.
 
 A reader who scrolls past a chapter has decided. Don't remark on it.
 
@@ -297,30 +299,33 @@ only because of it, and judging by the prose sends all twelve to Leftovers.
   topic that *documents* the change if the diff has one, and is otherwise its own small
   cluster. Place it early either way and read it as stated intent: it is usually the best
   account of the author's own understanding in the whole diff.
-- A change no topic claims is a **leftover** — no idea in the diff would lose it if
-  reverted. That, and only that, is what Leftovers holds: not the boring changes, and never
-  a topic's own follow-ups. What lands there is the genuinely unaffiliated — a `.gitignore`
-  line, an editor config, a dependency bump, churn in a subsystem the tour is not about, or
-  a second body of work you named in the overview and are not touring.
-- A change with no good home may instead be **evidence of a topic you missed**. Check that
-  first. Adding a topic is cheap; misfiling real work as fallout is not.
+- A change that no topic claims is **evidence of a topic you have not named yet** — check
+  that before anything else. Adding a topic is cheap; filing real work as fallout is not,
+  and it is the most common way a tour fails a reader.
+- **Being unrelated to the change you came for does not make something a leftover.** A
+  range often holds a second substantial body of work — a documentation overhaul, a test
+  runner rewritten, a subsystem migrated. That is a topic. It gets a chapter, or several,
+  named for what it is. Relegating it to a caption in Leftovers tells the reader that a
+  thousand reviewed-by-nobody lines were beneath mention, which is not true and not yours
+  to decide.
+- Only then, what is genuinely left over: see [Step H](#step-h-narrate-the-leftovers).
 
 **Pass 3 — settle.** Merge two topics whose changes turn out to depend on each other in both
 directions; mutual dependency means one cluster, while a one-directional dependency is only
 an ordering constraint. Split a topic whose changes serve two ideas. Pull a new abstraction
 and its first consumer together unless the abstraction stands alone.
 
-Then count. **3–7 clusters** is the healthy range, but treat it as a smell check rather than
-a budget to hit. If the count is far outside it, in this order:
+Then count. **3–7 clusters** is the healthy range *per body of work*, and a smell check
+rather than a budget to hit.
 
-1. **Check whether the range holds more than one unrelated body of work.** Two bodies of six
-   clusters each look like twelve clusters and are not. Say so in the overview, tour the one
-   the reader asked about, and offer the other as its own tour. Both bodies still get
-   leftover groups, so coverage stays honest.
-2. **Otherwise re-run pass 1.** Too many usually means one topic was found repeatedly under
-   different names; too few usually means the change is smaller than its line count
-   suggests. The defect is in the topic list, not in the boundaries — never redraw a boundary
-   by hand to hit a number.
+**A range holding three bodies of work legitimately has more chapters than one holding a
+single body.** Don't compress the extra bodies to hit a number. Group each body's chapters
+together, in the order the overview announces them, so a reader can read one body and stop.
+
+If the count is far outside the range for a single body, re-run pass 1. Too many usually
+means one topic was found repeatedly under different names; too few usually means the change
+is smaller than its line count suggests. The defect is in the topic list, not in the
+boundaries — never redraw a boundary by hand to hit a number.
 
 A range full of leftovers means the same thing: too few topics, or a second body of work you
 have not named.
@@ -544,6 +549,11 @@ Needs git and python3 (3.10+). Nothing to install.
 
 **Before any of the slow work**, in two or three lines: that the report is a single HTML
 file you will hand over a path to at the end, and **that this will take a few minutes**.
+
+**If the commit log shows the range holds more than one body of work, say so here and ask
+which they want.** Touring all of them is the default and the honest one, but it costs
+proportionally, and a reader who only came for the bug fix should get to say so before you
+spend the time rather than after.
 Reading the diff, tracing callers, clustering and building the skeleton all happen before a
 word of narration exists. Without this the reader is watching an idle session and wondering
 whether it is stuck.
@@ -669,13 +679,20 @@ returns more text than reading the whole repository — measured on one 52-file 
 in git's `@@` header, once per hunk, free — `tour-hunks.py` prints it. Reading the file to
 rediscover what the diff told you is where unbounded cost comes from.
 
-**Don't read at depth what is going to Leftovers** — but do read what you caption. A second
-body of work, or churn in a subsystem the report is not about, needs *identifying*, not
-comprehending, and it ends up as one `path:all` group per file with one caption naming what
-the group is. That is where the saving lives.
+**Read at depth everything that will get a chapter — including a body of work you did not
+come for.** Under [Step H](#step-h-narrate-the-leftovers), substantial work gets chapters
+however unrelated it is, and a chapter cannot be written from a file listing. On a range with
+three bodies of work this is the largest cost in the tour, and it is the cost of the report
+being worth reading; if the reader only wants one body, that is a decision for them to make
+in Step B, not one to make silently by skimping here.
 
-What this rule does **not** license is a per-hunk caption written from a path. Leftovers is
-the tail of the report, the model is tired, and the hunks look boring — which is exactly the
+What you may still read by path alone is what Step H's first kind covers: mechanical churn.
+A lockfile refresh, generated output, a vendored directory, pure formatting — one
+`path:all` group per file, one caption naming the kind. That is where the saving lives, and
+it is bounded.
+
+What none of this licenses is a per-hunk caption written from a path. Leftovers is the tail
+of the report, the model is tired, and the hunks look boring — which is exactly the
 combination that produces "the version" over a line that is not a version. If you are
 writing a caption for one specific hunk, read that hunk. A leftover hunk is usually two to
 seven lines; the list tells you which, and those are free.
@@ -786,13 +803,26 @@ are worth writing properly.
 
 ## Step H: Narrate the leftovers
 
-The groups are already in the skeleton. Each one needs prose saying **what it is and why no
-topic claimed it** — that is what makes a scroll-past an informed decision. `%fold` them; nobody reads a dependency bump line by line, and the size stays on
-screen.
+**Leftovers is a small chapter for small things.** Exactly two kinds of change belong here:
 
-Saying why a group belongs to no topic is also the check on the classification: if you
-cannot, it probably belongs to one — go back to [pass 2](#how-to-find-them), which is where
-what counts as a leftover is defined.
+1. **Changes too slight to be worth a chapter** — a `.gitignore` line, an editor config, a
+   version bump, a lint rule. Each is real and each is shown, but a chapter apiece would
+   bury the report's structure under its own furniture.
+2. **Changes you genuinely cannot assign** — you read them, and they belong to no idea you
+   can name. Say that plainly; it is a finding, not an embarrassment.
+
+**It is not the bin for everything unrelated to the change you came for.** A second
+substantial body of work is a topic and gets its own chapters — see
+[pass 2](#how-to-find-them). The test is significance, not connection: a thousand lines of
+rewritten documentation is not a leftover just because it has nothing to do with the bug fix
+you were asked about.
+
+If this chapter is long, or if it holds anything you would describe as *a body of work*,
+that is the signal that pass 1 missed a topic. Go back rather than writing a bigger caption.
+
+Each group needs prose saying **what it is and which of the two kinds it is** — that is what
+makes a scroll-past an informed decision. `%fold` them; nobody reads a dependency bump line
+by line, and the size stays on screen.
 
 ## Step I: The overview and the wrap-up
 
@@ -818,8 +848,9 @@ overview is still chapter 1 in the document.
 
 There is no Scope section: the metadata line under the title already gives the file count,
 the line counts and the block count, and two places stating the same numbers is how they
-come to disagree. Do say here if a whole subsystem sits only in Leftovers, so the reader
-knows which half of the branch the report covers.
+come to disagree. Do say here **if the range holds more than one body of work**, name each
+one, and say which chapters cover which — that is orientation a reader cannot get anywhere
+else, and it is what lets them read one body and stop.
 
     %closing Wrap-up
 
