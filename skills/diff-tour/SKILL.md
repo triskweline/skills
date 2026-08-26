@@ -574,7 +574,10 @@ Needs git and python3 (3.10+). Nothing to install.
 ## Step B: Say it will take a while, then go quiet
 
 **Before any of the slow work**, in two or three lines: that the report is a single HTML
-file you will hand over a path to at the end, and **that this will take a few minutes**.
+file you will hand over a path to at the end, and **that this will take a few minutes** —
+reading the diff, clustering it and building the skeleton all happen before a word of
+narration exists. Without that the reader is watching an idle session and wondering whether
+it is stuck.
 
 **If the commit log shows the range holds more than one body of work, name them here** — and
 then tour all of them. Don't ask which they want. They cannot answer yet; they have not seen
@@ -591,9 +594,6 @@ by the second one. A question waiting in a terminal nobody is watching is not a 
 it is a stall that costs them the whole run — they come back to a prompt and no report.
 Where the diff leaves you a real choice, make it, tour everything, and say what you chose in
 the overview where they will actually read it.
-Reading the diff, tracing callers, clustering and building the skeleton all happen before a
-word of narration exists. Without this the reader is watching an idle session and wondering
-whether it is stuck.
 
 Then work. Don't narrate the intermediate steps — there is nothing useful to report between
 here and the finished report, and progress chatter is worse than the silence you warned
@@ -604,16 +604,9 @@ about.
 **`bin/tour-fetch.sh <out-file> [<target>]` resolves any target to a patch file.** It
 autodetects the form, so you rarely need to know which git command applies:
 
-| Target | What you get |
-|---|---|
-| *omitted* | this branch since its branch point, plus uncommitted work |
-| `a..b`, `a...b` | that range |
-| `abc123`, `HEAD`, `HEAD~2` | that one commit |
-| `some-branch` | the branch against the default branch (three dots) |
-| `807` | PR or MR number in this repo — tries `gh`, then `glab` |
-| `https://…/pull/807` | that GitHub pull request |
-| `https://…/-/merge_requests/42` | that GitLab merge request |
-| `/tmp/x.patch` | copied through unchanged |
+Every target form it accepts, and what each resolves to, is in
+[references/commands.md](references/commands.md) — a git range, one commit, a branch, a PR or
+MR number or URL, a patch file, or nothing at all for your working diff.
 
 It prints the hunk and file count, and the base it chose when there was no target — say
 both to the reader, so a wrong guess is visible. If the host has a GitHub or GitLab MCP
@@ -809,10 +802,11 @@ A block is a unit: its directive, and any prose indented under it. Move the unit
 
 Two things are frozen once the skeleton is checked:
 
-- **A block stays in its chapter.** Moving one is re-clustering — a Step E decision, not a
-  narration one — and it breaks the single assumption a chapter narrated on its own is
-  allowed to make: that its own blocks are its own. (Coverage would survive it, since
-  coverage is chapter-agnostic. The reason is the assumption, not the arithmetic.)
+- **A block stays in its chapter while chapters are being written.** Moving one breaks the
+  single assumption a chapter narrated on its own is allowed to make: that its own blocks
+  are its own. (Coverage would survive it, since coverage is chapter-agnostic. The reason is
+  the assumption, not the arithmetic.) That is why a fork *reports* a misfit rather than
+  fixing it — and why the orchestrator may fix it once every fork has returned, in Step G.
 - **Chapter order stays as it is.** `[[ch5]]` resolves by position, so moving a chapter
   after any prose exists silently repoints every reference to it. Chapter order is also
   part of the report's argument — "understandable from its predecessors alone" — so a
@@ -894,17 +888,32 @@ nothing to brief it on. Tell each fork:
 - to write **only its own chapter** — its `%chapter` line, its `%blast`, its beats — into
   `<narration>.ch<n>`, beside the narration file. One file each, so nothing races. No
   `%report`, no other chapter;
-- to **end its report to you with its admissions**: what it could not explain, what looked
-  wrong, what it took from a comment rather than from code, each with its block's label.
-  Step I has to collect those, and without this you would have to re-read every word the
-  forks wrote — which is the cost forking just paid to avoid.
+- to **end its report to you with four things**, each keyed to a block's label where it has
+  one. You will not read the prose it wrote — that is the cost forking paid to avoid — so
+  this report is the only thing you get, and Step I is written from it:
+  - **its admissions**: what it could not explain, what looked wrong, what it took from a
+    comment rather than from code;
+  - **its risk pointers**: the one or two places in its chapter where a reviewer should look
+    hardest, which is what the overview's "where to be careful" is assembled from;
+  - **two or three sentences on what its chapter established**, which is what the wrap-up's
+    causal chain is assembled from;
+  - **any block it believes belongs in another chapter**, with the label. It must not move
+    one — its siblings are working from the skeleton as it stands — but it is the first
+    entity to read that block at depth, so it is the only one who can notice.
 
 Then put them back:
 
     bin/tour-splice.py <narration> <narration>.ch2 <narration>.ch5 …
 
 It matches each file on its chapter *title*, so a fork cannot land its work on the wrong
-chapter and the order you pass them in does not matter. Do not concatenate the files by hand:
+chapter and the order you pass them in does not matter.
+
+**Then, and only then, act on any misfit a fork reported.** Once every fork has returned, the
+freeze that stopped them moving blocks has nothing left to protect — no sibling is reading
+the skeleton any more, coverage is chapter-agnostic, and a label travels with its block, so
+every `[[…]]` still resolves. Move the block, fix the two chapters' prose around it, and
+rebuild. The freeze exists for the window where chapters are written concurrently; this is
+after that window, and it is the cheapest moment the correction will ever be. Do not concatenate the files by hand:
 they are the middle of a document, not the whole of one, and a missing `%report` or `%intro`
 is only a warning — so a botched merge would build, and quietly. The command also names any
 chapter still un-narrated, which is how a fork that failed becomes visible now rather than as

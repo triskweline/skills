@@ -99,8 +99,8 @@ same link with your own prose as its text. `[[ch5]]` and `[label](#ch5)` point a
 
 **The order matters and only goes one way:** structure and captions → `tour-skeleton.py`
 mints the labels and prints them → prose that references them. A skeleton written with
-references in it cannot know the right names; the skeleton stage defers those and says so,
-and the build refuses any that still do not resolve.
+references in it cannot know the right names, so the skeleton stage defers them; every later
+command treats one that still does not resolve as an error.
 
 **Never write a code.** A link to `#2.9` is refused, because it breaks the moment anything
 is reordered. Only `path:all` cannot be labelled — one directive standing for many blocks
@@ -126,52 +126,9 @@ cannot have one name.
   `[text](url)`, and `[[<label>]]`. Headings are not allowed in prose — a chapter is
   `%chapter` and a beat is `%beat`, so the report keeps one hierarchy.
 
-Every flag and exit code of the commands below is in
-[commands.md](commands.md); this page covers the format they consume.
-
-## The stages
-
-    bin/tour-skeleton.py <patch> <narration> [--root DIR]
-
-Run this on the structure-and-captions-only version of the file, before writing prose. It
-labels every block, prints the table, and settles coverage while fixing it is still free.
-It is the only command that edits your file, it only ever adds a label, and it writes
-nothing if the structure is wrong. Its exit code is 0 when every changed line is placed.
-
-## Building
-
-    bin/tour-build.py <patch> <narration> <out.html> [--root DIR] [--source LABEL]
-
-    --root    the checkout %quote reads from (default: the current directory)
-    --source  what the metadata line calls the diff, e.g. main..HEAD
-
-**Build after every chapter you append.** It takes under a second, and a validation failure
-then costs an edit rather than a regeneration — on a large change the narration is tens of
-thousands of tokens and rewriting it whole is the most expensive mistake available.
-
-A chapter being narrated in isolation — by a fork, per SKILL Step G — cannot build, because
-it holds one chapter of an unbuildable document. It is spliced back over the skeleton first,
-and the build happens there.
-
-It validates first and **writes nothing** if anything is wrong, reporting every problem at
-once: an unknown directive, a block outside a beat, a beat outside a chapter, a beat with no
-prose, a missing caption, a `%hunk` naming no such hunk, a `#lo-hi` out of range or
-containing no changed line, a `%blast` with a bad level or in the wrong kind of chapter, a
-`%code` with no `%end`, a heading in prose, a `[[label]]` that names nothing, two blocks
-sharing a label, a link to a positional code.
-
-Warnings do not stop it, and exist so that a half-written document still builds: no
-`%closing` yet, a cluster chapter with no `%blast` or no introductory paragraph, two
-fragments of one hunk overlapping, a link to a code no block has, and changed lines nothing
-shows yet. **The final build has to have none of them.**
-
-Every build prints the coverage count. For the detail:
-
-    bin/tour-rest.py <patch> <narration>
-
-It prints every changed line and every bodyless change the narration does not show, as
-directives ready to paste, and exits 0 when nothing is left. It is a pure function of the two
-files — no ledger, nothing to go stale.
+Every command, flag and exit code is in **[commands.md](commands.md)**; this page is the
+format they consume. The order the commands run in, and why, is
+[SKILL.md](../SKILL.md)'s procedure.
 
 ## What the page does
 

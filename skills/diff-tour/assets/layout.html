@@ -28,7 +28,9 @@
                                    it and rendered above its diff
     section.beat.solo              a beat with no components — full width
 
-  A hunk's id IS its code, so [the guard](#3.2) in narration just works.
+  A hunk's id IS its code — but narration never writes one: it references a block's
+  label, [[h17]], and the builder resolves that to whatever code the block now sits
+  at. A link written to #3.2 is refused, because a code moves and a label does not.
 
   Every control — the chapter nav, the viewed toggles, the theme switch — is
   injected by report.js, so the report's own markup stays minimal.

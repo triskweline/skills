@@ -38,8 +38,9 @@
   --blast-wide: #cf222e;
 
   --seen: #2c2;
+  --badge: #6a737d;
 
-  --nav-w: clamp(200px, 20%, 400px);
+  --nav-w: clamp(200px, 20vw, 400px);
 }
 
 /* The light palette above is the base. Dark is applied when the system asks for it
@@ -77,6 +78,7 @@
   --blast-narrow: #3fb950;
   --blast-moderate: #d29922;
   --blast-wide: #f85149;
+  --badge: #55606b;
   }
 }
 :root[data-theme="dark"] {
@@ -110,6 +112,7 @@
   --blast-narrow: #3fb950;
   --blast-moderate: #d29922;
   --blast-wide: #f85149;
+  --badge: #55606b;
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
@@ -226,7 +229,7 @@ section.chapter h2 {
 section.chapter h2 .n {
   font: 600 1.1rem/1 var(--mono);
   color: #fff;
-  background-color: #aaa;
+  background-color: var(--badge);
   padding: 0.2em 0.3em 0.1em 0.3em;
   border-radius: 0.2em;
 }
