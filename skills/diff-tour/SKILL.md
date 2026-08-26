@@ -680,10 +680,11 @@ chapters will ever consume — and Step G could have done it in parallel.
 
    Then `bin/tour-hunks.py --renames <patch>` names every swap that repeats across
    hunks — `links_to_content` → `external_link_enabled` in fifteen places. Those hunks
-   are the mechanical tier: one caption naming the swap, no individual reading, and
-   **grep the old name afterwards for stragglers**, which is the highest-value check in
-   the caller index and the one that catches a missed call site. What the command leaves
-   over is the work that actually needs judgement.
+   are the mechanical tier: one caption naming the swap, no individual reading. What the
+   command leaves over is the work that actually needs judgement. **Don't grep for
+   stragglers yet** — that check is the highest-value one in the tour, and it belongs to
+   whoever narrates the chapter that owns the sweep, where its answer becomes a sentence.
+   [Step G](#step-g-narrate-the-cluster-chapters) assigns it.
 
    Then `--body` the area you are touring, one area at a time. It prints the same bytes
    as `cat` plus a body-line offset in the left margin of every hunk, which is what a
@@ -742,10 +743,11 @@ built now is built for chapters that do not exist yet.
 
 **Read at depth everything that will get a chapter — including a body of work you did not
 come for.** Under [Step H](#step-h-narrate-the-leftovers), substantial work gets chapters
-however unrelated it is, and a chapter cannot be written from a file listing. On a range with
-three bodies of work this is the largest cost in the tour, and it is the cost of the report
-being worth reading; if the reader only wants one body, that is a decision for them to make
-in Step B, not one to make silently by skimping here.
+however unrelated it is, and a chapter cannot be written from a file listing. This read is bounded by
+the size of the diff — you read each hunk once — which is what keeps it affordable even on a
+range with three bodies of work, and it is the cost of the report being worth reading; if the
+reader only wants one body, that is a decision for them to make in Step B, not one to make
+silently by skimping here.
 
 What you may still read by path alone is what Step H's first kind covers: mechanical churn.
 A lockfile refresh, generated output, a vendored directory, pure formatting — one
@@ -757,13 +759,6 @@ of the report, the model is tired, and the hunks look boring — which is exactl
 combination that produces "the version" over a line that is not a version. If you are
 writing a caption for one specific hunk, read that hunk. A leftover hunk is usually two to
 seven lines; the list tells you which, and those are free.
-
-**Delegate only when the reading is genuinely large.** If answering a cluster's questions
-needs substantially more code than the cluster contains, and several clusters need that
-independently, hand those reads to subagents and keep the judgement. Otherwise don't: a
-subagent costs more wall clock than the greps it would run. When you do delegate, a
-positive finding may be summarized, but **a claim that something does not exist must come
-back as the command and its output** — that is the claim a reviewer will lean on.
 
 ## Step E: Cluster
 
@@ -854,6 +849,13 @@ to name an alternative — all of that is [Narration](#narration) and [Beats](#b
 - **Whatever the chapter specifically turns on.** One or two questions with checkable
   answers, asked at the point the sentence needs them.
 
+**A negative has to arrive as evidence.** A positive finding can be summarized — "three
+callers, all in `billing/`". But **a claim that something does *not* exist must be backed by
+the command and its output**: nothing tests this, nothing else calls that, no other call site
+survives. Those are the claims a reviewer leans on hardest, and they are the ones a
+plausible-sounding sentence gets wrong. This holds whether you gathered the fact yourself or
+a fork reported it to you.
+
 **A lookup is never worth its own round trip.** Whenever you are about to run a grep, put it
 in the same message as the next read you were going to make anyway.
 
@@ -896,18 +898,34 @@ nothing to brief it on. Tell each fork:
 - to write **only its own chapter** — its `%chapter` line, its `%blast`, its beats — into
   `<narration>.ch<n>`, beside the narration file. One file each, so nothing races. No
   `%report`, no other chapter;
+- to **start from the chapter's directives as they already stand in the narration file and
+  keep every `@label` exactly**. A fork that retypes a directive from the skeleton table
+  drops its label, and then every `[[…]]` its siblings wrote at that block dangles — a
+  failure that surfaces at your build, in prose you did not write and will not read.
+  Copy the lines, then add prose around them;
+- to **check its own file before returning**, with
+  `bin/tour-splice.py --check <narration> <its file>`. That validates the fragment and
+  writes nothing. A format error caught by the fork costs the fork a minute; the same error
+  caught after the splice costs you a debugging round in a chapter you never read;
 - to **end its report to you with four things**, each keyed to a block's label where it has
   one. You will not read the prose it wrote — that is the cost forking paid to avoid — so
   this report is the only thing you get, and Step I is written from it:
-  - **its admissions**: what it could not explain, what looked wrong, what it took from a
-    comment rather than from code;
+  - **its admissions**, already worded as the wrap-up should print them: what it could not
+    explain, what looked wrong, what it took from a comment rather than from code. Ask for
+    finished sentences, because you will **paste them, not restate them** — you did not read
+    the chapter, so rewording an admission can only make it less true;
   - **its risk pointers**: the one or two places in its chapter where a reviewer should look
     hardest, which is what the overview's "where to be careful" is assembled from;
   - **two or three sentences on what its chapter established**, which is what the wrap-up's
     causal chain is assembled from;
   - **any block it believes belongs in another chapter**, with the label. It must not move
     one — its siblings are working from the skeleton as it stands — but it is the first
-    entity to read that block at depth, so it is the only one who can notice.
+    entity to read that block at depth, so it is the only one who can notice;
+  - **whether its chapter is really one idea**, and whether it overlaps another chapter. A
+    fork reads one chapter more closely than you read all of them, so this is the only
+    honest check on Step E. Re-clustering after the fact is usually too expensive, but if two
+    forks independently say their chapters are the same topic, that belongs in the overview
+    even when the structure has to stand.
 
 Then put them back:
 

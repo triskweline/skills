@@ -99,8 +99,9 @@ same link with your own prose as its text. `[[ch5]]` and `[label](#ch5)` point a
 
 **The order matters and only goes one way:** structure and captions → `tour-skeleton.py`
 mints the labels and prints them → prose that references them. A skeleton written with
-references in it cannot know the right names, so the skeleton stage defers them; every later
-command treats one that still does not resolve as an error.
+references in it cannot know the right names, so `tour-skeleton.py` defers them, and so does
+`tour-rest.py`, whose answer prose has no bearing on. **The build is what refuses a reference
+that still does not resolve** — by then the labels exist, so a dangling one is a typo.
 
 **Never write a code.** A link to `#2.9` is refused, because it breaks the moment anything
 is reordered. Only `path:all` cannot be labelled — one directive standing for many blocks

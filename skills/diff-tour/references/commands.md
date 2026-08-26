@@ -151,8 +151,6 @@ its own needs in order to refer to its neighbours.
 After the table, when there is more than one cluster chapter holding blocks, it prints a
 **suggested fork packing** for Step G: the chapters grouped so that no group exceeds the
 biggest single chapter, since that is the floor on wall clock however many forks you spawn.
-Where one chapter is as big as all the rest together it says so instead, because then
-narrating serially costs nothing.
 
 **To stderr:** how many blocks were labelled, whether every changed line is placed, how many
 places still need prose, and whether any `[[label]]` does not resolve yet.
@@ -172,16 +170,29 @@ labels it names.
 
 ## `bin/tour-splice.py` — narrated chapters → back into the narration
 
-    bin/tour-splice.py <narration> <chapter-file> [<chapter-file> …]
+    bin/tour-splice.py [--check] <narration> <chapter-file> [<chapter-file> …]
 
-Step G narrates chapters in parallel, each fork writing **only its own chapter to its own
-file**, so nothing writes the narration while that happens and there is no race. This puts
-them back.
+Step G narrates chapters in parallel, each fork writing **one file per chapter it owns**
+and nothing else, so nothing writes the narration while that happens and there is no race.
+This puts them back.
 
 A chapter file must begin with the chapter directive it replaces, and its title must match
 exactly one chapter in the narration — **matching on the title, not on position or filename**,
 so a fork cannot land its work on the wrong chapter and argument order does not matter.
 `%report`, `%intro`, `%leftovers` and `%closing` stay where they are.
+
+**Every part is validated before any part is placed**, so a malformed chapter file cannot
+leave the narration half-updated. A chapter file is the middle of a document, so it is checked
+inside a minimal envelope: rules about the whole document — a missing `%report`, no `%closing`
+— are not held against it, and the line numbers reported are its own.
+
+It also **compares labels with the chapter it replaces** and refuses a file that dropped one.
+A fork that retypes a directive instead of copying it loses its `@hN`, and then every
+`[[…]]` a sibling chapter wrote at that block fails at build time, in prose whoever is
+splicing never read.
+
+**`--check` does the validation and writes nothing.** That is how a fork verifies its own
+chapter before returning it, when a format error still costs only its own minute.
 
 **Writes** the narration, atomically, once, after every part has been placed. **Prints** what
 it replaced. To stderr: how many chapters were spliced, and the title of any cluster chapter
@@ -190,8 +201,9 @@ on the next build.
 
 | Exit | Meaning |
 |---|---|
-| 0 | spliced |
+| 0 | spliced, or `--check` found nothing wrong |
 | 2 | a missing file, a chapter file with no chapter directive, or a title that matches no chapter or several |
+| 6 | a chapter file does not parse, or drops a label; nothing written |
 
 ---
 

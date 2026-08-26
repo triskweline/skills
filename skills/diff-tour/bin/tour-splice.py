@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Put narrated chapters back into the narration file.
 
-  tour-splice.py <narration> <chapter-file> [<chapter-file> …]
+  tour-splice.py [--check] <narration> <chapter-file> [<chapter-file> …]
 
-Step G narrates chapters in parallel, one fork per chapter, each writing only its
-own chapter to its own file. Nothing writes the narration file while that happens,
+`--check` validates the chapter files and writes nothing — that is how a fork verifies
+its own work before returning, when a format error still costs only its own minute.
+
+Step G narrates chapters in parallel. A fork may own several chapters, and writes
+one file per chapter it owns. Nothing writes the narration file while that happens,
 so there is no race — but the chapters then have to go back in, in the right places,
 without disturbing `%report`, `%intro`, `%leftovers` or `%closing`.
 
@@ -49,7 +52,54 @@ def _chapters(lines):
     return out
 
 
+# A chapter file is the middle of a document, so parsing it alone fails on rules about
+# the whole — "the first directive must be %report". Wrapping it in the smallest legal
+# envelope lets a fork check its own work, which is the difference between a format error
+# costing the fork a minute and costing the orchestrator a debugging round in a chapter it
+# never read.
+ENVELOPE = '%report check\n%intro Overview\n%beat b\nPlaceholder.\n'
+ENVELOPE_LINES = ENVELOPE.count('\n')      # the fragment's line 1 is line 5 of the whole
+WHOLE_DOC = ('%closing', '%intro', '%leftovers')
+
+
+def _fragment_problems(text):
+    """Problems that are really in this chapter, with the fragment's own line numbers."""
+    _, problems = narration.parse(ENVELOPE + text)
+    out = []
+    for x in problems:
+        # Complaints about the envelope, or about parts of a document a fragment does not
+        # contain, are not this fork's business.
+        if x.line <= ENVELOPE_LINES:
+            continue
+        if not x.fatal and any(w in x.text for w in WHOLE_DOC):
+            continue
+        x.line -= ENVELOPE_LINES
+        out.append(x)
+    return out
+
+
+def _labels_in(lines):
+    """Every @label on a block directive in these lines, in order."""
+    out, in_code = [], False
+    for line in lines:
+        if in_code:
+            if line.strip() == '%end':
+                in_code = False
+            continue
+        if line.startswith('%code'):
+            in_code = True
+            continue
+        if line.startswith(('%hunk', '%file')):
+            m = narration.LABEL.search(line.split('=', 1)[0])
+            if m:
+                out.append(m.group(1))
+    return out
+
+
 def main(argv):
+    check = False
+    if argv and argv[0] == '--check':
+        check, argv = True, argv[1:]
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         return 2
@@ -61,6 +111,49 @@ def main(argv):
 
     with open(doc, encoding='utf-8') as f:
         lines = f.read().split('\n')
+
+    # Validate every part before placing any of them, so a bad file cannot leave the
+    # narration half-updated — and so --check can answer without writing.
+    bad = 0
+    for path in parts:
+        with open(path, encoding='utf-8') as f:
+            text = f.read()
+        problems = _fragment_problems(text)
+        fatal = [x for x in problems
+                 if x.fatal and not (x.premature or x.needs_labels)]
+        for x in problems:
+            if not (x.premature or x.needs_labels):
+                print('%s: %s' % (path, x), file=sys.stderr)
+        # A retyped directive loses its @label, and then every [[…]] a sibling chapter
+        # wrote at that block dangles at build time — in prose nobody here will read.
+        head = text.lstrip('\n').split('\n', 1)[0].split(None, 1)
+        title = head[1].strip() if len(head) > 1 else ''
+        hits = [c for c in _chapters(lines) if c[2] == title]
+        if hits:
+            start = hits[0][0]
+            after = [c[0] for c in _chapters(lines) if c[0] > start]
+            was = _labels_in(lines[start:after[0] if after else len(lines)])
+            now = _labels_in(text.split('\n'))
+            lost = [l for l in was if l not in now]
+            if lost:
+                print('tour-splice: %s drops label%s %s that the chapter it replaces '
+                      'carried. Copy the directive lines rather than retyping them; a '
+                      'reference to a dropped label fails at build, in prose written '
+                      'elsewhere.' % (path, '' if len(lost) == 1 else 's',
+                                      ', '.join('@' + l for l in lost)),
+                      file=sys.stderr)
+                bad += 1
+        if fatal:
+            bad += 1
+    if bad:
+        print('tour-splice: %d file%s %s problems above. Nothing written.'
+              % (bad, '' if bad == 1 else 's', 'has' if bad == 1 else 'have'),
+              file=sys.stderr)
+        return 6
+    if check:
+        print('tour-splice: %d chapter file%s check out; splice when the rest are in.'
+              % (len(parts), '' if len(parts) == 1 else 's'), file=sys.stderr)
+        return 0
 
     spliced = []
     for path in parts:

@@ -1433,6 +1433,20 @@ class TestSpliceCommand(_CommandCase):
              '%chapter Second topic', '%beat B', '%hunk src/deep/b.js:1 = b',
              '%closing Wrap-up', '%beat Check', 'Prose.']))
 
+    def labelled_skeleton(self):
+        """The realistic case: tour-skeleton.py has already minted labels."""
+        self.raw('\n'.join(
+            ['%report T', '%intro Overview', '%beat What', 'Prose.',
+             '%chapter First topic', '%beat A', '%hunk src/deep/a.js:10 @h1 = a',
+             '%chapter Second topic', '%beat B', '%hunk src/deep/b.js:1 @h2 = b',
+             '%closing Wrap-up', '%beat Check', 'Prose. [[h1]]']))
+
+    def raw_part(self, name, *lines):
+        path = os.path.join(self.dir, name)
+        with open(path, 'w') as f:
+            f.write('\n'.join(lines))
+        return path
+
     def part(self, name, title, hunk, note):
         path = os.path.join(self.dir, name)
         with open(path, 'w') as f:
@@ -1469,6 +1483,61 @@ class TestSpliceCommand(_CommandCase):
         self.skeleton()
         r = self.splice(self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.'))
         self.assertIn('still un-narrated: Second topic', r.stderr)
+
+    def test_a_labelled_chapter_round_trips_with_its_labels(self):
+        self.labelled_skeleton()
+        r = self.splice(self.raw_part(
+            'a', '%chapter First topic', 'Now narrated.', '%blast narrow', 'E.',
+            '%beat A', 'Prose.', '%hunk src/deep/a.js:10 @h1 = a', '  Its own prose.'))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = self.read()
+        self.assertIn('@h1', body)
+        self.assertIn('[[h1]]', body)          # the closing's reference still has a target
+
+    def test_a_chapter_file_that_dropped_a_label_is_refused(self):
+        """A retyped directive loses its @hN, and a sibling's [[h1]] then dangles at
+        build time — in prose whoever splices never read. Catch it at the seam."""
+        self.labelled_skeleton()
+        before = self.read()
+        r = self.splice(self.raw_part(
+            'a', '%chapter First topic', 'Now narrated.', '%beat A', 'Prose.',
+            '%hunk src/deep/a.js:10 = a'))     # label retyped away
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('drops label @h1', r.stderr)
+        self.assertEqual(before, self.read())
+
+    def test_a_chapter_file_that_does_not_parse_is_refused(self):
+        self.skeleton()
+        before = self.read()
+        r = self.splice(self.raw_part(
+            'a', '%chapter First topic', 'Intro.', '%beat A', 'Prose.',
+            '%hunk src/deep/a.js:10 = a', 'Unindented prose.'))
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('not attached to anything', r.stderr)
+        self.assertIn('line 6', r.stderr)      # the fragment's own numbering
+        self.assertEqual(before, self.read())
+
+    def test_check_validates_without_writing(self):
+        self.skeleton()
+        before = self.read()
+        part = self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.')
+        r = self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
+             '--check', self.doc, part], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('check out', r.stderr)
+        self.assertEqual(before, self.read())  # a fork must not write the narration
+
+    def test_check_does_not_hold_whole_document_rules_against_a_fragment(self):
+        """A chapter file has no %report and no %closing. That is not its problem."""
+        self.skeleton()
+        part = self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.')
+        r = self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
+             '--check', self.doc, part], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for word in ('%report', '%closing', '%intro'):
+            self.assertNotIn(word, r.stderr)
 
     def test_a_title_that_matches_nothing_is_refused(self):
         self.skeleton()
@@ -1664,8 +1733,9 @@ class TestTheDocsAgreeWithTheCode(unittest.TestCase):
         copying that shape fails at the orchestrator's build, in prose the
         orchestrator never read — so this asserts the example, not a copy of it.
         """
-        doc = open(os.path.join(self.SKILL, 'references', 'narration.md'),
-                      encoding='utf-8').read()
+        with open(os.path.join(self.SKILL, 'references', 'narration.md'),
+                  encoding='utf-8') as f:
+            doc = f.read()
         body = doc.split('## Example', 1)[1].split('\n##', 1)[0]
         # The example is an indented code block. Take exactly those lines, dedented.
         text = '\n'.join(l[4:] if l.startswith('    ') else l
@@ -1682,8 +1752,9 @@ class TestTheDocsAgreeWithTheCode(unittest.TestCase):
 
     def test_the_design_fixture_shows_the_real_standfirst(self):
         """layout.html opens standalone and promises it looks like a report."""
-        fixture = open(os.path.join(self.SKILL, 'assets', 'layout.html'),
-                          encoding='utf-8').read()
+        with open(os.path.join(self.SKILL, 'assets', 'layout.html'),
+                  encoding='utf-8') as f:
+            fixture = f.read()
         shown = re.search(r'<p class="standfirst">(.*?)</p>', fixture, re.S).group(1)
         self.assertEqual(' '.join(render.STANDFIRST.split()),
                          ' '.join(shown.split()))
