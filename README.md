@@ -11,6 +11,7 @@ Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow.
 | [`agree-on-everything`](skills/agree-on-everything/SKILL.md) | Turn requirements into an autonomously executable plan by resolving every open decision with the user before any code is written. |
 | [`implement-autonomously`](skills/implement-autonomously/SKILL.md) | End-to-end workflow for implementing a full set of requirements on your own: confirm requirements, branch, test, verify, self-review, then hand off. |
 | [`self-review`](skills/self-review/SKILL.md) | Have a sub-agent review your changes against the requirements, then reconcile and apply valid feedback. |
+| [`diff-tour`](skills/diff-tour/SKILL.md) | Walk a human through a diff they did not write: one self-contained HTML report where the real hunks sit beside narration explaining what each change is for, clustered into themed chapters. |
 | [`work-in-branch`](skills/work-in-branch/SKILL.md) | Make sure work happens on a properly named feature branch, following the repo's naming convention. |
 | [`find-verification-tools`](skills/find-verification-tools/SKILL.md) | Discover which test runners and linters a project uses, and the exact CLI commands to run them. |
 | [`full-verification`](skills/full-verification/SKILL.md) | Run the entire test suite and all linters (locally, in parallel, or via CI) and fix every failure — the slow, exhaustive check across current and past features. |
