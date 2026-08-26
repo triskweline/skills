@@ -72,6 +72,7 @@
     hunks.forEach(function (other) {
       if (key(other) !== k) return;
       other.classList.toggle('seen', on);
+      collapse(other, on);
       paint(other);
     });
     counts();
@@ -100,7 +101,6 @@
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     });
 
-    if (fig.closest('.beat.fold')) collapse(fig, true);
   });
 
   hunks.forEach(function (fig) {
@@ -111,7 +111,7 @@
     b.type = 'button';
     b.addEventListener('click', function () { setSeen(fig, !fig.classList.contains('seen')); });
     tools.appendChild(b);
-    if (isSeen(fig)) fig.classList.add('seen');
+    if (isSeen(fig)) { fig.classList.add('seen'); collapse(fig, true); }
     paint(fig);
   });
 

@@ -39,7 +39,7 @@
 
   --seen: #2c2;
 
-  --nav-w: 268px;
+  --nav-w: clamp(200px, 20%, 400px);
 }
 
 /* The light palette above is the base. Dark is applied when the system asks for it
@@ -216,7 +216,7 @@ p.standfirst {
 
 section.chapter { margin-top: 4.5rem; scroll-margin-top: 1.5rem; }
 section.chapter h2 {
-  display: flex; align-items: baseline; gap: .75rem;
+  display: flex; align-items: center; gap: .75rem;
   font-size: 1.5rem; line-height: 1.25; font-weight: 600;
   letter-spacing: -.01em;
   margin: 0 0 1.4rem;
@@ -224,7 +224,11 @@ section.chapter h2 {
   border-bottom: 2px solid var(--line);
 }
 section.chapter h2 .n {
-  font: 600 1.1rem/1 var(--mono); color: var(--faint);
+  font: 600 1.1rem/1 var(--mono);
+  color: #fff;
+  background-color: #aaa;
+  padding: 0.2em 0.3em 0.1em 0.3em;
+  border-radius: 0.2em;
 }
 
 .intro, .blast { max-width: 900px; }
@@ -377,9 +381,8 @@ button.seen {
   padding: .34rem .5rem; cursor: pointer; white-space: nowrap;
 }
 button.seen:hover { color: var(--ink); border-color: var(--muted); }
-/* Viewed is a mark, not a disappearance: the diff stays exactly as readable and the
-   block wears a green edge. Collapsing is the separate, deliberate act of clicking a
-   caption. */
+/* Marking a block viewed collapses it and gives it a green edge, the way a reviewed
+   file behaves on a pull request. Clicking a caption collapses without marking. */
 figure.hunk.seen { border-color: var(--seen); }
 figure.hunk.seen > figcaption { border-bottom-color: var(--seen); }
 figure.hunk.collapsed > pre,

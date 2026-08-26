@@ -181,8 +181,6 @@ def beat(b, ch, refs=None):
         show.append(('<div class="note">%s</div>' % lead if lead else '')
                     + component(item, seq=n, refs=refs))
     cls = 'beat' if show else 'beat solo'
-    if b.fold:
-        cls += ' fold'
     out = ['<section class="%s">' % cls,
            '<div class="say">%s</div>' % '\n'.join(say)]
     if show:

@@ -33,9 +33,9 @@
   Every control — the chapter nav, the viewed toggles, the theme switch — is
   injected by report.js, so the report's own markup stays minimal.
 
-  Two independent states on a block: .seen is the reader's viewed mark and only
-  adds a green edge, .collapsed hides the diff and is what clicking a caption
-  toggles. A %fold-ed beat starts .collapsed but not .seen.
+  Two states on a block: .seen is the reader's viewed mark, which adds a green
+  edge and collapses the block; .collapsed hides the diff on its own and is what
+  clicking a caption toggles. Nothing is collapsed when the page loads.
 
   Diff highlighting is Prism's diff-highlight plugin: it groups a run of
   same-sign lines into one .token.inserted / .token.deleted span and highlights
