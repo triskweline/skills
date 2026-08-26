@@ -22,7 +22,7 @@ INLINE = re.compile(
 )
 
 BULLET = re.compile(r'^\s*[-*+]\s+(.*)$')
-NUMBER = re.compile(r'^\s*\d+[.)]\s+(.*)$')
+NUMBER = re.compile(r'^\s*(\d+)[.)]\s+(.*)$')
 
 
 def esc(s):
@@ -79,6 +79,7 @@ def render(lines, refs=None):
     """A list of markdown lines -> HTML block elements."""
     out = []
     items = None            # (tag, [ [line, ...], ... ]) while a list is open
+    start = None            # the first numeral of an ordered list
     para = []
 
     def flush_para():
@@ -87,12 +88,16 @@ def render(lines, refs=None):
             del para[:]
 
     def flush_list():
-        nonlocal items
+        nonlocal items, start
         if items:
             tag, entries = items
-            out.append('<%s>%s</%s>' % (tag, ''.join(
+            # An ordered list that starts at 3 means it. Renumbering from 1 silently
+            # contradicts whatever the author was numbering — chapters, most likely.
+            attr = ' start="%d"' % start if tag == 'ol' and start not in (None, 1) else ''
+            out.append('<%s%s>%s</%s>' % (tag, attr, ''.join(
                 '<li>%s</li>' % inline(' '.join(e).strip(), refs) for e in entries), tag))
             items = None
+            start = None
 
     for raw in lines:
         line = raw.rstrip()
@@ -107,7 +112,9 @@ def render(lines, refs=None):
                 flush_list()
             if not items:
                 items = (tag, [])
-            items[1].append([(b or n).group(1)])
+                if n:
+                    start = int(n.group(1))
+            items[1].append([b.group(1) if b else n.group(2)])
             continue
         if items:
             # A hard-wrapped list item continues on the next line, indented or not.
