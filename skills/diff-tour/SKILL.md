@@ -601,15 +601,23 @@ it accepts, and what each resolves to, is in
 [references/commands.md](references/commands.md) — a git range, one commit, a branch, a PR or
 MR number or URL, a patch file, or nothing at all for your working diff.
 
-**Name the out-file after the target**, not `t.patch`: the header calls the diff by the
-patch's filename unless `--source` overrides it, and "main..feature" in the most trusted line
-of the page is worth more than a temp name.
+**Give the tour its own directory, and not a scratch one a session cleans up.** Name the
+directory after the target — `difftour-<something-identifying>` — and put three files in it,
+named exactly this:
 
-**Put the patch, the narration and the report in one directory, and not a scratch one that
-a session cleans up.** Those three files are the tour: the report is what the reader opens,
-and the other two are the only way anyone can later see what it was built from, re-run a
-stage, or turn a real narration into a test fixture. A tour whose narration was thrown away
-cannot be diagnosed at all — only re-run from scratch.
+    <dir>/tour.patch      the diff, plus tour.patch.head beside it
+    <dir>/tour.tour       the narration
+    <dir>/tour.html       the report
+
+Fixed names, because a target like `hk/integration-2026-kw29..HEAD` contains a slash and
+makes a poor filename, and because the human needs to be able to find these without asking.
+**The header's name for the diff comes from `--source`**, not from the filename, so pass the
+real target there and the report still says `hk/integration-2026-kw29..HEAD`.
+
+All three matter. The report is what the reader opens; the other two are the only way anyone
+can later see what it was built from, re-run a stage, or turn a real narration into a test
+fixture. A tour whose narration was thrown away cannot be diagnosed at all — only re-run from
+scratch.
 
 It prints the hunk and file count, the base it chose when there was no target, and any
 **untracked files**, which are *not* in the diff. Say all three to the reader. The untracked
@@ -1200,9 +1208,9 @@ three things and stop:
   carries a number like `3.2`** they can quote to point at one. The report is a file and
   cannot contain this invitation; it is the only interactive surface the conversation has,
   and a reader holding a path has no other signal that you are still here.
-- **Where the patch and the narration are**, in one clause before the path. They are the
-  tour's source; without them a report that looks wrong can only be regenerated, not
-  examined.
+- **The directory holding all three files**, in one clause before the path. `tour.patch`
+  and `tour.tour` are the tour's source; without them a report that looks wrong can only be
+  regenerated, not examined.
 - **The path**, on its own line, last, with nothing after it.
 
 If Step B created a worktree, say so in one clause and give the `git worktree remove` line
