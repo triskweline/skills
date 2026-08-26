@@ -88,7 +88,14 @@ class Hunk:
         return [tuple(r) for r in out]
 
     def bytes_of_body(self):
-        return sum(len(l.raw()) + 1 for l in self.lines)
+        """What `tour-hunks.py --body` would print for this hunk.
+
+        Not the diff's own size: the margin it prints each line with counts too, and
+        the whole point of the figure is to keep a call under the tool-output cap.
+        """
+        margin = len('%5d ') + 1                     # the offset column, then +/-/space
+        header = 80                                  # the "@N · … runs: …" line
+        return header + sum(len(l.text) + margin + 1 for l in self.lines)
 
     def substitution(self):
         """(old, new) when every changed line in this hunk is the same swap.
@@ -113,8 +120,18 @@ class Hunk:
             j = 0
             while (j < min(len(a), len(b)) - i and a[len(a) - 1 - j] == b[len(b) - 1 - j]):
                 j += 1
-            swap = (a[i:len(a) - j], b[i:len(b) - j])
-            if not swap[0] or not swap[1]:
+            lo, ahi, bhi = i, len(a) - j, len(b) - j
+            # Widen to whole words. The minimal span for `call(oldName)` ->
+            # `call(newName)` is old -> new, and the skill's next instruction is to
+            # grep the old name for stragglers — where `old` also matches `older`
+            # and `bold`. A needle has to be the identifier, not the keystrokes.
+            while lo > 0 and (a[lo - 1].isalnum() or a[lo - 1] == '_'):
+                lo -= 1
+            while ahi < len(a) and (a[ahi].isalnum() or a[ahi] == '_'):
+                ahi += 1
+                bhi += 1
+            swap = (a[lo:ahi], b[lo:bhi])
+            if not swap[0] or not swap[1] or swap[0] == swap[1]:
                 return None
             if found is None:
                 found = swap
