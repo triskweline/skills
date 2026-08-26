@@ -858,14 +858,38 @@ in the same message as the next read you were going to make anyway.
 
 **Fork by default. Serial is the exception and needs a reason.** The deep work above is now
 the bulk of a tour's cost, it is per-chapter, and chapters do not depend on each other — so
-running them one at a time is leaving the largest available saving on the floor. On anything
-beyond a handful of blocks, spawn a fork per cluster chapter and let them work at once.
+running them one at a time is leaving the largest available saving on the floor.
+
+### How many
+
+**Not one per chapter.** Wall clock is the longest *fork*, not the longest chapter, so once a
+fork is carrying about as much as the biggest single chapter, another fork saves no time and
+still costs a full context re-prefill. Seventeen chapters do not want seventeen forks.
+
+**Pack them instead.** The skeleton table states how many blocks each chapter holds. Give the
+fattest chapter a fork of its own, then fill further forks with whole chapters until each is
+roughly the size of that fattest one. Seventeen chapters of 30, 17, 12, 10, 5, 5, 4, 4, 3, 3,
+2, 2, 2, 2, 1, 1, 1 blocks pack into four forks of about thirty blocks each — same wall clock
+as seventeen forks, a quarter of the cost, a quarter of the merging.
+
+**Whole chapters only.** A fork may own several chapters but never part of one, so the
+no-moving-blocks-between-chapters rule and the splice both stay simple. It writes one file
+per chapter it owns, whichever fork wrote it.
+
+**Past five or six forks, ask what the sixth is buying.** There is no hard limit, but if
+packing says you want ten, the chapters are probably too finely cut — go back to Step E
+before spending on it.
+
+**And you are not idle while they run.** [Step H](#step-h-narrate-the-leftovers) needs no
+per-chapter facts, so write the leftovers chapter yourself while the forks work.
+
+### What to tell each fork
 
 A fork inherits your context, so it already holds the patch reads and the skeleton — there is
 nothing to brief it on. Tell each fork:
 
-- **which chapter** it owns, and that the skeleton table is how it names a block in any other
-  chapter;
+- **which chapter or chapters** it owns, and that the skeleton table is how it names a block
+  in any other chapter;
 - that its fact-gathering is its own, for its own hunks;
 - that it may reorder beats and blocks inside its chapter and may not move one out;
 - to write **only its own chapter** — its `%chapter` line, its `%blast`, its beats — into
@@ -889,7 +913,8 @@ subagents would have divided the largest phase. A fact for next time, not a ques
 
 **What forking costs:** each fork re-prefills your context, so N forks buy one pass of the
 deep work in exchange for roughly N times the input. Now that the deep work is the expensive
-half, that trade is worth making almost whenever it is available.
+half, that trade is worth making almost whenever it is available — but it is also why the
+count is packed rather than one-per-chapter: the prefill is per *fork*, not per chapter.
 
 **What it gives up:** no chapter can see what another chapter *wrote*, only what the skeleton
 says it contains. Two chapters can explain the same thing twice and nothing will catch it.

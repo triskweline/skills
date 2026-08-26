@@ -143,8 +143,9 @@ It writes an `@hN` into every `%hunk` and `%file` that lacks one, atomically, an
 file whose structure is broken. `path:all` is skipped — one directive standing for many
 blocks cannot have one name.
 
-**Prints to stdout** the table: chapter, beat, and for each block its label, the code it
-currently resolves to, its caption and its location. That table is what a chapter narrated on
+**Prints to stdout** the table: each chapter with **how many blocks it holds** — which is
+what Step G's fork packing is decided from — then each beat, and for each block its label,
+the code it currently resolves to, its caption and its location. That table is what a chapter narrated on
 its own needs in order to refer to its neighbours.
 
 **To stderr:** how many blocks were labelled, whether every changed line is placed, how many

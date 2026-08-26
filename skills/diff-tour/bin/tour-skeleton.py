@@ -185,8 +185,13 @@ def main(argv):
     # The table. This is what a chapter narrated on its own needs to see.
     width = max([len(c.caption) for c in rep.components] + [7])
     for ch in rep.chapters:
-        print('\n%d · %s%s' % (ch.number, ch.title,
-                               '' if ch.kind == 'chapter' else '  (%s)' % ch.kind))
+        # The block count is what Step G's fork packing is decided from, so it is
+        # stated rather than left to be counted off the rows.
+        n = len(ch.components)
+        print('\n%d · %s%s · %d block%s'
+              % (ch.number, ch.title,
+                 '' if ch.kind == 'chapter' else '  (%s)' % ch.kind,
+                 n, '' if n == 1 else 's'))
         for b in ch.beats:
             print('   %s' % (b.subtitle or '(no subtitle)'))
             for c in b.items:

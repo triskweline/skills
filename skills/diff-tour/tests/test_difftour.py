@@ -1163,6 +1163,15 @@ class TestSkeletonCommand(unittest.TestCase):
         self.assertEqual(len(row), 1, out)
         self.assertRegex(row[0], r'\[\[h1\]\]\s+2\.1\s+the swap\s+src/deep/a\.js:10')
 
+    def test_the_table_states_each_chapters_block_count(self):
+        # Step G packs forks from these numbers, so they are printed rather than
+        # left to be counted off the rows.
+        self.write('%beat A', '%hunk src/deep/a.js:10 = one',
+                   '%hunk src/deep/b.js:1 = two')
+        out = self._run().stdout
+        self.assertIn('2 · The cluster · 2 blocks', out)
+        self.assertIn('1 · Overview  (intro) · 0 blocks', out)
+
     def test_an_at_sign_in_a_caption_does_not_pass_for_a_label(self):
         self.write('%beat A', '%hunk src/deep/a.js:10 = strip the @media hack',
                    '%hunk src/deep/b.js:1 = the other')
