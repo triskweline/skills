@@ -940,6 +940,20 @@ version of the code, a grep for callers of a symbol this branch introduces finds
 - **Whatever the chapter specifically turns on.** One or two questions with checkable
   answers, asked at the point the sentence needs them.
 
+**Many of these facts are shared, so gather those once — before you fork.** The model
+above is per-chapter, and on a real 14-chapter tour that was only half true: the caller
+index, the straggler greps and the "is this tested" negatives overlapped so heavily that
+they batched into about six calls for the whole diff. Anything several chapters will ask
+for is cheaper asked once by you and handed down:
+
+- Run the greps whose answers more than one chapter needs — the symbols at the change's
+  centre, the old names of any sweep, the test files that touch any of it.
+- Put the results in each fork's briefing, in a few lines, and say they are already
+  gathered so nothing re-runs them.
+
+What stays per-chapter is what only that chapter turns on: its own before-and-after, and
+the one or two specific questions its sentences need.
+
 **A negative has to arrive as evidence.** A positive finding can be summarized — "three
 callers, all in `billing/`". But **a claim that something does *not* exist must be backed by
 the command and its output**: nothing tests this, nothing else calls that, no other call site

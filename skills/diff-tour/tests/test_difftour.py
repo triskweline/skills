@@ -938,7 +938,9 @@ class TestCoverage(unittest.TestCase):
         shown, total, gaps = self.cov(
             p, '%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 = only the deletion')
         self.assertEqual((shown, total), (1, 3))
-        self.assertEqual(gaps, [('src/deep/a.js', '10', 4, 5, '2.1')])
+        # The neighbour is reported as (label, code, its own lo, its own hi) so a hint
+        # can name the label — the code is the one identifier prose must never carry.
+        self.assertEqual(gaps, [('src/deep/a.js', '10', 4, 5, ('', '2.1', 3, 3))])
 
     def test_a_shown_line_between_two_misses_breaks_the_run(self):
         p = patch.parse(SIMPLE)
@@ -1829,12 +1831,28 @@ class TestRestCommand(_CommandCase):
         self.assertIn('%hunk src/deep/b.js:1 = ', out)
         self.assertNotIn('#', out.split('src/deep/b.js:1')[1].split('\n')[0])
 
-    def test_it_suggests_widening_a_fragment_it_sits_next_to(self):
-        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 = part',
-                   '%hunk src/deep/b.js:1 = b')
+    def test_it_prints_an_edit_for_a_gap_beside_a_fragment(self):
+        """A gap next to a fragment is an edit to that fragment, not a new block.
+
+        It used to print the widen advice *and* a pasteable %hunk that did the opposite
+        — and that %hunk had no caption, so pasting the block whole made the build
+        refuse. It also named the neighbour by its code, which is the one identifier
+        that must never be written into the narration, so the hint could not be acted
+        on without first finding the line by hand.
+        """
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 #3-3 @h1 = part',
+                   '%hunk src/deep/b.js:1 @h2 = b')
         out = self.run_cmd('tour-rest.py').stdout
-        self.assertIn('widen that fragment', out)
-        self.assertIn('2.1', out)
+        self.assertIn('EDIT @h1', out)                  # named by label
+        self.assertIn('change #3-3 to #3-5', out)        # the exact widening
+        self.assertNotIn('%hunk src/deep/a.js', out)     # and no contradictory directive
+
+    def test_a_gap_with_no_neighbour_is_still_a_pasteable_directive(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')
+        out = self.run_cmd('tour-rest.py').stdout
+        self.assertIn('%hunk src/deep/b.js:1 = ', out)
+        self.assertNotIn('EDIT @', out)
+        self.assertNotIn('EDIT the block', out)
 
     def test_its_output_can_be_pasted_back_without_syntax_errors(self):
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')

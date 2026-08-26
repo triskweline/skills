@@ -141,6 +141,9 @@ first is the one to reach for:
 
 - **Put code in backticks.** A glob, a path, a symbol or a signature is code, and code in
   backticks is unambiguous, renders as `<code>`, and is what the reader expects to see.
+  **Version numbers included:** `` `8.1` `` is fine. A backticked `N.N` is only refused when
+  it names a block that actually exists in this report, so `` `2.1` `` in a report that has a
+  block 2.1 is caught and every version number is left alone.
 - **Or escape the marker:** `\*`, `` \` ``, `\[`, `\]`, `\\` are those characters
   literally. Use this only where backticks would be wrong — quoting markdown itself, say.
 

@@ -244,6 +244,11 @@ def main(argv):
 
     _suggest_forks(rep)
 
+    # stdout is block-buffered when piped and stderr never is, so without this the
+    # summary below lands in the middle of the table above it and the whole thing looks
+    # like corrupted output.
+    sys.stdout.flush()
+
     shown, total, gaps = narration.coverage(rep, p)
     print()
     if gaps:

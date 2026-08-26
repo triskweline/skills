@@ -82,14 +82,29 @@ def main(argv):
             whole = hunk is not None and not [o for o in hunk.changed_offsets
                                               if not lo <= o <= hi]
             if near:
-                print('%%#   %d-%d sits next to %s — widen that fragment rather than '
-                      'showing these lines on their own.' % (lo, hi, near))
+                # An adjacent gap is an *edit*, not a new block — so print the edit and
+                # not a directive. Printing both said "widen the neighbour" and then
+                # offered a pasteable line that does the opposite, and the line it
+                # offered had no caption, so pasting it made the build refuse.
+                label, code, rlo, rhi = near
+                name = ('@%s' % label) if label else ('the block at %s' % code)
+                widen = (min(rlo, lo), max(rhi, hi))
+                n_lines = hi - lo + 1
+                print('%%#   EDIT %s: change #%d-%d to #%d-%d. %s next to it, so '
+                      'widening it is the fix — do not add a block for %s.'
+                      % (name, rlo, rhi, widen[0], widen[1],
+                         'This 1 line sits' if n_lines == 1
+                         else 'These %d lines sit' % n_lines,
+                         'it' if n_lines == 1 else 'them'))
+                continue
             if whole:
                 print('%%hunk %s:%s = ' % (path, key))
             else:
                 print('%%hunk %s:%s #%d-%d = ' % (path, key, lo, hi))
         print()
-    print('%# Captions are required. A leftover group also says why no topic claimed it.')
+    print('%# Every %hunk above needs a caption before this builds. An EDIT line is not')
+    print('%# pasteable — it names a fragment to widen in place. A leftover group also')
+    print('%# says why no topic claimed it.')
     return 1
 
 

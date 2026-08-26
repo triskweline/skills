@@ -173,19 +173,6 @@ def _parse_hunk_spec(spec):
     return path.strip(), key, lo, hi
 
 
-def _blame(rep, needle, fallback):
-    """The line a piece of prose actually sits on, not the line its block began.
-
-    A prose run is stored as a list of strings, so a problem in it could only be
-    reported against the %beat or %chapter above — which sends an agent editing by line
-    number to the wrong place. The source is kept for exactly this.
-    """
-    for i, line in enumerate(getattr(rep, 'source_lines', None) or [], 1):
-        if needle in line:
-            return i
-    return fallback
-
-
 def parse(text):
     """Narration text -> (Report, [Problem]). Structure only; hunks are resolved
     against a patch by resolve()."""
@@ -204,6 +191,13 @@ def parse(text):
     # caption — so it belongs to the block and moves with it.
     sink = None
     in_lead = False
+
+    # (line number, text) for every line of prose in the file. A problem found in prose
+    # can then name the line it is on — searching the document for the offending text
+    # afterwards found the *first* line containing it, which for a needle like "8.1" is
+    # usually a legal mention two hundred lines away, and made every duplicate collapse
+    # onto one line.
+    prose_lines = []
 
     def aim(target, lead=False):
         nonlocal sink, in_lead
@@ -242,6 +236,7 @@ def parse(text):
                        'above the first block')
             else:
                 sink.append(bare)
+                prose_lines.append((i, bare))
             continue
 
         if line.startswith('%'):
@@ -417,6 +412,7 @@ def parse(text):
                    'the first block')
             continue
         sink.append(line.strip())
+        prose_lines.append((i, line.strip()))
 
     if in_code is not None:
         err(in_code.line, '%code was never closed by a %end line')
@@ -426,6 +422,7 @@ def parse(text):
     # Kept so a problem found in prose during resolve() can name the line it is on
     # rather than the line of the block above it.
     rep.source_lines = lines
+    rep.prose_lines = prose_lines
     problems.extend(_check_shape(rep))
     return rep, problems
 
@@ -648,23 +645,40 @@ def resolve(rep, patch, root='.', quotes=True):
             rep.refs[comp.label] = comp.code
 
     chapters = {'ch%d' % ch.number for ch in rep.chapters}
-    # The title is prose too, and a reference in it would otherwise go unchecked.
-    everywhere = [(rep.title, 1)]
+    # A block code that actually resolves. `3.2` in prose is a real mistake only when
+    # there *is* a block 3.2 — otherwise it is a version number, which is the most
+    # common N.N token there is and exactly what a reader expects in backticks. On a
+    # dependency-upgrade tour, flagging every `8.1` and `7.2` made the check unusable
+    # and the only remedy was to strip formatting the report wanted.
+    live_codes = {c.code for c in rep.components if c.code}
+
+    # Everything the reader will read, each with the line it is really on: the title,
+    # every beat subtitle, every caption, and every line of prose. No searching for the
+    # text afterwards — that reported the first line containing it, which is usually not
+    # the offending one, and collapsed every duplicate onto a single line.
+    everywhere = [(rep.title or '', 1)]
     for ch in rep.chapters:
-        everywhere.extend(_prose_blocks(ch))
+        everywhere.append((ch.title or '', ch.line))
+        for b in ch.beats:
+            everywhere.append((b.subtitle or '', b.line))
+            for item in b.items:
+                if isinstance(item, Component):
+                    everywhere.append((item.caption or '', item.line))
+    everywhere.extend((t or '', n) for n, t in
+                      (getattr(rep, 'prose_lines', None) or []))
 
     for text, line in everywhere:
         for bad in re.findall(r'\]\(#(\d+\.\d+)\)', text):
-            err(_blame(rep, '#' + bad, line),
-                'a link points at #%s. A code says where a block sits now, so it '
+            err(line, 'a link points at #%s. A code says where a block sits now, so it '
                       'breaks as soon as anything is reordered — reference the block by '
                       'its @label instead' % bad)
-        # `2.9` and [[2.9]] are the same mistake in different clothes: the first
-        # renders as a number that quietly stops matching, the second as literal
-        # brackets.
+        # `2.9` and [[2.9]] are the same mistake in different clothes: the first renders
+        # as a number that quietly stops matching, the second as literal brackets. The
+        # backticked form is only a mistake when it names a block that exists.
         for a, b in re.findall(r'`(\d+\.\d+)`|\[\[(\d+\.\d+)\]\]', text):
-            err(_blame(rep, a or b, line),
-                'prose says %s, which is a position, not a name. It stops matching '
+            if a and a not in live_codes:
+                continue                      # a version number, not a block code
+            err(line, 'prose says %s, which is a position, not a name. It stops matching '
                       'the moment anything is reordered — write [[<label>]] and let the '
                       'builder print the code' % (a or b), fatal=False)
         # A link the renderer will not render. Only #anchors, http(s) and mailto reach
@@ -674,35 +688,23 @@ def resolve(rep, patch, root='.', quotes=True):
         # not, because the prose still reads as though a link were there.
         for text_, href in re.findall(r'\[([^\]]+)\]\(([^)\s]+)\)', text):
             if not re.match(r'^(#|https?://|mailto:)', href):
-                err(_blame(rep, '](%s)' % href, line),
-                    'the link on %r points at %r, which the report cannot follow: '
+                err(line, 'the link on %r points at %r, which the report cannot follow: '
                           'it is one file, opened anywhere. Only #labels, http(s) and '
                           'mailto render — this one will ship as plain text. Quote the '
                           'path in backticks instead, or link the change with [[label]].'
                     % (text_, href), fatal=False, advisory=True)
         for a, b in REF.findall(text):
             name = a or b
-            at = _blame(rep, name, line)      # not `line`: it is the loop's own
             if name in rep.refs or name in chapters:
                 continue
             if name in seen:
-                err(at, '[[%s]] names a block that has no code — a %%quote or %%code '
-                        'illustrates, so nothing can point at it' % name)
+                err(line, '[[%s]] names a block that has no code — a %%quote or %%code '
+                          'illustrates, so nothing can point at it' % name)
             else:
-                err(at, '[[%s]] names nothing. Labels come from bin/tour-skeleton.py; '
-                        'run it and use the names it prints' % name,
+                err(line, '[[%s]] names nothing. Labels come from bin/tour-skeleton.py; '
+                          'run it and use the names it prints' % name,
                     needs_labels=True)
     return problems
-
-
-def _prose_blocks(ch):
-    """Every run of prose in a chapter, with a line to blame."""
-    yield ' '.join(ch.intro), ch.line
-    yield ' '.join(ch.blast), ch.line
-    for b in ch.beats:
-        yield b.subtitle + ' ' + ' '.join(b.prose), b.line
-        for item in b.items:
-            yield item.caption + ' ' + ' '.join(item.lead), item.line
 
 
 def _resolve_hunk(comp, patch, err):
@@ -794,7 +796,8 @@ def coverage(rep, patch):
     for comp in rep.components:
         if comp.kind == 'hunk' and comp.hunk is not None:
             lo, hi = comp.hunk.slice(comp.lo, comp.hi)
-            covered.setdefault((comp.path, comp.key), []).append((lo, hi, comp.code))
+            covered.setdefault((comp.path, comp.key), []).append(
+                (lo, hi, comp.code, comp.label))
         elif comp.kind == 'file' and comp.fc is not None:
             files_seen.add(comp.path)
 
@@ -812,7 +815,7 @@ def coverage(rep, patch):
             ranges = covered.get((fc.path, hunk.key), [])
             changed = hunk.changed_offsets
             total += len(changed)
-            hit = {o for o in changed for lo, hi, _ in ranges if lo <= o <= hi}
+            hit = {o for o in changed for lo, hi, _, _ in ranges if lo <= o <= hi}
             shown += len(hit)
             missing = [o for o in changed if o not in hit]
             if not missing:
@@ -835,10 +838,14 @@ def coverage(rep, patch):
             runs.append(run)
             for r in runs:
                 lo, hi = r[0], r[-1]
+                # What to widen, named by its *label*. The code (`4.16`) is the one
+                # identifier that must never be written into the narration, so a hint
+                # that names only the code cannot be acted on — you have to find the
+                # line first, and the label is what finds it.
                 near = None
-                for rlo, rhi, code in ranges:
+                for rlo, rhi, code, label in ranges:
                     if code and (abs(rhi - lo) <= 4 or abs(rlo - hi) <= 4):
-                        near = code
+                        near = (label, code, rlo, rhi)
                         break
                 gaps.append((fc.path, hunk.key, lo, hi, near))
     return shown, total, gaps

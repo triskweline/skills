@@ -186,7 +186,12 @@ blocks cannot have one name.
 
 **Prints to stdout** the table: each chapter with **how many blocks it holds** — which is
 what Step G's fork packing is decided from — then each beat, and for each block its label,
-the code it currently resolves to, its caption and its location. That table is what a chapter narrated on
+the code it currently resolves to, its caption and its location.
+
+**The location column says where the block starts, not how you wrote it.** Write
+`%hunk app/card.rb:25 #36-50` and the table shows `app/card.rb:59 #36-50`, because line 59 is
+where that fragment begins. Your file is untouched — the command only ever adds labels — but
+the column is a *report*, not an echo, and two separate runs read it as a silent rewrite. That table is what a chapter narrated on
 its own needs in order to refer to its neighbours.
 
 After the table, when there is more than one cluster chapter holding blocks, it prints a
