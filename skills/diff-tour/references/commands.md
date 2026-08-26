@@ -209,13 +209,14 @@ on the next build.
 
 ## `bin/tour-build.py` — a narration file → the report
 
-    bin/tour-build.py <patch> <narration> <out.html> [--root DIR] [--source LABEL] [--date YYYY-MM-DD]
+    bin/tour-build.py <patch> <narration> <out.html> [--root DIR] [--source LABEL] [--date YYYY-MM-DD] [--final]
 
 | Flag | Effect |
 |---|---|
 | `--root DIR` | the checkout `%quote` reads from, and whose folder and branch the header names. Default: the current directory. |
 | `--source LABEL` | what the header calls the diff, e.g. `main..HEAD`. Default: the patch's filename. |
 | `--date` | overrides today's date in the header. For reproducible output; you will not normally want it. |
+| `--final` | exit 1, and print no path on stdout, if anything is unshown, pending or warned about. |
 
 **Writes** `<out.html>`: one self-contained page, with the CSS, the JavaScript and the
 vendored highlighter inlined. Nothing is written when validation fails.
@@ -223,8 +224,14 @@ vendored highlighter inlined. Nothing is written when validation fails.
 **Prints** the absolute out-file path to stdout — the one thing to hand the reader.
 
 **To stderr:** chapter, block and size counts; the coverage line; how many places still need
-prose; and any warning. A warning is not a failure but **a report with any warning is not
-finished** — Step J holds that line, not this command.
+prose; and any warning.
+
+**A report with an unshown line, a pending item or a warning is not finished.** An ordinary
+build still exits 0 in that state, on purpose: most builds happen while later chapters are
+still skeletons. **`--final` is the build that refuses** — it writes the file, says what is
+wrong, prints no path on stdout and exits 1. Use it for the last build before you hand a path
+to anyone, so that the one property this skill cannot compute for you is the one thing you
+have to type.
 
 **Validation reports every problem at once and writes nothing.** Missing prose is deferred,
 because most builds happen while later chapters are still skeletons.
@@ -232,6 +239,7 @@ because most builds happen while later chapters are still skeletons.
 | Exit | Meaning |
 |---|---|
 | 0 | built |
+| 1 | `--final`, and something is unshown, pending or warned about |
 | 2 | bad arguments, a missing file, or a patch whose hunks cannot all be selected |
 | 6 | the narration is wrong; nothing written |
 

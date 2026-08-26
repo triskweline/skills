@@ -1047,9 +1047,15 @@ read.
 
 ## Step J: Hand it over
 
-Build. **A report with an unshown line or a single warning is not finished** — the builder
-writes the file either way, so this gate is yours to hold, not its. Fix, rebuild, and only
-then say three things and stop:
+**Build it one last time with `--final`:**
+
+    bin/tour-build.py <patch> <narration> <out.html> --final
+
+**A report with an unshown line, a pending item or a single warning is not finished.** An
+ordinary build exits 0 in that state on purpose, because most builds happen while later
+chapters are still skeletons — so this last one is the build that refuses. It writes the
+file, says what is wrong, prints no path and exits 1. If it printed a path, the report is
+whole. Fix, rebuild, and only then say three things and stop:
 
 - **What the page has**, in a clause: chapters in the sidebar, a viewed mark on every change.
 - **Invite questions.** They can ask about anything they have just read, and **every change

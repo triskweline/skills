@@ -1616,6 +1616,40 @@ class TestBuildCommand(_CommandCase):
         self.assertIn('3 of 5 changed lines shown', r.stderr)
         self.assertIn('tour-rest.py', r.stderr)
 
+    def test_final_refuses_a_report_with_an_unshown_line(self):
+        """The last gate. Every other exit code is 0 in this state, by design."""
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')   # b.js unshown
+        r = self.build('--final')
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn('not a report to hand over', r.stderr)
+        self.assertIn('1 unshown place', r.stderr)
+        # No path on stdout: the one thing you would hand over must not be there.
+        self.assertEqual('', r.stdout.strip())
+        # The file is still written, so it can be looked at.
+        self.assertTrue(os.path.exists(self.out))
+
+    def test_final_refuses_a_report_with_pending_prose(self):
+        self.write('%beat A', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')                     # no beat prose
+        r = self.build('--final')
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn('pending', r.stderr)
+        self.assertEqual('', r.stdout.strip())
+
+    def test_final_prints_the_path_when_the_report_is_whole(self):
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build('--final')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(self.out, r.stdout)
+
+    def test_without_final_an_unfinished_report_still_builds(self):
+        """Most builds happen mid-narration; refusing them would break the workflow."""
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')
+        r = self.build()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(self.out, r.stdout)
+
     def test_the_header_names_no_branch_when_the_checkout_is_not_this_diff(self):
         # Touring someone else's PR from a checkout on master must not print "master".
         d = self._checkout()

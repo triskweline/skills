@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Build the report: a narration file plus a patch -> one self-contained .html.
 
-  tour-build.py <patch> <narration> <out.html> [--root DIR] [--source LABEL]
+  tour-build.py <patch> <narration> <out.html> [--root DIR] [--source LABEL] [--final]
 
 Every command in bin/ takes <patch> <narration> in that order, so they can be
 retyped from one another without thinking about it.
 
     --root    the checkout %quote reads context from (default: the current directory)
     --source  what the metadata line calls the diff (default: the patch's name)
+    --final   refuse to call the report finished while anything is unshown, pending
+              or warned about. Build with it before handing a path to anyone.
 
 The model writes narration and names hunks; this script splices them. That is
 what keeps every diff byte exact without trusting a copy-paste, and it is why a
@@ -96,6 +98,10 @@ def main(argv):
     args, opts = [], {}
     i = 0
     while i < len(argv):
+        if argv[i] == '--final':
+            opts['final'] = True
+            i += 1
+            continue
         if argv[i] in ('--root', '--source', '--date'):
             if i + 1 >= len(argv):
                 print('tour-build: %s needs a value' % argv[i], file=sys.stderr)
@@ -194,6 +200,21 @@ def main(argv):
     if warn:
         print('tour-build: %d warning%s above.'
               % (len(warn), '' if len(warn) == 1 else 's'), file=sys.stderr)
+
+    # Every fidelity property in this skill is mechanical except the last one: whether
+    # the report being handed over is actually finished. --final is that check. Without
+    # it a pipeline of skeleton(0) → splice(0) → build(0) runs all green over a report
+    # that a fork left a hole in, because each of those exits 0 by design.
+    if opts.get('final') and (gaps or pending or warn):
+        print('\ntour-build: this is not a report to hand over — %s. It is written, at '
+              '%s, so you can look at it; fix the above and build again.'
+              % (', '.join(filter(None, [
+                  '%d unshown place%s' % (len(gaps), '' if len(gaps) == 1 else 's')
+                  if gaps else '',
+                  '%d pending' % len(pending) if pending else '',
+                  '%d warning%s' % (len(warn), '' if len(warn) == 1 else 's')
+                  if warn else ''])), os.path.abspath(out)), file=sys.stderr)
+        return 1
 
     print(os.path.abspath(out))
     return 0
