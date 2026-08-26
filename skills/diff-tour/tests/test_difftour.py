@@ -186,13 +186,49 @@ class TestBodySizeEstimate(unittest.TestCase):
     a line — in the direction that walks into the truncation it exists to prevent.
     """
 
-    def test_the_estimate_matches_what_body_actually_prints(self):
-        p = patch.parse(SIMPLE)
-        h = p.files[0].hunks[0]
-        # Reproduce tour-hunks.py's own line format, exactly.
-        printed = ''.join('%5d %s%s\n' % (i, l.kind, l.text)
-                          for i, l in enumerate(h.lines, 1))
-        self.assertEqual(len(printed) + 80, h.bytes_of_body())
+    HUNK = ('diff --git a/e.js b/e.js\n--- a/e.js\n+++ b/e.js\n@@ -1,%d +1,%d @@\n'
+            ' ctx\n')
+
+    def printed_body(self, extra):
+        """Bytes tour-hunks.py --body actually prints for a hunk of 1 + extra lines."""
+        src = os.path.join(self.d, 'p%d.patch' % extra)
+        with open(src, 'w') as f:
+            f.write((self.HUNK % (1 + extra, 1 + extra))
+                    + ''.join(' filler %d\n' % i for i in range(extra)))
+        r = subprocess.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-hunks.py'),
+             '--body', src], capture_output=True, text=True, cwd=self.d)
+        self.assertEqual(0, r.returncode, r.stderr)
+        with open(src) as f:
+            h = patch.parse(f.read()).files[0].hunks[0]
+        return len(r.stdout), h.bytes_of_body()
+
+    def setUp(self):
+        self.root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d, True)
+
+    def test_the_estimate_counts_the_same_bytes_per_line_as_body_prints(self):
+        """Measured against the real command, with the fixed part cancelled out.
+
+        The estimate carries a constant allowance for header lines, so its absolute
+        value cannot be pinned. Its *slope* can: adding twenty lines to a hunk must
+        change the estimate by exactly what --body prints for twenty lines. That is
+        the arithmetic that was once wrong by two bytes a line — understating every
+        read, in the direction that walks into the truncation this figure exists to
+        prevent — and it needs no copy of the format string to check.
+        """
+        # Both line counts are two digits wide, so the @@ header contributes the same
+        # number of bytes to each and cancels along with every other fixed part.
+        small_printed, small_est = self.printed_body(9)
+        big_printed, big_est = self.printed_body(29)
+        self.assertEqual(big_printed - small_printed, big_est - small_est)
+
+    def test_the_estimate_is_never_under_the_body_it_describes(self):
+        printed, est = self.printed_body(29)
+        with open(os.path.join(self.d, 'p29.patch')) as f:
+            body = sum(len(l) + 1 for l in f.read().split('\n') if l[:1] in ' +-')
+        self.assertGreaterEqual(est, body)
 
 
 class TestLanguages(unittest.TestCase):
@@ -1295,20 +1331,51 @@ class TestSkeletonCommand(unittest.TestCase):
         self.assertEqual(sum(loads[1:]), 104)    # every chapter placed exactly once
         self.assertEqual(out.count('fork '), 4)
 
+    def _bins(self, sizes):
+        """[(fork number, [chapter numbers], blocks)] from the printed suggestion."""
+        out = self._packing(sizes)
+        bins = []
+        for line in out.split('\n'):
+            m = re.match(r'\s*fork\s+(\d+):\s+chapters?\s+([\d, ]+?)\s+(\d+) block',
+                         line)
+            if m:
+                bins.append((int(m.group(1)),
+                             [int(n) for n in m.group(2).split(',')],
+                             int(m.group(3))))
+        return sizes, bins
+
+    def _assert_packing_invariants(self, sizes):
+        """What the packing must always be, whatever the heuristic is tuned to.
+
+        These replace three tests that pinned exact fork counts: the counts are one
+        heuristic's output, and pinning them meant a tuning could not be judged without
+        rewriting the tests that were supposed to judge it.
+        """
+        sizes, bins = self._bins(sizes)
+        self.assertTrue(bins, 'no packing printed for %r' % (sizes,))
+        # Every chapter is placed exactly once — the one property a fork plan cannot
+        # get wrong without losing or duplicating a chapter's narration.
+        placed = sorted(n for _, ns, _ in bins for n in ns)
+        self.assertEqual(len(placed), len(set(placed)), 'a chapter is in two forks')
+        self.assertEqual(len(sizes), len(placed), 'a chapter was left out')
+        # No bin exceeds the largest single chapter or a sixth of the work, whichever
+        # is larger: below the first a fork cannot go faster, below the second it buys
+        # less than its own context costs.
+        cap = max(max(sizes), -(-sum(sizes) // 6))
+        for _, ns, blocks in bins:
+            self.assertLessEqual(blocks, cap, 'a fork exceeds the cap')
+        self.assertLessEqual(len(bins), max(6, len([s for s in sizes if s >= cap])))
+
     def test_many_small_chapters_do_not_get_a_fork_each(self):
-        """First-fit-decreasing on uniform chapters degenerates to one fork per chapter,
-        which contradicts the skill's own "past five or six, ask what it buys"."""
-        out = self._packing([1] * 12)
-        forks = [l for l in out.split('\n') if l.strip().startswith('fork')]
-        self.assertLessEqual(len(forks), 6, out)
-        self.assertGreater(len(forks), 1, out)
+        self._assert_packing_invariants([1] * 12)
+        _, bins = self._bins([1] * 12)
+        self.assertLess(len(bins), 12, 'twelve chapters should not want twelve forks')
 
-    def test_one_dominant_chapter_packs_into_two(self):
-        out = self._packing([40, 2, 2, 2, 1, 1, 1, 1, 1])
-        self.assertEqual(out.count('fork '), 2)
+    def test_one_dominant_chapter_does_not_drag_the_rest_into_many_forks(self):
+        self._assert_packing_invariants([40, 2, 2, 2, 1, 1, 1, 1, 1])
 
-    def test_even_chapters_get_a_fork_each(self):
-        self.assertEqual(self._packing([8, 8, 8, 8, 8]).count('fork '), 5)
+    def test_even_chapters_pack_evenly(self):
+        self._assert_packing_invariants([8, 8, 8, 8, 8])
 
     def test_a_single_chapter_suggests_nothing(self):
         self.assertEqual(self._packing([12]), '')
@@ -2645,6 +2712,65 @@ class TestTheDocsAgreeWithTheCode(unittest.TestCase):
         # And it must model the reference style it documents: labels, not codes.
         self.assertIn('[[h1]]', text)
         self.assertNotRegex(text, r'`\d+\.\d+`')
+
+    def _command_sections(self):
+        """{command filename: its section of references/commands.md}."""
+        with open(os.path.join(self.SKILL, 'references', 'commands.md'),
+                  encoding='utf-8') as f:
+            doc = f.read()
+        out, name = {}, None
+        for block in doc.split('\n## ')[1:]:
+            head = block.split('\n', 1)[0]
+            m = re.search(r'`bin/(tour-[a-z]+\.(?:py|sh))`', head)
+            if m:
+                out[m.group(1)] = block
+        self.assertGreaterEqual(len(out), 6, 'command sections went missing')
+        return out
+
+    def _source(self, name):
+        with open(os.path.join(self.SKILL, 'bin', name), encoding='utf-8') as f:
+            return f.read()
+
+    def test_every_documented_flag_exists_in_the_command(self):
+        """A flag the docs name and the code does not have is a command an agent will
+        type and watch fail — and the agent cannot ask which of the two is right."""
+        for name, section in self._command_sections().items():
+            src = self._source(name)
+            # Only where the doc *claims* a flag: the synopsis line and the flag table.
+            # Prose may legitimately mention a flag to say a command has none.
+            synopsis = '\n'.join(l for l in section.split('\n')
+                                 if l.startswith('    bin/'))
+            table = '\n'.join(l for l in section.split('\n')
+                              if re.match(r'^\| `?--', l))
+            claimed = set(re.findall(r'(--[a-z][a-z-]+)', synopsis + '\n' + table))
+            for flag in sorted(claimed):
+                # assertIn would dump the whole source into the failure message.
+                self.assertTrue(flag in src,
+                                '%s documents %s, which it does not implement'
+                                % (name, flag))
+
+    def test_every_documented_exit_code_exists_in_the_command(self):
+        """The exit codes are a contract: the procedure branches on them."""
+        for name, section in self._command_sections().items():
+            src = self._source(name)
+            codes = set(int(c) for c in re.findall(r'^\| (\d+) \|', section, re.M))
+            self.assertTrue(codes, '%s documents no exit codes' % name)
+            for code in sorted(codes):
+                if code == 0:
+                    continue        # success is a fallthrough, not a literal
+                self.assertRegex(
+                    src, r'(return|exit) %d\b' % code,
+                    '%s documents exit %d but never returns it' % (name, code))
+
+    def test_the_directive_table_matches_the_parser(self):
+        """The table is the format's public list. A directive in one and not the other
+        is either a feature nobody can discover or a documented one that errors."""
+        with open(os.path.join(self.SKILL, 'references', 'narration.md'),
+                  encoding='utf-8') as f:
+            doc = f.read()
+        documented = set(re.findall(r'^\| `%(\w+|#)', doc, re.M))
+        documented.add('end')       # documented inside the %code row
+        self.assertEqual(narration.DIRECTIVES, documented)
 
     def test_the_design_fixture_shows_the_real_standfirst(self):
         """layout.html opens standalone and promises it looks like a report."""
