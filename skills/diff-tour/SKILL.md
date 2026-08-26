@@ -642,9 +642,29 @@ The tour is only as good as this step, and it happens before any output.
 1. **Read the patch in stages, cheapest first.**
 
    `bin/tour-hunks.py <patch>` lists every file with what it holds — hunk count, body
-   lines, changed lines — and every hunk with git's own context text. On a hundred-hunk
-   change that is about a twentieth of the patch, and it is enough to see the shape of
-   the change and to decide what deserves reading in full.
+   lines, changed lines, and **how many KB reading it in full would cost** — then every
+   hunk with git's own context text. On a hundred-hunk change that is about a twentieth
+   of the patch, and it is enough to see the shape of the change and to decide what
+   deserves reading in full.
+
+   Two things in that listing save a second pass, so read them before reaching for
+   `--body`:
+
+   - **`runs:` on a hunk line gives you its fragment boundaries.** A hunk with several
+     runs of changed lines is usually several ideas, and the context between the runs is
+     where a cut belongs. You do not have to count body offsets off a `--body` read to
+     find them — they are already there.
+   - **Keep a single `--body` call under about 30 KB**, using the per-file KB figures.
+     Tool output is truncated past roughly that, and a truncated read has to be redone
+     narrower, which costs a whole round trip. `--body` tells you afterwards how much it
+     printed, so a miss is at least visible.
+
+   Then `bin/tour-hunks.py --renames <patch>` names every swap that repeats across
+   hunks — `links_to_content` → `external_link_enabled` in fifteen places. Those hunks
+   are the mechanical tier: one caption naming the swap, no individual reading, and
+   **grep the old name afterwards for stragglers**, which is the highest-value check in
+   the caller index and the one that catches a missed call site. What the command leaves
+   over is the work that actually needs judgement.
 
    Then `--body` the area you are touring, one area at a time. It prints the same bytes
    as `cat` plus a body-line offset in the left margin of every hunk, which is what a
@@ -817,19 +837,29 @@ chapter's block, keeping `%report`, `%intro`, `%leftovers` and `%closing` where 
 Do not concatenate the chapter files: they are the middle of a document, not the whole of
 one, and a missing `%report` or `%intro` is only a warning, so a botched merge would build.
 
-**Judge it by the prose, not by the chapter count.** Wall clock is the *longest* chapter,
-not the sum of them, so what makes forking pay is several chapters that each hold real
-narration work — the skeleton tells you that, block by block. Six chapters of two blocks
-each divide into nothing worth waiting for; two chapters of a dozen blocks each divide well.
+**Fork the chapters that are worth forking, not the report.** This is not one decision for
+the whole run: the skeleton shows you how many blocks each chapter holds, and chapter sizes
+are usually lopsided. Fork the three or four fat ones and write the thin ones yourself.
+Forking a two-block chapter buys nothing and pays a full context re-prefill for it.
+
+Wall clock is the *longest* chapter, not the sum — so a report with one twenty-block chapter
+and eight small ones barely improves however many forks you spawn, and the honest answer
+there is to write it serially and spend the effort on Step D instead, which is the larger
+half of the clock anyway.
 
 **What it costs:** each fork re-prefills your context, so N forks buy one pass of the output
-in exchange for roughly N times the input. That is a bad trade on a small report and a good
-one on a large report, and there is no number that decides it for you — read the skeleton.
+in exchange for roughly N times the input.
 
 **What it gives up:** no chapter can see what another chapter *wrote*, only what the
 skeleton says it contains. Two chapters can explain the same thing twice and nothing will
 catch it. The captions in the skeleton are what keep that rare, which is another reason they
 are worth writing properly.
+
+**If the host does not allow subagents, write it serially and don't stop to ask.** Some
+sessions carry a standing instruction against spawning them, and that outranks this
+recommendation. Say in the handover that the report was narrated serially and that allowing
+subagents would have divided the narration phase — a fact for next time, not a question
+now.
 
 ## Step H: Narrate the leftovers
 
