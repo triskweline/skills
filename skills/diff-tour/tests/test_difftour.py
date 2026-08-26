@@ -436,6 +436,10 @@ class TestNarrationRejects(unittest.TestCase):
     def test_unknown_directive(self):
         self.assertRejects('unknown directive %beet', '%beet A', 'P.')
 
+    def test_fold_is_no_longer_a_directive(self):
+        self.assertRejects('unknown directive %fold',
+                           '%beat A', 'P.', '%fold', '%hunk src/deep/a.js:10 = x')
+
     def test_component_outside_a_beat(self):
         self.assertRejects('outside a beat', '%hunk src/deep/a.js:10 = x')
 
@@ -532,6 +536,17 @@ class TestNarrationWarns(unittest.TestCase):
             ['%report T', '%intro O', '%beat B', 'Prose.']), self.p)
         self.assertEqual(fatal, [])
         self.assertTrue(any('no %closing' in w for w in warn), warn)
+
+    def test_a_missing_blast_is_premature_not_wrong(self):
+        # A blast level is a claim about reach, which needs the caller index Step G
+        # gathers per chapter — so a skeleton legitimately has none, and the commands
+        # that run before the prose exists must not complain about it.
+        _, probs = narration.parse('\n'.join(
+            ['%report T', '%intro O', '%beat B', '%chapter C', '%beat B',
+             '%hunk src/deep/a.js:10 = x', '%closing W', '%beat W']))
+        blast = [x for x in probs if 'no %blast' in x.text]
+        self.assertEqual(len(blast), 1, [str(x) for x in probs])
+        self.assertTrue(blast[0].premature)
 
     def test_a_cluster_chapter_without_a_blast_warns(self):
         _, fatal, warn = problems('\n'.join(
@@ -759,10 +774,13 @@ class TestRender(unittest.TestCase):
         html = self.build(tour('%beat A', 'P.', '%hunk a:1 = x'), src=src)
         self.assertIn('no newline at end of file', html)
 
-    def test_a_folded_beat_is_marked_for_the_javascript(self):
-        html = self.build(tour('%beat A', 'P.', '%fold',
-                               '%hunk src/deep/a.js:10 = x'))
-        self.assertIn('class="beat fold"', html)
+    def test_nothing_in_a_fresh_report_starts_collapsed(self):
+        # The reader decides what to put away; the author does not pre-hide anything.
+        # (The word appears in the inlined CSS and JS, so check the markup only.)
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        body = html[html.index('<!--REPORT-->'):html.index('<!--/REPORT-->')]
+        self.assertNotIn('collapsed', body)
+        self.assertNotIn('fold', body)
 
     def test_a_beat_with_no_blocks_is_full_width(self):
         self.assertIn('class="beat solo"', self.build(tour('%beat A', 'Only prose.')))
