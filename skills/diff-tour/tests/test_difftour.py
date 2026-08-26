@@ -354,6 +354,72 @@ class TestProse(unittest.TestCase):
 
 # ----------------------------------------------------------------- narration.py
 
+class TestEmphasisFlanking(unittest.TestCase):
+    """Prose is the one channel where the reader sees text nobody verified byte for byte.
+
+    Without flanking rules any pair of asterisks was eaten and the span italicised, so
+    a caption mentioning a glob, a pointer or a multiplication shipped mangled — in
+    fork-written prose that nothing rereads. A table, because the failures were all
+    ordinary code-review sentences that nobody thought to try.
+    """
+
+    # (source, must-render-emphasis)
+    NOT_EMPHASIS = [
+        'the retry count is n * backoff * 2',
+        'the sweep touches *.js and *.css files',
+        'it matches **/*.js and **/*.css globs',
+        'the signature is char *name, size_t *len',
+        'a query of SELECT * FROM t',
+        'a caption naming src/* and tests/*',
+        '2 * 3 * 4, and 2**8 bytes',
+        'the pointer deref is *p and the address is &p',
+    ]
+    EMPHASIS = [
+        ('this is *emphasis* here', '<em>emphasis</em>'),
+        ('this is **bold** here', '<strong>bold</strong>'),
+        ('*two words* emphasised', '<em>two words</em>'),
+        ('**several words bold** here', '<strong>several words bold</strong>'),
+        ('mid-sentence *it* works', '<em>it</em>'),
+    ]
+
+    def test_ordinary_code_prose_is_never_italicised(self):
+        for text in self.NOT_EMPHASIS:
+            got = prose.inline(text)
+            self.assertNotIn('<em>', got, text)
+            self.assertNotIn('<strong>', got, text)
+            # And the asterisks survive: the reader sees what was written.
+            self.assertEqual(text.count('*'), got.count('*'), text)
+
+    def test_real_emphasis_still_renders(self):
+        for text, want in self.EMPHASIS:
+            self.assertIn(want, prose.inline(text), text)
+
+    def test_a_backslash_escapes_a_marker(self):
+        self.assertEqual('**/node_modules/**',
+                         prose.inline(r'\*\*/node_modules/\*\*'))
+        self.assertEqual('*emphasis*', prose.inline(r'\*emphasis\*'))
+        self.assertEqual('`code`', prose.inline(r'\`code\`'))
+
+    def test_backticks_remain_the_answer_for_a_glob(self):
+        self.assertEqual('<code>**/node_modules/**</code>',
+                         prose.inline('`**/node_modules/**`'))
+
+    def test_a_caption_with_asterisks_survives_into_the_report(self):
+        """Captions go through inline() too, and are the least defended text there is."""
+        rep, problems = narration.parse(tour(
+            '%beat A', 'The sweep touches *.js and *.css files.',
+            '%hunk src/deep/a.js:10 = the sweep over *.js and *.css'))
+        problems += narration.resolve(rep, patch.parse(SIMPLE), '.')
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+        html, _ = render.page(rep, patch.parse(SIMPLE).stats(), 's', '2026-01-01', 'u')
+        # Assert on the caption alone: the page embeds Prism, so a whole-page assertion
+        # dumps 240 KB into the failure message.
+        cap = re.search(r'<span class="cap">(.*?)</span>', html).group(1)
+        self.assertEqual('the sweep over *.js and *.css', cap)
+        body = html[html.index('<!--REPORT-->'):html.index('<!--/REPORT-->')]
+        self.assertNotIn('<em>', body)
+
+
 class TestNarrationStructure(unittest.TestCase):
     def setUp(self):
         self.p = patch.parse(SIMPLE)

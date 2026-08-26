@@ -127,6 +127,28 @@ cannot have one name.
   `[text](url)`, and `[[<label>]]`. Headings are not allowed in prose — a chapter is
   `%chapter` and a beat is `%beat`, so the report keeps one hierarchy.
 
+### Asterisks, and code in prose
+
+**Emphasis follows the flanking rule: `*` opens only when the next character is not a
+space, and closes only when the previous one is not.** So the asterisks in ordinary
+code-review sentences are left alone — `n * backoff * 2`, `*.js and *.css`, `char *name`,
+`SELECT *`, `**/*.js` — and `*this*` and `**this**` still emphasise. You do not have to
+think about it, and you do not have to escape anything in the normal case.
+
+One shape stays ambiguous, because it genuinely is: `**/node_modules/**` is character for
+character what bold wrapped around `/node_modules/` looks like. Two ways out, and the
+first is the one to reach for:
+
+- **Put code in backticks.** A glob, a path, a symbol or a signature is code, and code in
+  backticks is unambiguous, renders as `<code>`, and is what the reader expects to see.
+- **Or escape the marker:** `\*`, `` \` ``, `\[`, `\]`, `\\` are those characters
+  literally. Use this only where backticks would be wrong — quoting markdown itself, say.
+
+**Links reach the reader only as `#label`, `http(s)://…` or `mailto:`.** The report is one
+file, opened anywhere, so a repo-relative path like `docs/testing.md` cannot be followed
+from it — such a link keeps its text and loses its href, and the build says so as a note.
+To point at a path, put it in backticks; to point at a change, use `[[label]]`.
+
 Every command, flag and exit code is in **[commands.md](commands.md)**; this page is the
 format they consume. The order the commands run in, and why, is
 [SKILL.md](../SKILL.md)'s procedure.

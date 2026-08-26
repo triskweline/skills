@@ -13,12 +13,24 @@ import re
 
 _ESC = (('&', '&amp;'), ('<', '&lt;'), ('>', '&gt;'), ('"', '&quot;'))
 
+# Emphasis needs flanking rules, which is the one part of markdown that is genuinely
+# hard and the one this format kept getting wrong. Without them, any pair of asterisks
+# in prose was eaten and the span between them italicised: "n * backoff * 2", "*.js and
+# *.css", "**/*.js and **/*.css". That is the only channel through which a finished
+# report showed the reader text the narrator did not write — captions included.
+#
+# The rule, from CommonMark: emphasis cannot open before whitespace, and cannot close
+# after it. Content therefore begins and ends with a non-space character. That leaves
+# exactly one ambiguity nothing can resolve — `**/node_modules/**` is character for
+# character what bold around `/node_modules/` looks like — and for that there are two
+# escapes: put the glob in backticks, which is where code belongs anyway, or write \*.
 INLINE = re.compile(
-    r'`(?P<code>[^`]+)`'
+    r'\\(?P<esc>[*`\[\]\\])'
+    r'|`(?P<code>[^`]+)`'
     r'|\[\[(?P<ref>[A-Za-z][A-Za-z0-9_-]*)\]\]'
     r'|\[(?P<text>[^\]]+)\]\((?P<href>[^)\s]+)\)'
-    r'|\*\*(?P<bold>(?:[^*]|\*(?!\*))+)\*\*'
-    r'|(?<![\w*])\*(?P<em>[^*\n]+)\*(?![\w*])'
+    r'|\*\*(?P<bold>[^\s*](?:[^*]|\*(?!\*))*?[^\s*]|[^\s*])\*\*'
+    r'|(?<![\w*])\*(?P<em>[^\s*][^*\n]*?[^\s*]|[^\s*])\*(?![\w*])'
 )
 
 BULLET = re.compile(r'^\s*[-*+]\s+(.*)$')
@@ -44,7 +56,10 @@ def inline(text, refs=None):
     out, pos = [], 0
     for m in INLINE.finditer(text):
         out.append(esc(text[pos:m.start()]))
-        if m.group('code') is not None:
+        if m.group('esc') is not None:
+            # A backslashed marker is that character, literally.
+            out.append(esc(m.group('esc')))
+        elif m.group('code') is not None:
             out.append('<code>%s</code>' % esc(m.group('code')))
         elif m.group('ref') is not None:
             # [[h17]] -> a link showing the code that label currently resolves to.

@@ -622,6 +622,18 @@ def resolve(rep, patch, root='.', quotes=True):
             err(line, 'prose says %s, which is a position, not a name. It stops matching '
                       'the moment anything is reordered — write [[<label>]] and let the '
                       'builder print the code' % (a or b), fatal=False)
+        # A link the renderer will not render. Only #anchors, http(s) and mailto reach
+        # the reader; anything else — a repo-relative path, which is what someone
+        # writing about a repository naturally reaches for — silently loses its href
+        # and ships as plain text. Saying so is cheap; discovering it in the report is
+        # not, because the prose still reads as though a link were there.
+        for text_, href in re.findall(r'\[([^\]]+)\]\(([^)\s]+)\)', text):
+            if not re.match(r'^(#|https?://|mailto:)', href):
+                err(line, 'the link on %r points at %r, which the report cannot follow: '
+                          'it is one file, opened anywhere. Only #labels, http(s) and '
+                          'mailto render — this one will ship as plain text. Quote the '
+                          'path in backticks instead, or link the change with [[label]].'
+                    % (text_, href), fatal=False, advisory=True)
         for a, b in REF.findall(text):
             name = a or b
             if name in rep.refs or name in chapters:
