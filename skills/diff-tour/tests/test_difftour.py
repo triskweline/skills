@@ -44,7 +44,7 @@ SIMPLE = '''diff --git a/src/deep/a.js b/src/deep/a.js
 index 111..222 100644
 --- a/src/deep/a.js
 +++ b/src/deep/a.js
-@@ -10,6 +10,7 @@ function outer() {
+@@ -10,5 +10,6 @@ function outer() {
  keep one
  keep two
 -gone
@@ -1025,7 +1025,7 @@ class TestHunksCommand(unittest.TestCase):
         self.assertNotIn('runs:', out)          # one run, nothing to say
         with open(self.patch.name, 'a') as f:
             f.write('diff --git a/src/many.js b/src/many.js\n--- a/src/many.js\n'
-                    '+++ b/src/many.js\n@@ -1,9 +1,9 @@\n'
+                    '+++ b/src/many.js\n@@ -1,6 +1,6 @@\n'
                     ' ctx\n-a\n+A\n ctx\n ctx\n-b\n+B\n ctx\n')
         out = self.run('src/many.js').stdout
         self.assertIn('2 runs: 2-3, 6-7', out)

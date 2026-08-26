@@ -11,6 +11,7 @@ place with any structure is a diff block, and there the structure is Prism's.
 
 from __future__ import annotations
 
+import itertools
 import os
 import re
 
@@ -167,7 +168,7 @@ def component(comp, seq=0, refs=None):
          inline(comp.caption, refs), _where(comp), tag, _body(comp))
 
 
-def beat(b, ch, refs=None):
+def beat(b, ch, refs=None, seq=None):
     ident = 'b%d-%d' % (ch.number, ch.beats.index(b) + 1)
     say = ['<h3 id="%s">%s</h3>' % (ident, inline(b.subtitle, refs))]
     if b.prose:
@@ -176,10 +177,10 @@ def beat(b, ch, refs=None):
     # diff, the way its caption is. There is nothing to guess about which block a
     # paragraph belongs to.
     show = []
-    for n, item in enumerate(b.items, 1):
+    for item in b.items:
         lead = prose(item.lead, refs)
         show.append(('<div class="note">%s</div>' % lead if lead else '')
-                    + component(item, seq=n, refs=refs))
+                    + component(item, seq=next(seq) if seq else 0, refs=refs))
     cls = 'beat' if show else 'beat solo'
     out = ['<section class="%s">' % cls,
            '<div class="say">%s</div>' % '\n'.join(say)]
@@ -189,7 +190,7 @@ def beat(b, ch, refs=None):
     return '\n'.join(out)
 
 
-def chapter(ch, refs=None):
+def chapter(ch, refs=None, seq=None):
     out = ['<section class="chapter" id="ch%d">' % ch.number,
            '<h2><span class="n">%d</span><span class="t">%s</span></h2>'
            % (ch.number, inline(ch.title, refs))]
@@ -201,7 +202,7 @@ def chapter(ch, refs=None):
         out.append('<aside class="blast %s" data-level="%s">%s</aside>'
                    % (ch.blast_level, ch.blast_level, prose(ch.blast, refs) or ''))
     for b in ch.beats:
-        out.append(beat(b, ch, refs))
+        out.append(beat(b, ch, refs, seq))
     out.append('</section>')
     return '\n'.join(out)
 
@@ -258,7 +259,10 @@ def page(rep, stats, source, date, uid, layout=None, repo=None, branch=None):
     body = ['<h1>%s</h1>' % inline(rep.title, rep.refs),
             '<p class="meta">%s</p>' % _meta_line(stats, source, date, repo, branch),
             '<p class="standfirst">%s</p>' % STANDFIRST]
-    body += [chapter(ch, rep.refs) for ch in rep.chapters]
+    # One counter for the whole report: an uncoded block's id has to be unique across
+    # the page, not within its beat, or the same quote in two beats collides.
+    seq = itertools.count(1)
+    body += [chapter(ch, rep.refs, seq) for ch in rep.chapters]
 
     html = _swap(html, 'PRISM', '\n<script>%s</script>\n' % prism)
     html = _swap(html, 'CSS', '\n<style>\n%s</style>\n' % css)

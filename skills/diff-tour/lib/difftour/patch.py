@@ -87,6 +87,20 @@ class Hunk:
                 out.append([o, o])
         return [tuple(r) for r in out]
 
+    def miscounted(self):
+        """(declared, actual) per side when the body does not match the @@ header.
+
+        The header states how many old and new lines the hunk holds. A patch that was
+        truncated, or whose context lines were mangled in transit, parses as a shorter
+        hunk — and nothing downstream can notice, because coverage is computed over the
+        lines that were parsed. This is the one place the two can be compared.
+        """
+        old_n = sum(1 for l in self.lines if l.kind in ' -')
+        new_n = sum(1 for l in self.lines if l.kind in ' +')
+        if old_n == self.old_count and new_n == self.new_count:
+            return None
+        return ((self.old_count, old_n), (self.new_count, new_n))
+
     def bytes_of_body(self):
         """What `tour-hunks.py --body` would print for this hunk.
 
@@ -182,6 +196,16 @@ class Patch:
     def __init__(self, files):
         self.files = files
 
+    def miscounted(self):
+        """[(path, key, ((declared_old, actual_old), (declared_new, actual_new)))]."""
+        out = []
+        for f in self.files:
+            for h in f.hunks:
+                bad = h.miscounted()
+                if bad:
+                    out.append((f.path, h.key, bad))
+        return out
+
     def duplicate_keys(self):
         """Files where two hunks share a +start, which makes one unselectable.
 
@@ -233,13 +257,20 @@ def parse(text):
     old_n = new_n = 0
     minus = plus = None
     renamed_from = None
+    renamed_to = None
     old_mode = None
 
     def close_file():
-        nonlocal cur, minus, plus, renamed_from, old_mode
+        nonlocal cur, minus, plus, renamed_from, renamed_to, old_mode
         if cur is not None:
-            # +++ and --- are authoritative; the diff --git line is the fallback.
-            if plus:
+            # "rename to" beats everything: git writes it unprefixed, always, so it is
+            # the one path that needs no guessing. That matters for a --no-prefix patch
+            # of a rename *with* edits, where `diff --git src/old.js src/new.js` names
+            # two different paths — the only shape the a/-prefix heuristic cannot read —
+            # and unprefixing +++ would turn src/new.js into new.js.
+            if renamed_to:
+                cur.path = renamed_to
+            elif plus:
                 cur.path = plus
             elif minus:
                 cur.path = minus
@@ -269,7 +300,7 @@ def parse(text):
             else:
                 files.append(cur)
         cur = None
-        minus = plus = renamed_from = old_mode = None
+        minus = plus = renamed_from = renamed_to = old_mode = None
 
     for raw in text.split('\n'):
         # Any "diff " line starts a new section, not just "diff --git": a combined
@@ -313,7 +344,8 @@ def parse(text):
                 renamed_from = raw[len('rename from'):].strip() or None
                 continue
             if raw.startswith('rename to'):
-                cur.path = raw[len('rename to'):].strip() or cur.path
+                renamed_to = raw[len('rename to'):].strip() or None
+                cur.path = renamed_to or cur.path
                 continue
             if raw.startswith('copy from'):
                 cur.kind = 'copied'
@@ -334,6 +366,11 @@ def parse(text):
             continue
 
         if hunk is None or not raw:
+            # An empty line inside a hunk body is either an empty context line whose
+            # leading space was stripped in transit, or the trailing '' from
+            # split('\n'). Nothing here can tell, and guessing from the header's counts
+            # appends phantom lines to any patch whose counts are merely wrong — so this
+            # skips, and Hunk.miscounted() makes the resulting short hunk loud instead.
             continue
         if raw.startswith('\\'):
             if hunk.lines:

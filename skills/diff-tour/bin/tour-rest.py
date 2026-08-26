@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
 PROG = 'tour-rest'
 
-from difftour import narration, patch as patchmod   # noqa: E402
+from difftour import cli, narration   # noqa: E402
 
 
 def main(argv):
@@ -37,17 +37,9 @@ def main(argv):
             print('tour-rest: no such %s: %s' % (what, path), file=sys.stderr)
             return 2
 
-    p = patchmod.load(src)
-    dupes = p.duplicate_keys()
-    if dupes:
-        print('%s: this patch has two hunks at the same line in one file, so one of '
-              'them could never be selected and coverage would credit its lines to the '
-              'other:' % PROG, file=sys.stderr)
-        for path, key in dupes[:10]:
-            print('  %s at +%s' % (path, key), file=sys.stderr)
-        print('%s: it looks hand-assembled. Regenerate it with bin/tour-fetch.sh.'
-              % PROG, file=sys.stderr)
-        return 2
+    p, bad = cli.load_patch(src, PROG, sys.stderr)
+    if bad:
+        return bad
     with open(doc, encoding='utf-8') as f:
         rep, problems = narration.parse(f.read())
     # Coverage never depends on a quote, so this does not read one. Otherwise the

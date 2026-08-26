@@ -216,17 +216,19 @@ def parse(text):
                 in_code.body.append(line)
                 continue
 
-        if line.startswith('%%'):
-            # A literal % at the start of a prose line. Only column-0 prose ever needs
-            # it — a block's own prose is indented, so its % is already just a %.
+        if line.lstrip().startswith('%%'):
+            # A literal % at the start of a prose line. Column-0 prose always needs it;
+            # indented prose needs it only when what follows is a directive name, which
+            # would otherwise be refused as an indented directive below.
+            bare = line.lstrip()[1:]
             if sink is None:
                 err(i, 'prose before the first chapter')
-            elif in_lead:
+            elif in_lead and line == line.lstrip():
                 err(i, 'prose here is not attached to anything. Indent it to make it '
                        'this block\'s own prose, or move it into the beat\'s narration '
                        'above the first block')
             else:
-                sink.append(line[1:])
+                sink.append(bare)
             continue
 
         if line.startswith('%'):
@@ -368,6 +370,19 @@ def parse(text):
         if not line.strip():
             if sink and sink[-1].strip():
                 sink.append('')
+            continue
+        # An indented directive. The "unknown directive" guard above only fires in
+        # column 0, and indentation is this format's own way of attaching prose to a
+        # block — so indenting a directive by two spaces is a one-keystroke slip that
+        # otherwise renders the directive's own text as prose. For %hunk the coverage
+        # check notices the missing lines; for %quote and %code nothing does, and the
+        # report ships the literal text "%quote a.js:1-2 = context" to the reader.
+        indented = re.match(r'^\s+%(\S+)', line)
+        if indented and indented.group(1) in DIRECTIVES:
+            err(i, 'an indented %%%s. Directives start in column 0; indentation is how '
+                   'prose attaches to the block above it, so this would have been '
+                   'rendered as prose saying "%s". If you did mean that prose, write '
+                   '%%%% for the literal %%.' % (indented.group(1), line.strip()))
             continue
         if line.lstrip().startswith('#') and not line.lstrip().startswith('#!'):
             err(i, 'a markdown heading in prose. Chapters are %chapter and beats are '
@@ -677,7 +692,13 @@ def _resolve_quote(comp, root, err):
     path = os.path.join(root, comp.path)
     try:
         with open(path, encoding='utf-8', errors='replace') as f:
-            all_lines = f.read().split('\n')
+            text = f.read()
+        all_lines = text.split('\n')
+        # A newline-terminated file — every normal one — leaves a phantom empty element
+        # here, and quoting it resolved happily while the caption claimed a line the
+        # file does not have.
+        if all_lines and all_lines[-1] == '' and text.endswith('\n'):
+            all_lines.pop()
     except OSError as e:
         err(comp.line, 'cannot read %s: %s' % (comp.path, e.strerror or e))
         return

@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
 PROG = 'tour-build'
 
-from difftour import narration, patch as patchmod, render   # noqa: E402
+from difftour import cli, narration, render   # noqa: E402
 
 
 def _head_of(patch_path):
@@ -132,17 +132,9 @@ def main(argv):
             print('tour-build: no such %s: %s' % (what, path), file=sys.stderr)
             return 2
 
-    p = patchmod.load(src)
-    dupes = p.duplicate_keys()
-    if dupes:
-        print('%s: this patch has two hunks at the same line in one file, so one of '
-              'them could never be selected and coverage would credit its lines to the '
-              'other:' % PROG, file=sys.stderr)
-        for path, key in dupes[:10]:
-            print('  %s at +%s' % (path, key), file=sys.stderr)
-        print('%s: it looks hand-assembled. Regenerate it with bin/tour-fetch.sh.'
-              % PROG, file=sys.stderr)
-        return 2
+    p, bad = cli.load_patch(src, PROG, sys.stderr)
+    if bad:
+        return bad
     with open(doc, encoding='utf-8') as f:
         text = f.read()
 

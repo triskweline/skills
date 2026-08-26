@@ -34,7 +34,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
-from difftour import narration, patch as patchmod   # noqa: E402
+from difftour import cli, narration   # noqa: E402
 
 CHAPTER = ('%intro', '%chapter', '%leftovers', '%closing')
 
@@ -131,7 +131,9 @@ def main(argv):
         if not os.path.isfile(path):
             print('tour-splice: no such file: %s' % path, file=sys.stderr)
             return 2
-    patch = patchmod.load(src)
+    patch, bad = cli.load_patch(src, 'tour-splice', sys.stderr)
+    if bad:
+        return bad
 
     with open(doc, encoding='utf-8') as f:
         lines = f.read().split('\n')
@@ -158,7 +160,21 @@ def main(argv):
         title = head[1].strip() if len(head) > 1 else ''
         here = _chapters(lines)
         hits = [c for c in here if c[2] == title]
-        if not first.startswith(CHAPTER):
+        # A fork writes one file per chapter it owns. A file holding two would replace
+        # one chapter's span with both, leaving the narration with a duplicated chapter
+        # and duplicated labels — and then the *sibling* fork's legitimate file is
+        # refused for an ambiguous title, an error pointing at the wrong party, after
+        # every fork's budget is spent.
+        inside = _chapters(text.split('\n'))
+        if len(inside) > 1:
+            print('tour-splice: %s holds %d chapters (%s). One file per chapter: this '
+                  'would replace one chapter with all of them and duplicate the rest, '
+                  'and the next fork\'s file would then be refused for a title that '
+                  'suddenly matches twice.'
+                  % (path, len(inside), ', '.join(repr(c[2]) for c in inside)),
+                  file=sys.stderr)
+            bad += 1
+        elif not first.startswith(CHAPTER):
             print('tour-splice: %s does not begin with a chapter directive, so there is '
                   'nothing to say which chapter it replaces' % path, file=sys.stderr)
             bad += 1
