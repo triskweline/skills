@@ -804,9 +804,11 @@ built now is built for chapters that do not exist yet.
 come for.** Under [Step H](#step-h-narrate-the-leftovers), substantial work gets chapters
 however unrelated it is, and a chapter cannot be written from a file listing. This read is bounded by
 the size of the diff — you read each hunk once — which is what keeps it affordable even on a
-range with three bodies of work, and it is the cost of the report being worth reading; if the
-reader only wants one body, that is a decision for them to make in Step B or C, while they are still there, not one to make
-silently by skimping here.
+range with three bodies of work, and it is the cost of the report being worth reading. If the
+reader only wants one body they have to have *volunteered* that back in Step C, while they
+were still there, and the patch was narrowed then — nobody was asked, and by here nobody is
+listening. So this is not a decision you can still make; skimping on it just makes a worse
+report of the same diff.
 
 What you may still read by path alone is what Step H's first kind covers: mechanical churn.
 A lockfile refresh, generated output, a vendored directory, pure formatting — one
@@ -946,7 +948,9 @@ Three things it cannot see:
   packing wants ten, the chapters are probably cut too finely — that is a Step E problem, not
   a spending one.
 - **You are not idle while they run.** [Step H](#step-h-narrate-the-leftovers) needs no
-  per-chapter facts, so write the leftovers chapter yourself while the forks work.
+  per-chapter facts, so write the leftovers chapter yourself while the forks work. Write it
+  straight into the narration file: the splice never touches `%leftovers`, and a fork only
+  ever *reads* that file, so your writing and their reading do not collide.
 
 ### What to tell each fork
 
@@ -961,15 +965,26 @@ nothing to brief it on. Tell each fork:
   `<narration>.ch<n>`, beside the narration file. One file each, so nothing races. No
   `%report`, no other chapter;
 - to **start from the chapter's directives as they already stand in the narration file and
-  keep every `@label` exactly**. A fork that retypes a directive from the skeleton table
-  drops its label, and then every `[[…]]` its siblings wrote at that block dangles — a
-  failure that surfaces at your build, in prose you did not write and will not read.
-  Copy the lines, then add prose around them;
+  keep every `@label` exactly**, along with the `%chapter` title, which is the key the
+  splice matches on. A fork that retypes a directive from the skeleton table drops its
+  label, and then every `[[…]]` its siblings wrote at that block dangles — a failure that
+  surfaces at your build, in prose you did not write and will not read. Copy the lines,
+  then add prose around them;
+- that **the label, the spec and the chapter title are frozen, but the caption is not**.
+  Captions were written in Step F from a deliberately shallow read; the fork is the first
+  to read the block properly, and "[a caption states what you read](#captions)" outranks
+  the copy. Correcting a caption its reading disproves is the fork's job, not an
+  overstep — and it costs nothing, because nothing matches on a caption;
+- to **leave any block it adds unlabelled**. A fork that mints its own `@h50` can collide
+  with a sibling doing the same, and the collision surfaces as a refused build in chapters
+  you never read. Adding `%quote` and `%code` is expected; if it splits one of its own
+  hunks into two fragments, those go in without labels and a `tour-skeleton.py` run after
+  the splice names them safely;
 - to **check its own file before returning**, with
   `bin/tour-splice.py --check <narration> <its file>`. That validates the fragment and
   writes nothing. A format error caught by the fork costs the fork a minute; the same error
   caught after the splice costs you a debugging round in a chapter you never read;
-- to **end its report to you with four things**, each keyed to a block's label where it has
+- to **end its report to you with these five things**, each keyed to a block's label where it has
   one. You will not read the prose it wrote — that is the cost forking paid to avoid — so
   this report is the only thing you get, and Step I is written from it:
   - **its admissions**, already worded as the wrap-up should print them: what it could not
@@ -985,9 +1000,11 @@ nothing to brief it on. Tell each fork:
     entity to read that block at depth, so it is the only one who can notice;
   - **whether its chapter is really one idea**, and whether it overlaps another chapter. A
     fork reads one chapter more closely than you read all of them, so this is the only
-    honest check on Step E. Re-clustering after the fact is usually too expensive, but if two
-    forks independently say their chapters are the same topic, that belongs in the overview
-    even when the structure has to stand.
+    honest check on Step E. Re-clustering after the fact is usually too expensive, so what
+    you do with the answer is **say it in the overview**: a chapter that turned out to hold
+    two ideas gets a half-line naming both in "The chapters", and two chapters that turned
+    out to be one topic get named together there. A reader who is told a chapter covers two
+    things can follow it; one who is not told wonders why it does not cohere.
 
 Then put them back:
 
@@ -1111,6 +1128,8 @@ else, and it is what lets them read one body and stop.
   certificate, and manufacturing that reassurance is the thing this section exists to
   prevent.
 - **Open questions** for the author, if any.
+- **Suggested next step** — usually a dedicated correctness pass over the same diff
+  (`/code-review` in Claude Code), or a specific file worth reading in full.
 
 **Before citing a label anywhere in these two chapters, read that label's caption in the
 skeleton table.** A label reference is guaranteed to *resolve*, never to *aim* — nothing
@@ -1118,8 +1137,12 @@ mechanical can tell that `[[h29]]` points at the export list when the explanatio
 `[[h28]]`. The table makes that a one-glance check, and these two chapters are where
 misfired citations do the most damage, because they are where a reader decides what to
 read.
-- **Suggested next step** — usually a dedicated correctness pass over the same diff
-  (`/code-review` in Claude Code), or a specific file worth reading in full.
+
+**Re-run `bin/tour-skeleton.py <patch> <narration>` to get a current table.** The one from
+Step F is stale by now: blocks moved between chapters after the splice, so the codes have
+shifted, and a fork may have corrected a caption. Re-running is safe at any time — it only
+ever *adds* a label to a block that lacks one, and by now none do — and it reprints the
+table against the document as it actually stands.
 
 ## Step J: Hand it over
 

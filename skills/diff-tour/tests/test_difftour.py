@@ -647,6 +647,50 @@ BODYLESS = (SIMPLE +
             'Binary files a/l.png and b/l.png differ\n')
 
 
+class TestAllGroupOverlap(unittest.TestCase):
+    """`path:all` expands to one block per hunk, so it shares the overlap check.
+
+    A review claimed a hunk shown by both `:all` and an explicit selector rendered twice
+    with no warning. It does warn, in either order — pinned here because the claim was
+    plausible and the consequence (a change silently shown twice) is the kind this skill
+    exists to prevent.
+    """
+
+    P = patch.parse(
+        'diff --git a/a.js b/a.js\nindex 1..2 100644\n--- a/a.js\n+++ b/a.js\n'
+        '@@ -8,3 +8,4 @@ function f() {\n ctx\n-old\n+new\n+more\n ctx2\n'
+        '@@ -40,3 +40,3 @@ function g() {\n c\n-x\n+y\n c2\n')
+
+    def warnings_for(self, first, second):
+        doc = '\n'.join(
+            ['%report T', '%intro O', '%beat W', 'Prose.',
+             '%chapter One', 'Premise.', '%blast narrow', 'E.', '%beat A', 'Prose.',
+             first,
+             '%chapter Two', 'Premise.', '%blast narrow', 'E.', '%beat B', 'Prose.',
+             second,
+             '%closing W', '%beat C', 'Prose.'])
+        rep, problems = narration.parse(doc)
+        problems += narration.resolve(rep, self.P, '.')
+        return [str(x) for x in problems]
+
+    def test_all_then_explicit_warns(self):
+        w = self.warnings_for('%hunk a.js:all = the file', '%hunk a.js:8 = just one')
+        self.assertTrue(any('overlaps' in x for x in w), w)
+
+    def test_explicit_then_all_warns(self):
+        w = self.warnings_for('%hunk a.js:8 = just one', '%hunk a.js:all = the file')
+        self.assertTrue(any('overlaps' in x for x in w), w)
+
+    def test_a_fragment_inside_an_all_group_warns(self):
+        w = self.warnings_for('%hunk a.js:all = the file',
+                              '%hunk a.js:8 #2-3 = part of one')
+        self.assertTrue(any('overlaps' in x for x in w), w)
+
+    def test_all_alone_does_not_warn(self):
+        w = self.warnings_for('%hunk a.js:all = the file', '%quote a.js:1-1 = x')
+        self.assertFalse(any('overlaps' in x for x in w), w)
+
+
 class TestCoverage(unittest.TestCase):
     def cov(self, p, *lines):
         rep, fatal, _ = problems(tour(*lines), p)
@@ -1575,12 +1619,38 @@ class TestSpliceCommand(_CommandCase):
             self.assertNotIn(word, r.stderr)
 
     def test_a_title_that_matches_nothing_is_refused(self):
+        """The title is the splice key, so a wrong one is a content error (6), and it
+        is caught before any file is placed rather than partway through."""
         self.skeleton()
         before = self.read()
         r = self.splice(self.part('a', 'Nonexistent', 'src/deep/a.js:10 = a', 'x'))
-        self.assertEqual(r.returncode, 2)
-        self.assertIn('no chapter titled', r.stderr)
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('matches no chapter', r.stderr)
         self.assertEqual(self.read(), before)
+
+    def test_check_refuses_a_title_that_matches_nothing(self):
+        """The failure --check existed for and did not catch: a fork that retitles its
+        chapter passed its own check and failed at the orchestrator's splice."""
+        self.skeleton()
+        part = self.part('a', 'A better title', 'src/deep/a.js:10 = a', 'x')
+        r = self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
+             '--check', self.doc, part], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('matches no chapter', r.stderr)
+
+    def test_check_does_not_pass_a_retitled_file_that_also_dropped_labels(self):
+        """A wrong title makes the label comparison impossible — there is no chapter to
+        compare against — so it used to be skipped and the file reported clean with two
+        mistakes in it. Refusing on the title is what stops that."""
+        self.labelled_skeleton()
+        part = self.raw_part('a', '%chapter Retitled', 'Prose.', '%beat A', 'Prose.',
+                             '%hunk src/deep/a.js:10 = a')
+        r = self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
+             '--check', self.doc, part], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('matches no chapter', r.stderr)
 
     def test_a_file_without_a_chapter_directive_is_refused(self):
         self.skeleton()
@@ -1588,7 +1658,7 @@ class TestSpliceCommand(_CommandCase):
         with open(path, 'w') as f:
             f.write('%beat Orphan\nProse.\n')
         r = self.splice(path)
-        self.assertEqual(r.returncode, 2)
+        self.assertEqual(r.returncode, 6)
         self.assertIn('does not begin with a chapter directive', r.stderr)
 
     def test_the_result_builds(self):

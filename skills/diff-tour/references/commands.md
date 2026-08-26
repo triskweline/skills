@@ -208,13 +208,17 @@ labels it names.
     bin/tour-splice.py [--check] <narration> <chapter-file> [<chapter-file> …]
 
 Step G narrates chapters in parallel, each fork writing **one file per chapter it owns**
-and nothing else, so nothing writes the narration while that happens and there is no race.
-This puts them back.
+and nothing else. Forks only ever read the narration file — the orchestrator is the only
+writer, adding Leftovers while they work — so there is no race. This puts the chapters back.
 
 A chapter file must begin with the chapter directive it replaces, and its title must match
 exactly one chapter in the narration — **matching on the title, not on position or filename**,
 so a fork cannot land its work on the wrong chapter and argument order does not matter.
 `%report`, `%intro`, `%leftovers` and `%closing` stay where they are.
+
+**The title is therefore frozen**, and checked before anything is placed: a fork that
+improves its chapter's title while narrating would otherwise pass its own `--check` and fail
+here, after spending its whole budget.
 
 **Every part is validated before any part is placed**, so a malformed chapter file cannot
 leave the narration half-updated. A chapter file is the middle of a document, so it is checked
@@ -237,8 +241,8 @@ on the next build.
 | Exit | Meaning |
 |---|---|
 | 0 | spliced, or `--check` found nothing wrong |
-| 2 | a missing file, a chapter file with no chapter directive, or a title that matches no chapter or several |
-| 6 | a chapter file does not parse, or drops a label; nothing written |
+| 2 | bad arguments, or a missing file |
+| 6 | a chapter file does not parse, has no chapter directive, names no chapter or several, or drops a label; nothing written |
 
 ---
 
