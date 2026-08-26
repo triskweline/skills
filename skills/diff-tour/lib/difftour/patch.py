@@ -114,6 +114,23 @@ class Patch:
     def __init__(self, files):
         self.files = files
 
+    def duplicate_keys(self):
+        """Files where two hunks share a +start, which makes one unselectable.
+
+        Only a hand-assembled patch can do this — git never emits it. It matters
+        because hunk() would always return the first, so the second could never be
+        shown, while coverage would credit its lines to the first. That is the one
+        way "nothing is hidden" could lie, so the loader refuses such a patch.
+        """
+        bad = []
+        for f in self.files:
+            seen = set()
+            for h in f.hunks:
+                if h.key in seen:
+                    bad.append((f.path, h.key))
+                seen.add(h.key)
+        return bad
+
     @property
     def hunks(self):
         return [h for f in self.files for h in f.hunks]

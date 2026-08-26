@@ -30,6 +30,8 @@ import sys
 
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
+PROG = 'tour-hunks'
+
 from difftour import patch as patchmod   # noqa: E402
 
 
@@ -58,6 +60,16 @@ def main(argv):
         print('tour-hunks: no such patch file: %s' % src, file=sys.stderr)
         return 2
     p = patchmod.load(src)
+    dupes = p.duplicate_keys()
+    if dupes:
+        print('%s: this patch has two hunks at the same line in one file, so one of '
+              'them could never be selected and coverage would credit its lines to the '
+              'other:' % PROG, file=sys.stderr)
+        for path, key in dupes[:10]:
+            print('  %s at +%s' % (path, key), file=sys.stderr)
+        print('%s: it looks hand-assembled. Regenerate it with bin/tour-fetch.sh.'
+              % PROG, file=sys.stderr)
+        return 2
 
     files = [f for f in p.files
              if (not prefixes or any(f.path.startswith(x) for x in prefixes))
