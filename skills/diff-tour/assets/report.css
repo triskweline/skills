@@ -264,7 +264,13 @@ section.chapter h2 .n {
   padding-top: 2.9rem;
 }
 section.chapter > h2 + .beat { border-top: none; padding-top: 0; }
-.beat > .say { position: sticky; top: 1.5rem; align-self: start; }
+.beat > .say {
+  position: sticky; top: 1.5rem; align-self: start;
+  /* Prose taller than the viewport would otherwise have its tail pinned out of
+     reach until the diff beside it ends. */
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+}
 .beat > .show { min-width: 0; }
 .beat.solo { display: block; }
 .beat.solo > .say { position: static; }
@@ -297,6 +303,19 @@ a.ref:hover > code { text-decoration: underline; }
   font: 0.86em/1.4 var(--mono);
   background: var(--panel-2); border: 1px solid var(--line-2);
   border-radius: 4px; padding: .1em .3em;
+}
+
+/* A reviewer reads this beside their editor, so the layout has to survive a
+   half-width window even though full width is what it is designed for. */
+@media (max-width: 1100px) {
+  #nav {
+    position: static; inset: auto; width: auto; height: auto;
+    border-right: none; border-bottom: 1px solid var(--line);
+  }
+  #nav ol { max-height: 40vh; }
+  main { margin-left: 0; padding: 2rem 1.5rem 6rem; }
+  .beat { grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
+  .beat > .say { position: static; max-height: none; overflow: visible; }
 }
 
 /* --------------------------------------------------------------------- hunks */
