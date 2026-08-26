@@ -62,6 +62,10 @@
 
   function collapse(fig, on) {
     fig.classList.toggle('collapsed', on);
+    /* A screen reader cannot see a class. Without this, a collapsed diff is simply
+       absent with nothing saying it can be opened. */
+    var ctl = fig.querySelector('[aria-expanded]');
+    if (ctl) ctl.setAttribute('aria-expanded', on ? 'false' : 'true');
   }
 
   function setSeen(fig, on) {
@@ -79,25 +83,30 @@
   }
 
   /* Collapsing is for every block, including a quote, which has no viewed mark.
-     The caption is not a button, so it needs a tabindex and the keys a button
-     would have handled. */
+     The control is the caption's own text, never the whole figcaption: the figcaption
+     contains a link and the "mark viewed" button, and interactive content nested
+     inside something with role="button" is both an ARIA violation and unreachable —
+     a screen reader announces one button and hides what is inside it. */
   figures.forEach(function (fig) {
     var cap = fig.querySelector('figcaption');
     if (!cap) return;
-    cap.tabIndex = 0;
-    cap.setAttribute('role', 'button');
+    var hit = cap.querySelector('.cap') || cap;
+    hit.tabIndex = 0;
+    hit.setAttribute('role', 'button');
+    hit.setAttribute('aria-expanded', fig.classList.contains('collapsed')
+                     ? 'false' : 'true');
 
     function toggle() { collapse(fig, !fig.classList.contains('collapsed')); }
 
-    cap.addEventListener('click', function (e) {
+    hit.addEventListener('click', function (e) {
       if (e.target.closest('a, button')) return;
       /* A drag that selected text is not a click. */
       var sel = window.getSelection && window.getSelection();
       if (sel && String(sel).length) return;
       toggle();
     });
-    cap.addEventListener('keydown', function (e) {
-      if (e.target !== cap) return;
+    hit.addEventListener('keydown', function (e) {
+      if (e.target !== hit) return;
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     });
 

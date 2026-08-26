@@ -840,6 +840,12 @@ hunks carry two ideas, and which lines go where.
 **Write the whole report's structure before any of its prose.** Every chapter, every beat
 subtitle, every block with its caption — and not one sentence of narration.
 
+**Give every chapter a title no other chapter has.** The title is how a chapter narrated on
+its own finds its place again, so two chapters called "Cleanups" cannot both be spliced back.
+`bin/tour-skeleton.py` refuses a duplicate, which is the cheap moment to hear about it: after
+[Step G](#step-g-narrate-the-cluster-chapters) starts, titles are frozen, and the collision
+surfaces in a fork's own check — where the fork cannot fix it, because only you can retitle.
+
 A skeleton carries **no `%blast` line**. A blast level is a claim about reach, and reach is
 what the caller index tells you — which Step G gathers, per chapter. Judging it here would
 mean gathering that index serially for every chapter, which is the work this split exists to
@@ -962,7 +968,10 @@ Three things it cannot see:
 ### What to tell each fork
 
 A fork inherits your context, so it already holds the patch reads and the skeleton — there is
-nothing to brief it on. Tell each fork:
+nothing to brief it on. **If this host's subagents do not inherit context**, they need that
+first: tell each one to read `bin/tour-hunks.py --body <patch> <its files>` and the skeleton
+table before anything else, and say which chapter's blocks are its own. Everything below
+applies either way. Tell each fork:
 
 - **which chapter or chapters** it owns, and that the skeleton table is how it names a block
   in any other chapter;

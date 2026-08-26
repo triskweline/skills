@@ -59,9 +59,31 @@ REPO="${TOUR_REPO:-$PWD}"
 PR_KIND=       # how a bare-number target resolved: gh, glab or git
 mkdir -p "$(dirname "$OUT")"
 
+# Empty output means "I could not tell", and every caller has to treat that as a
+# question for the human rather than interpolating it. Interpolating it produced two
+# silent wrong answers: a raw `fatal: Not a valid object name ` with exit 128 for the
+# default target, and — worse — `HEAD...branch` for a branch target, which is empty
+# whenever you are standing on that branch, so the agent told the reader a real branch
+# had nothing to tour.
 default_branch() {
-  git -C "$REPO" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' \
-    || for b in main master trunk; do git -C "$REPO" show-ref --verify --quiet "refs/heads/$b" && { echo "$b"; return; }; done
+  local b
+  b=$(git -C "$REPO" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+  [ -n "$b" ] && { echo "$b"; return 0; }
+  for b in main master trunk; do
+    git -C "$REPO" show-ref --verify --quiet "refs/heads/$b" && { echo "$b"; return 0; }
+  done
+  return 1
+}
+
+# Sets DB, or exits. Not a command substitution: `exit` inside $( ) leaves only the
+# subshell, so the script would print the explanation and then carry on to produce the
+# empty diff it was trying to prevent.
+require_default_branch() {
+  DB=$(default_branch) && [ -n "$DB" ] && return 0
+  echo "tour-fetch: cannot tell which branch is this repository's default — there is no" >&2
+  echo "tour-fetch: origin/HEAD, and no main, master or trunk. Pass an explicit range" >&2
+  echo "tour-fetch: instead, e.g. 'some-branch...$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)'." >&2
+  exit 3
 }
 
 need() { command -v "$1" >/dev/null || { echo "tour-fetch: needs $1 for this target" >&2; exit 4; }; }
@@ -74,7 +96,8 @@ git_ref() {
   if [ "$1" != HEAD ] && [ "$1" != @ ] && [ "${1%%[~^]*}" = "$1" ] \
   && { git -C "$REPO" show-ref --verify --quiet "refs/heads/$1" \
     || git -C "$REPO" show-ref --verify --quiet "refs/remotes/origin/$1"; }; then
-    git -C "$REPO" diff "$(default_branch)...$1" -- "${PATHS[@]}" > "$OUT"       # a branch: three dots
+    require_default_branch
+    git -C "$REPO" diff "$DB...$1" -- "${PATHS[@]}" > "$OUT"                      # a branch: three dots
   else
     git -C "$REPO" diff "$1^..$1" -- "${PATHS[@]}" > "$OUT"                      # one commit
   fi
@@ -82,8 +105,9 @@ git_ref() {
 
 case "$TARGET" in
   "")
-    base=$(git -C "$REPO" merge-base --fork-point "$(default_branch)" HEAD 2>/dev/null \
-        || git -C "$REPO" merge-base "$(default_branch)" HEAD)
+    require_default_branch
+    base=$(git -C "$REPO" merge-base --fork-point "$DB" HEAD 2>/dev/null \
+        || git -C "$REPO" merge-base "$DB" HEAD)
     git -C "$REPO" diff "$base..HEAD" -- "${PATHS[@]}" > "$OUT"
     # Uncommitted work is part of "what I am looking at", so fold it in.
     if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no)" ]; then
@@ -92,12 +116,15 @@ case "$TARGET" in
     fi
     # A brand-new file is invisible to `git diff`, so it would be missing from the
     # patch and therefore from coverage, which cannot know what it was never given.
-    untracked=$(git -C "$REPO" ls-files --others --exclude-standard | head -20)
+    untracked_all=$(git -C "$REPO" ls-files --others --exclude-standard)
+    untracked_n=$(printf '%s' "$untracked_all" | grep -c . || true)
+    untracked=$(printf '%s\n' "$untracked_all" | head -20)
     if [ -n "$untracked" ]; then
       echo "tour-fetch: these files are untracked, so they are NOT in the diff:" >&2
       # Indent each line without splitting on spaces — an untracked "my notes.md"
       # is exactly the kind of file a reviewer needs to hear about.
       printf '%s\n' "$untracked" | sed 's/^/  /' >&2
+      [ "$untracked_n" -gt 20 ] && echo "  …and $((untracked_n - 20)) more" >&2
       echo "tour-fetch: git add them to include them, or say so in the overview." >&2
     fi
     echo "base $base" >&2

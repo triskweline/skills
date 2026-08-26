@@ -49,8 +49,14 @@ elsewhere has no head recorded.
 
 **Prints** the out-file path to stdout. To stderr: the hunk and file count, the base it chose
 when there was no target, a note if uncommitted work was folded in, a list of untracked files
-that are therefore *not* in the diff, and the pathspec if one was given. Say the base and the
-untracked list to the reader — a wrong guess should be visible.
+that are therefore *not* in the diff (the first 20, then how many more), and the pathspec if
+one was given. Say the base and the untracked list to the reader — a wrong guess should be
+visible.
+
+**It refuses rather than guessing when it cannot tell which branch is the default** — no
+`origin/HEAD`, and no `main`, `master` or `trunk`. Interpolating an empty branch name there
+produced a raw git error for the default target and, for a branch target, an *empty diff* that
+looked like a real answer.
 
 **Pins the diff's shape** with `-c diff.noprefix=false -c diff.mnemonicPrefix=false
 -c diff.context=3` and `--no-ext-diff`, so a personal gitconfig cannot change what downstream
@@ -60,7 +66,7 @@ parses.
 |---|---|
 | 0 | wrote a patch |
 | 2 | bad arguments |
-| 3 | target could not be resolved, or the diff is empty |
+| 3 | target could not be resolved, the default branch could not be determined, or the diff is empty |
 | 4 | needs `gh` or `glab` for this target and it is not installed |
 
 ---

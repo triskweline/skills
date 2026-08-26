@@ -59,7 +59,7 @@ which is what `tour-rest.py` uses so its output can be pasted whole.
 | `%chapter <title>` | a cluster chapter. One per cluster. |
 | `%leftovers <title>` | the leftovers chapter. At most one, immediately before `%closing`. |
 | `%closing <title>` | the wrap-up chapter. Exactly one, last. |
-| `%blast narrow\|moderate\|wide` | the blast-radius judgement. Required in a `%chapter`, not allowed in the other three. Prose under it is its evidence. |
+| `%blast narrow\|moderate\|wide` | the blast-radius judgement. Required in a `%chapter`, not allowed in the other three. Prose under it is its evidence, and a level without it does not pass the final build. |
 | `%beat <subtitle>` | a beat: one idea, its prose, and its blocks. |
 | `%hunk <spec> [@<label>] = <caption>` | one diff block. |
 | `%file <path> [@<label>] = <caption>` | a change with no diff body: binary, pure rename, mode change. |

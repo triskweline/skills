@@ -25,6 +25,20 @@ from difftour import code, narration, patch, prose, render   # noqa: E402
 from difftour.prose import esc   # noqa: E402
 
 
+DISTINCT = ('diff --git a/z.js b/z.js\nindex 1..2 100644\n--- a/z.js\n+++ b/z.js\n'
+            '@@ -1,3 +1,4 @@ scope\n'
+            ' zz_context_one\n'
+            '-zz_removed_alpha\n'
+            '+zz_added_alpha\n'
+            '+zz_added_beta\n'
+            ' zz_context_two\n'
+            '@@ -40,3 +41,3 @@ scope\n'
+            ' zz_context_three\n'
+            '-zz_removed_gamma\n'
+            '+zz_added_gamma\n'
+            ' zz_context_four\n')
+
+
 def tour(*lines):
     """A minimal well-formed narration file, with `lines` spliced into a cluster."""
     head = ['%report T', '%intro Overview', '%beat What it does', 'Prose.',
@@ -698,6 +712,85 @@ class TestNarrationRejects(unittest.TestCase):
             tour('%beat A', 'P.', '%quote src/@types/a.js:1-2 = typings'))
         self.assertFalse(any('cannot take a label' in p.text for p in problems),
                          [str(p) for p in problems])
+
+
+class TestSkeletonRefusals(unittest.TestCase):
+    """Two things that used to pass the skeleton and cost the expensive phase."""
+
+    P = patch.parse(DISTINCT)
+
+    def problems_for(self, *chapters):
+        body = ['%report T', '%intro O', '%beat W', 'Prose.'] + list(chapters) \
+            + ['%closing W', '%beat C', 'Prose.']
+        rep, problems = narration.parse('\n'.join(body))
+        return rep, problems + narration.resolve(rep, self.P, '.')
+
+    def test_two_chapters_may_not_share_a_title(self):
+        """The title is the frozen splice key. Two of them is unspliceable — and the
+        error lands in a fork's own --check, which cannot fix it: only the orchestrator
+        can retitle, and by then every fork's budget is spent."""
+        rep, problems = self.problems_for(
+            '%chapter Cleanups', 'Pr.', '%blast narrow', 'E.', '%beat A', 'P.',
+            '%hunk z.js:1 = one',
+            '%chapter Cleanups', 'Pr.', '%blast narrow', 'E.', '%beat B', 'P.',
+            '%hunk z.js:41 = two')
+        fatal = [x.text for x in problems if x.fatal]
+        self.assertTrue(any('second chapter titled' in t for t in fatal), fatal)
+
+    def test_distinct_titles_are_fine(self):
+        rep, problems = self.problems_for(
+            '%chapter One', 'Pr.', '%blast narrow', 'E.', '%beat A', 'P.',
+            '%hunk z.js:1 = one',
+            '%chapter Two', 'Pr.', '%blast narrow', 'E.', '%beat B', 'P.',
+            '%hunk z.js:41 = two')
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+
+    def test_a_blast_level_with_no_evidence_is_pending(self):
+        """It renders as a coloured box saying WIDE BLAST RADIUS and nothing else —
+        which reads as a finding while asserting nothing."""
+        rep, problems = self.problems_for(
+            '%chapter One', 'Pr.', '%blast wide', '%beat A', 'P.',
+            '%hunk z.js:1 = one', '%hunk z.js:41 = two')
+        pending = [x.text for x in problems if x.premature]
+        self.assertTrue(any('no evidence under it' in t for t in pending), pending)
+
+    def test_a_blast_level_with_evidence_is_not(self):
+        rep, problems = self.problems_for(
+            '%chapter One', 'Pr.', '%blast wide', 'It changes the public API.',
+            '%beat A', 'P.', '%hunk z.js:1 = one', '%hunk z.js:41 = two')
+        self.assertEqual([], [x.text for x in problems if x.premature])
+
+
+class TestProseProblemsNameTheirOwnLine(unittest.TestCase):
+    """A problem in prose used to be reported against the %beat above it, which sends
+    an agent editing by line number to the wrong place."""
+
+    def test_a_dangling_reference_names_the_line_it_is_on(self):
+        doc = '\n'.join(['%report T', '%intro O', '%beat W', 'P.',
+                          '%chapter C', 'Pr.', '%blast narrow', 'E.',
+                          '%beat A',                               # 9
+                          'First line of prose.',                  # 10
+                          'Second line, mentioning [[h99]].',      # 11
+                          '%hunk z.js:1 = c', '%closing W', '%beat C', 'P.'])
+        rep, problems = narration.parse(doc)
+        problems += narration.resolve(rep, patch.parse(DISTINCT), '.')
+        dangling = [x for x in problems if 'h99' in x.text]
+        self.assertEqual(1, len(dangling), [str(x) for x in problems])
+        self.assertEqual(11, dangling[0].line)
+
+    def test_an_unfollowable_link_names_the_line_it_is_on(self):
+        doc = '\n'.join(['%report T', '%intro O', '%beat W', 'P.',
+                          '%chapter C', 'Pr.', '%blast narrow', 'E.',
+                          '%beat A',                               # 9
+                          'Prose.',                                # 10
+                          'See [the guide](docs/testing.md) too.', # 11
+                          '%hunk z.js:1 = c', '%closing W', '%beat C', 'P.'])
+        rep, problems = narration.parse(doc)
+        problems += narration.resolve(rep, patch.parse(DISTINCT), '.')
+        notes = [x for x in problems if 'cannot follow' in x.text]
+        self.assertEqual(1, len(notes), [str(x) for x in problems])
+        self.assertEqual(11, notes[0].line)
+        self.assertTrue(notes[0].advisory)
 
 
 class TestNarrationWarns(unittest.TestCase):
@@ -2712,20 +2805,6 @@ class TestFetchForge(_Pipeline):
         at = subprocess.run(['git', '-C', r.stdout.strip(), 'rev-parse', 'HEAD'],
                             capture_output=True, text=True).stdout.strip()
         self.assertEqual(self.shas[1], at)
-
-
-DISTINCT = ('diff --git a/z.js b/z.js\nindex 1..2 100644\n--- a/z.js\n+++ b/z.js\n'
-            '@@ -1,3 +1,4 @@ scope\n'
-            ' zz_context_one\n'
-            '-zz_removed_alpha\n'
-            '+zz_added_alpha\n'
-            '+zz_added_beta\n'
-            ' zz_context_two\n'
-            '@@ -40,3 +41,3 @@ scope\n'
-            ' zz_context_three\n'
-            '-zz_removed_gamma\n'
-            '+zz_added_gamma\n'
-            ' zz_context_four\n')
 
 
 class TestByteFidelity(unittest.TestCase):

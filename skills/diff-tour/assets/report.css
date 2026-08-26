@@ -48,6 +48,11 @@
    toggle wins in both directions. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    /* The default state for a dark-mode reader who never touches the
+       toggle. Without it the browser paints light scrollbars, and this
+       page scrolls in several places at once: the nav, the sticky prose
+       column, and every wide diff. */
+    color-scheme: dark;
   --bg: #0f1116;
   --panel: #16191f;
   --panel-2: #1b1f26;

@@ -173,6 +173,19 @@ def _parse_hunk_spec(spec):
     return path.strip(), key, lo, hi
 
 
+def _blame(rep, needle, fallback):
+    """The line a piece of prose actually sits on, not the line its block began.
+
+    A prose run is stored as a list of strings, so a problem in it could only be
+    reported against the %beat or %chapter above — which sends an agent editing by line
+    number to the wrong place. The source is kept for exactly this.
+    """
+    for i, line in enumerate(getattr(rep, 'source_lines', None) or [], 1):
+        if needle in line:
+            return i
+    return fallback
+
+
 def parse(text):
     """Narration text -> (Report, [Problem]). Structure only; hunks are resolved
     against a patch by resolve()."""
@@ -410,6 +423,9 @@ def parse(text):
     if not seen_report:
         err(1, 'no %report line — the report has no title', fatal=False, premature=True)
 
+    # Kept so a problem found in prose during resolve() can name the line it is on
+    # rather than the line of the block above it.
+    rep.source_lines = lines
     problems.extend(_check_shape(rep))
     return rep, problems
 
@@ -449,6 +465,23 @@ def _check_shape(rep):
     if 'leftovers' in kinds and kinds.index('leftovers') != len(kinds) - 2:
         warn(rep.chapters[kinds.index('leftovers')].line,
              '%leftovers belongs immediately before %closing')
+    # The chapter title is the splice key, and it is frozen once forks start. Two
+    # chapters sharing one is therefore unspliceable — and the error surfaces in a
+    # *fork's* --check, which cannot fix it: only the orchestrator can retitle, and by
+    # then every fork's budget is spent. Two generic titles ("Cleanups", "Docs") is a
+    # plausible skeleton, so this is caught where titles are still cheap to change.
+    seen = {}
+    for ch in rep.chapters:
+        if ch.title in seen:
+            out.append(Problem(
+                ch.line,
+                'a second chapter titled %r (the first is on line %d). The title is how '
+                'a narrated chapter finds its place again after parallel narration, so '
+                'two chapters cannot share one. Retitle one of them now — once forks '
+                'start, titles are frozen.' % (ch.title, seen[ch.title])))
+        else:
+            seen[ch.title] = ch.line
+
     for ch in rep.chapters:
         if ch.kind != 'chapter':
             continue
@@ -459,6 +492,16 @@ def _check_shape(rep):
             out.append(Problem(ch.line, 'a cluster chapter opens with an introductory '
                                         'paragraph, before its beats',
                                fatal=False, premature=True))
+        if ch.blast_level and not ''.join(ch.blast).strip():
+            # A level with no evidence is the boilerplate this section exists to
+            # prevent: it renders as a coloured box saying WIDE BLAST RADIUS and
+            # nothing else, which reads as a finding while asserting nothing.
+            out.append(Problem(
+                ch.line,
+                '%%blast %s has no evidence under it. The level is a claim; the prose '
+                'below it is what makes it one rather than a badge — name the call '
+                'sites, the API, or what a user would see.' % ch.blast_level,
+                fatal=False, premature=True))
     # The overview and the wrap-up are the two chapters a reader uses to decide what to
     # read, and they are written last — at the end of a long run, when skimping is most
     # tempting. Empty ones used to pass every gate, because the checks above apply only
@@ -612,14 +655,16 @@ def resolve(rep, patch, root='.', quotes=True):
 
     for text, line in everywhere:
         for bad in re.findall(r'\]\(#(\d+\.\d+)\)', text):
-            err(line, 'a link points at #%s. A code says where a block sits now, so it '
+            err(_blame(rep, '#' + bad, line),
+                'a link points at #%s. A code says where a block sits now, so it '
                       'breaks as soon as anything is reordered — reference the block by '
                       'its @label instead' % bad)
         # `2.9` and [[2.9]] are the same mistake in different clothes: the first
         # renders as a number that quietly stops matching, the second as literal
         # brackets.
         for a, b in re.findall(r'`(\d+\.\d+)`|\[\[(\d+\.\d+)\]\]', text):
-            err(line, 'prose says %s, which is a position, not a name. It stops matching '
+            err(_blame(rep, a or b, line),
+                'prose says %s, which is a position, not a name. It stops matching '
                       'the moment anything is reordered — write [[<label>]] and let the '
                       'builder print the code' % (a or b), fatal=False)
         # A link the renderer will not render. Only #anchors, http(s) and mailto reach
@@ -629,21 +674,23 @@ def resolve(rep, patch, root='.', quotes=True):
         # not, because the prose still reads as though a link were there.
         for text_, href in re.findall(r'\[([^\]]+)\]\(([^)\s]+)\)', text):
             if not re.match(r'^(#|https?://|mailto:)', href):
-                err(line, 'the link on %r points at %r, which the report cannot follow: '
+                err(_blame(rep, '](%s)' % href, line),
+                    'the link on %r points at %r, which the report cannot follow: '
                           'it is one file, opened anywhere. Only #labels, http(s) and '
                           'mailto render — this one will ship as plain text. Quote the '
                           'path in backticks instead, or link the change with [[label]].'
                     % (text_, href), fatal=False, advisory=True)
         for a, b in REF.findall(text):
             name = a or b
+            at = _blame(rep, name, line)      # not `line`: it is the loop's own
             if name in rep.refs or name in chapters:
                 continue
             if name in seen:
-                err(line, '[[%s]] names a block that has no code — a %%quote or %%code '
-                          'illustrates, so nothing can point at it' % name)
+                err(at, '[[%s]] names a block that has no code — a %%quote or %%code '
+                        'illustrates, so nothing can point at it' % name)
             else:
-                err(line, '[[%s]] names nothing. Labels come from bin/tour-skeleton.py; '
-                          'run it and use the names it prints' % name,
+                err(at, '[[%s]] names nothing. Labels come from bin/tour-skeleton.py; '
+                        'run it and use the names it prints' % name,
                     needs_labels=True)
     return problems
 
