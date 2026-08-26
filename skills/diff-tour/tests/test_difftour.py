@@ -375,6 +375,18 @@ class TestNarrationRejects(unittest.TestCase):
         self.assertTrue(any(needle in f for f in fatal),
                         'expected %r among %r' % (needle, fatal))
 
+    def test_a_code_fence_in_prose_is_refused(self):
+        self.assertRejects('a code fence in prose', '%beat A', 'Prose:', '```js')
+
+    def test_indented_prose_cannot_attach_to_an_all_directive(self):
+        p = patch.parse(SIMPLE + 'diff --git a/src/deep/a.js b/src/deep/a.js\n'
+                        '--- a/src/deep/a.js\n+++ b/src/deep/a.js\n'
+                        '@@ -40,1 +41,1 @@\n-x\n+y\n')
+        _, fatal, _ = problems(tour('%beat A', 'Narration.',
+                                    '%hunk src/deep/a.js:all = the sweep',
+                                    '  This would be silently dropped.'), p)
+        self.assertTrue(any('cannot attach to' in f for f in fatal), fatal)
+
     def test_a_reference_to_no_label(self):
         self.assertRejects('[[hzz]] names nothing',
                            '%beat A', 'See [[hzz]].', '%hunk src/deep/a.js:10 = x')
@@ -903,6 +915,100 @@ class TestHunksCommand(unittest.TestCase):
         self.assertIn('    4 +added one', out)
 
 
+class TestFetch(unittest.TestCase):
+    """bin/tour-fetch.sh is the most environment-dependent piece and had no tests."""
+
+    def setUp(self):
+        import subprocess, tempfile
+        self.sub = subprocess
+        self.root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.cmd = os.path.join(self.root, 'bin', 'tour-fetch.sh')
+        self.dir = tempfile.mkdtemp()
+        self.repo = os.path.join(self.dir, 'repo')
+        os.makedirs(self.repo)
+        self.g('init', '-q', '-b', 'main')
+        self._commit('base.js', 'one\n')
+        self.g('checkout', '-q', '-b', 'feature')
+        self._commit('src/added.js', 'new\n')
+        self._commit('docs/guide.md', 'doc\n')
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def g(self, *args):
+        return self.sub.run(['git', '-C', self.repo, '-c', 'user.email=t@t',
+                             '-c', 'user.name=t'] + list(args),
+                            capture_output=True, text=True)
+
+    def _commit(self, path, body):
+        full = os.path.join(self.repo, path)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, 'w') as f:
+            f.write(body)
+        self.g('add', path)
+        self.g('commit', '-qm', 'add ' + path)
+
+    def fetch(self, *args):
+        out = os.path.join(self.dir, 'p.patch')
+        env = dict(os.environ, TOUR_REPO=self.repo)
+        r = self.sub.run(['bash', self.cmd, out] + list(args),
+                         capture_output=True, text=True, env=env)
+        body = ''
+        if os.path.exists(out):
+            with open(out) as f:
+                body = f.read()
+        return r, out, body
+
+    def test_a_range_resolves(self):
+        r, _, body = self.fetch('main..feature')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('src/added.js', body)
+        self.assertIn('docs/guide.md', body)
+
+    def test_a_branch_is_compared_against_the_default_with_three_dots(self):
+        r, _, body = self.fetch('feature')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('src/added.js', body)
+
+    def test_one_commit_is_that_commit_alone(self):
+        r, _, body = self.fetch('HEAD')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('docs/guide.md', body)
+        self.assertNotIn('src/added.js', body)
+
+    def test_a_pathspec_narrows_the_patch_and_says_so(self):
+        r, _, body = self.fetch('main..feature', '--', 'src/')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('src/added.js', body)
+        self.assertNotIn('docs/guide.md', body)
+        self.assertIn('narrowed to src/', r.stderr)
+
+    def test_it_records_the_head_the_diff_ends_at(self):
+        r, out, _ = self.fetch('main..feature')
+        with open(out + '.head') as f:
+            recorded = f.read().strip()
+        self.assertEqual(recorded, self.g('rev-parse', 'feature').stdout.strip())
+
+    def test_an_unresolvable_target_fails_loudly(self):
+        r, _, _ = self.fetch('no-such-ref')
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('cannot resolve target', r.stderr)
+
+    def test_an_empty_diff_is_refused_rather_than_toured(self):
+        r, _, _ = self.fetch('feature..feature')
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('the diff is empty', r.stderr)
+
+    def test_a_patch_file_is_copied_through(self):
+        src = os.path.join(self.dir, 'given.patch')
+        with open(src, 'w') as f:
+            f.write(SIMPLE)
+        r, _, body = self.fetch(src)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(body, SIMPLE)
+
+
 class TestSkeletonCommand(unittest.TestCase):
     """bin/tour-skeleton.py is the only command that edits the narration file."""
 
@@ -1183,6 +1289,22 @@ class TestBuildCommand(_CommandCase):
         self.assertTrue(os.path.exists(self.out))
         self.assertIn('all 5 changed lines shown', r.stderr)
 
+    def test_a_half_narrated_document_still_builds(self):
+        # Step F says write the whole skeleton first and narration.md says build after
+        # every chapter, so most builds happen with later chapters still bare. If that
+        # failed, the prescribed workflow would be impossible.
+        self.raw('\n'.join(
+            ['%report T', '%intro O', '%beat B', 'Prose.',
+             '%chapter Narrated', 'Intro.', '%blast narrow', 'Evidence.',
+             '%beat Done', 'Prose here.', '%hunk src/deep/a.js:10 = a',
+             '%chapter Not yet', '%blast wide', '%beat Skeleton only',
+             '%hunk src/deep/b.js:1 = b',
+             '%closing W', '%beat W', 'P.']))
+        r = self.build()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(os.path.exists(self.out))
+        self.assertIn('still without prose', r.stderr)
+
     def test_a_bad_narration_writes_nothing_and_exits_6(self):
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:999 = nope')
         r = self.build()
@@ -1202,6 +1324,43 @@ class TestBuildCommand(_CommandCase):
         self.assertEqual(r.returncode, 0)
         self.assertIn('3 of 5 changed lines shown', r.stderr)
         self.assertIn('tour-rest.py', r.stderr)
+
+    def test_the_header_names_no_branch_when_the_checkout_is_not_this_diff(self):
+        # Touring someone else's PR from a checkout on master must not print "master".
+        d = self._checkout()
+        with open(self.patch + '.head', 'w') as f:
+            f.write('0' * 40 + '\n')
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build('--root', d)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(self.out) as f:
+            meta = f.read()
+        self.assertIn('<b>co</b>', meta)                 # the folder is still true
+        self.assertNotIn('<b>master</b>', meta)
+        self.assertNotIn('<b>main</b>', meta)
+
+    def test_the_header_claims_nothing_when_root_is_not_a_repository(self):
+        d = os.path.join(self.dir, 'plain')
+        os.makedirs(d, exist_ok=True)
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build('--root', d)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(self.out) as f:
+            html = f.read()
+        meta = html[html.index('<p class="meta">'):html.index('</p>')]
+        self.assertNotIn('plain', meta)
+
+    def test_a_patch_with_two_hunks_at_one_line_is_refused(self):
+        with open(self.patch) as f:
+            doubled = f.read()
+        with open(self.patch, 'w') as f:
+            f.write(doubled + doubled)
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')
+        r = self.build()
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('same line in one file', r.stderr)
 
     def test_a_missing_narration_file_is_an_argument_error(self):
         r = self.sub.run(
