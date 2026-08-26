@@ -441,6 +441,14 @@ Give each one its block's label, so the reader can go back to it.
 unavoidable, define it in passing and move on. If the tour needs a glossary, the narration
 is failing.
 
+**Say "change", not "hunk".** A hunk is a unit of `git diff` output and the word means
+nothing to most readers; this skill uses it throughout because it is talking to you, and the
+report does not. In prose and in captions, the things on the page are **changes** — "the
+change in `[[h17]]`", "the three changes to the disable path", "this change does not cover
+the fourth call site". The same goes for the other words this document needs and a reviewer
+does not: no "fragment", no "block", no "cluster", no "coverage" in the report. Chapters and
+changes are the only structure the reader has to hold.
+
 ### Beats
 
 **A beat is one idea, and its prose has to cover every block in it.** That is what replaces
@@ -983,7 +991,7 @@ overview is still chapter 1 in the document.
     or the data. "None — internal refactor" is a valid and useful answer.
 
     %beat Where to be careful
-    Up to 3 ranked pointers at where risk concentrates, each naming the cluster
+    Up to 3 ranked pointers at where risk concentrates, each naming the chapter
     it lives in. These are attention pointers, not verified bugs.
 
     %beat The chapters
@@ -1002,7 +1010,7 @@ else, and it is what lets them read one body and stop.
   four sentences; the reader should be able to retell the change from this. A causal chain
   is inference by construction, so say so — most of it is your reading, not the code's.
 - **What you still need to check yourself.** Collect the admissions the chapters made: the
-  blocks you could not explain, the ones that looked wrong, the claims you took from a
+  changes you could not explain, the ones that looked wrong, the claims you took from a
   commit message or a comment rather than from code, and whether you ran the tests. Each
   with its label, so the reader can go back to it.
   Do **not** list what you did verify. A roster of successful checks reads as a
@@ -1025,9 +1033,9 @@ Build. **A report with an unshown line or a single warning is not finished** —
 writes the file either way, so this gate is yours to hold, not its. Fix, rebuild, and only
 then say three things and stop:
 
-- **What the page has**, in a clause: chapters in the sidebar, a viewed mark per block.
-- **Invite questions.** They can ask about anything they have just read, and **every block
-  carries a code like `3.2`** they can quote to point at one. The report is a file and
+- **What the page has**, in a clause: chapters in the sidebar, a viewed mark on every change.
+- **Invite questions.** They can ask about anything they have just read, and **every change
+  carries a number like `3.2`** they can quote to point at one. The report is a file and
   cannot contain this invitation; it is the only interactive surface the conversation has,
   and a reader holding a path has no other signal that you are still here.
 - **The path**, on its own line, last, with nothing after it.

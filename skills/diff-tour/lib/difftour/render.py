@@ -223,10 +223,11 @@ def _meta_line(stats, source, date, repo=None, branch=None):
     if branch:
         bits.append('<b>%s</b>' % esc(branch))
     bits.append('<b>%d</b> file%s' % (stats['files'], '' if stats['files'] == 1 else 's'))
-    bits.append('<b>+%s</b> <b>−%s</b>' % ('{:,}'.format(stats['added']),
-                                           '{:,}'.format(stats['removed'])))
-    bits.append('<b>%d</b> hunk%s' % (stats['hunks'],
-                                      '' if stats['hunks'] == 1 else 's'))
+    bits.append('<b class="added">+%s</b> <b class="removed">−%s</b>'
+                % ('{:,}'.format(stats['added']), '{:,}'.format(stats['removed'])))
+    # "hunk" is a git word. The reader is a reviewer, not a git user.
+    bits.append('<b>%d</b> change%s' % (stats['hunks'],
+                                        '' if stats['hunks'] == 1 else 's'))
     bits.append('<code>%s</code>' % esc(source))
     bits.append(esc(date))
     return ' · '.join(bits)
@@ -264,7 +265,6 @@ def page(rep, stats, source, date, uid, layout=None, repo=None, branch=None):
     html = _swap(html, 'JS', '\n<script>\n%s</script>\n' % js)
     html = _swap(html, 'REPORT', '\n' + '\n\n'.join(body) + '\n')
     html = _swap(html, 'NAVTITLE', esc(rep.title))
-    html = _swap(html, 'NAVMETA', '%d chapters · %d hunks' % (len(rep.chapters), stats['hunks']))
     html = html.replace('data-uid="fixture"', 'data-uid="%s"' % esc(uid), 1)
     # A replacement string would read a backslash or \\g<0> in the title as a regex
     # escape, so substitute with a function and let the title stay literal.

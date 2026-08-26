@@ -864,8 +864,10 @@ class TestRender(unittest.TestCase):
         html = self.build(tour('%beat A', 'P.',
                                '%hunk src/deep/a.js:10 #3-3 = part of it'))
         self.assertIn('<b>1</b> file ', html)
-        self.assertIn('<b>+2</b> <b>−1</b>', html)
-        self.assertIn('<b>1</b> hunk ', html)
+        # The counts are coloured, and the reader is told "change", not "hunk".
+        self.assertIn('<b class="added">+2</b> <b class="removed">−1</b>', html)
+        self.assertIn('<b>1</b> change', html)
+        self.assertNotIn('hunk', html[html.index('<p class="meta">'):html.index('</p>')])
 
     def test_chapters_are_numbered_from_position(self):
         html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))

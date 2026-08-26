@@ -9,7 +9,7 @@
   this file.
 
   tour-build.py assembles a report from exactly this file. It replaces what sits
-  between each pair of markers — PRISM, CSS, JS, REPORT, NAVTITLE, NAVMETA — with
+  between each pair of markers — PRISM, CSS, JS, REPORT, NAVTITLE — with
   inline content, so a report is a single file with no external requests.
 
   THE COMPONENTS, and which narration directive produces each:
@@ -69,7 +69,6 @@
 <nav id="nav">
   <div class="nav-head">
     <b><!--NAVTITLE-->Layout fixture<!--/NAVTITLE--></b>
-    <span><!--NAVMETA-->sample content · not a real tour<!--/NAVMETA--></span>
   </div>
   <ol></ol>
   <div class="nav-foot">
@@ -83,7 +82,7 @@
 <main>
 <!--REPORT-->
 <h1>Thread the tenant id through the cache key</h1>
-<p class="meta"><b>billing-api</b> · <b>hk/tenant-cache-key</b> · <b>12</b> files · <b>+204</b> <b>−58</b> · <b>31</b> hunks · <code>main..HEAD</code> · 2026-08-25</p>
+<p class="meta"><b>billing-api</b> · <b>hk/tenant-cache-key</b> · <b>12</b> files · <b class="added">+204</b> <b class="removed">−58</b> · <b>31</b> changes · <code>main..HEAD</code> · 2026-08-25</p>
 <p class="standfirst">A guided tour through one change, for a human reviewing code they did
 not write. It says what each change is for, what the code did before, and where to look
 closely. It rarely makes a judgement and it is not an automated code review — pair it with
@@ -161,7 +160,7 @@ one.</p>
   <section class="beat">
     <div class="say">
       <h3 id="b2-2">A shorter beat</h3>
-      <p>One sentence, one hunk, and a caption that carries the framing.</p>
+      <p>One sentence, one change, and a caption that carries the framing.</p>
     </div>
     <div class="show">
       <figure class="hunk quote" id="q2-1" data-key="0badf00d">
