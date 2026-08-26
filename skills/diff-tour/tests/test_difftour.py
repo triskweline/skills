@@ -1785,6 +1785,33 @@ class TestBuildCommand(_CommandCase):
         self.assertIn('<b>co</b>', meta)             # the repository the worktree is of
         self.assertNotIn('difftour-deadbeef', meta)
 
+    def test_final_accepts_a_deliberate_re_show(self):
+        """The splitting rules ask for overlapping fragments where two topics turn on the
+        same lines. Gating on the overlap check refused reports those rules produced, and
+        the check itself says it cannot tell a re-show from an off-by-one."""
+        self.write('%beat A', 'P.',
+                   '%hunk src/deep/a.js:10 #3-5 = the change',
+                   '%hunk src/deep/a.js:10 #3-5 = the same lines, other angle',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build('--final')
+        self.assertIn('note', r.stderr)
+        self.assertIn('overlaps', r.stderr)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(self.out, r.stdout)      # a path, so it may be handed over
+
+    def test_a_note_does_not_hide_a_real_warning(self):
+        with open(self.patch + '.head', 'w') as f:
+            f.write('0' * 40 + '\n')
+        self.write('%beat A', 'P.',
+                   '%hunk src/deep/a.js:10 #3-5 = the change',
+                   '%hunk src/deep/a.js:10 #3-5 = the same lines again',
+                   '%hunk src/deep/b.js:1 = b',
+                   '%quote quoted.js:1-2 = the top')
+        r = self.build('--root', self._checkout(), '--final')
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn('note', r.stderr)
+        self.assertIn('1 warning', r.stderr)
+
     def test_final_refuses_a_report_with_an_unshown_line(self):
         """The last gate. Every other exit code is 0 in this state, by design."""
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')   # b.js unshown

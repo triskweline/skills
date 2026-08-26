@@ -147,8 +147,9 @@ fragments are — so a fragment can never be mistaken for a whole hunk.
   `%hunk`, and the builder refuses it.
 - **Splitting replaces re-showing.** The old problem — one hunk that several topics need —
   is now solved by sending each topic the lines it is about. Where two topics genuinely turn
-  on the *same* lines, show the overlapping fragment in both; the builder warns, because
-  only you can tell a deliberate overlap from an off-by-one.
+  on the *same* lines, show the overlapping fragment in both. The builder prints a **note**,
+  not a warning: only you can tell a deliberate overlap from an off-by-one, so it says so
+  once and does not hold up the report. Read it, satisfy yourself it was deliberate, move on.
 - **Don't split what is one idea.** Fragmenting a coherent hunk to make chapters look
   tidier costs the reader the context that made it legible.
 
@@ -1170,7 +1171,10 @@ correct will be reported as out of range.
 
 **A report with an unshown line, a pending item or a single warning is not finished.** An
 ordinary build exits 0 in that state on purpose, because most builds happen while later
-chapters are still skeletons — so this last one is the build that refuses. It writes the
+chapters are still skeletons — so this last one is the build that refuses. **A note is not a
+warning**: a note is a check that cannot tell right from wrong (a deliberate re-show looks
+exactly like an off-by-one), so it is printed and never refuses. Read the notes; they are
+not a gate. It writes the
 file, says on stderr what is wrong, prints **nothing on stdout**, and exits 1. Exit 0 with a
 path on stdout is the only signal that the report is whole; the path in a refusal message is
 there so you can open the file, not so you can hand it over. Fix, rebuild, and only then say

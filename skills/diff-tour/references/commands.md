@@ -266,7 +266,7 @@ on the next build.
 | `--root DIR` | the checkout `%quote` reads from, and whose folder and branch the header names. Default: the current directory. |
 | `--source LABEL` | what the header calls the diff, e.g. `main..HEAD`. Default: the patch's filename. |
 | `--date` | overrides today's date in the header. For reproducible output; you will not normally want it. |
-| `--final` | exit 1, and print no path on stdout, if anything is unshown, pending or warned about. |
+| `--final` | exit 1, and print no path on stdout, if anything is unshown, pending or warned about. Notes do not count. |
 
 **Writes** `<out.html>`: one self-contained page, with the CSS, the JavaScript and the
 vendored highlighter inlined. Nothing is written when validation fails.
@@ -282,6 +282,11 @@ still skeletons. **`--final` is the build that refuses** — it writes the file,
 wrong, prints no path on stdout and exits 1. Use it for the last build before you hand a path
 to anyone, so that the one property this skill cannot compute for you is the one thing you
 have to type.
+
+**A note is not a warning.** Some checks cannot tell right from wrong — a fragment overlapping
+another is either a deliberate re-show, which the splitting rules ask for, or an off-by-one,
+and nothing mechanical distinguishes them. Those print as `note` and never refuse: a gate that
+fires on correct work teaches whoever meets it to route around the gate.
 
 **Validation reports every problem at once and writes nothing.** Missing prose is deferred,
 because most builds happen while later chapters are still skeletons.

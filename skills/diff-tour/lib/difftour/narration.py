@@ -48,9 +48,19 @@ class Problem:
     # finished report as things nobody needed to look at.
     premature: bool = False       # prose that a later stage is meant to supply
     needs_labels: bool = False    # unjudgeable until bin/tour-skeleton.py mints labels
+    # A third kind: a warning that cannot tell right from wrong, only that a human
+    # should look. It is printed but never gates a handover — a check that fires on
+    # correct work teaches whoever meets it to route around the gate, and then the
+    # gate stops meaning anything.
+    advisory: bool = False
 
     def __str__(self):
-        kind = 'pending' if self.premature else ('error' if self.fatal else 'warning')
+        if self.premature:
+            kind = 'pending'
+        elif self.fatal:
+            kind = 'error'
+        else:
+            kind = 'note' if self.advisory else 'warning'
         return '%s line %d: %s' % (kind, self.line, self.text)
 
 
@@ -542,17 +552,19 @@ def resolve(rep, patch, root='.', quotes=True):
             for c in comps:
                 c.siblings = [o.code for o in comps if o is not c and o.code]
         # An overlap is legitimate when a chapter deliberately re-shows lines another
-        # chapter owns, and an off-by-one when it is not. Only the author knows which,
-        # so warn. Two whole copies of one hunk overlap too — splitting is supposed to
-        # have replaced re-showing, so that is worth saying out loud.
+        # chapter owns, and an off-by-one when it is not — and nothing here can tell
+        # which, because only the author knows. So this is advisory: said out loud,
+        # never a reason to refuse a report. The splitting rules ask for deliberate
+        # re-shows, so gating on this would refuse reports the rules produced.
         for i, a in enumerate(comps):
             for b in comps[i + 1:]:
                 alo, ahi = a.hunk.slice(a.lo, a.hi)
                 blo, bhi = b.hunk.slice(b.lo, b.hi)
                 if alo <= bhi and blo <= ahi:
                     err(b.line, 'fragment #%d-%d overlaps #%d-%d of the same hunk '
-                                '(%s). Deliberate re-show, or an off-by-one?'
-                        % (blo, bhi, alo, ahi, path), fatal=False)
+                                '(%s). Deliberate re-show, or an off-by-one? Nothing '
+                                'here can tell; check it once and move on.'
+                        % (blo, bhi, alo, ahi, path), fatal=False, advisory=True)
 
     for comp in rep.components:
         comp.key_hash = _component_key(comp)

@@ -177,7 +177,10 @@ def main(argv):
     # invisible. A dangling [[label]] is *not* deferred here — the labels exist by the
     # time anything is built, so a reference that does not resolve is simply wrong.
     fatal = [x for x in problems if x.fatal and not x.premature]
-    warn = [x for x in problems if not x.fatal and not x.premature]
+    warn = [x for x in problems
+            if not x.fatal and not x.premature and not x.advisory]
+    # Printed like everything else, but never a reason to refuse: see Problem.advisory.
+    notes = [x for x in problems if x.advisory and not x.premature]
     pending = [x for x in problems if x.premature]
     for x in sorted(problems, key=lambda x: (x.premature, not x.fatal, x.line)):
         print(x, file=sys.stderr)
@@ -219,6 +222,10 @@ def main(argv):
     if warn:
         print('tour-build: %d warning%s above.'
               % (len(warn), '' if len(warn) == 1 else 's'), file=sys.stderr)
+    if notes:
+        print('tour-build: %d note%s above — worth one look each, and not something a '
+              'finished report has to be free of.'
+              % (len(notes), '' if len(notes) == 1 else 's'), file=sys.stderr)
 
     # Every fidelity property in this skill is mechanical except the last one: whether
     # the report being handed over is actually finished. --final is that check. Without
