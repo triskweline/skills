@@ -66,7 +66,7 @@ which is what `tour-rest.py` uses so its output can be pasted whole.
 | `%hunk <spec> [@<label>] = <caption>` | one diff block. |
 | `%file <path> [@<label>] = <caption>` | a change with no diff body: binary, pure rename, mode change. |
 | `%quote <path>:<from>-<to> = <caption>` | those lines of that file, read from the checkout. |
-| `%code [<lang>] = <caption>` … `%end` | a literal snippet with no home in the tree. |
+| `%code [<lang>] = <caption>` … `%end` | a literal snippet with no home in the tree — a command to run, a sketch of an alternative. The only code in the report that is not read from the diff or the checkout, and it is labelled as such. |
 | `%# <anything>` | a comment. Renders nothing. |
 
 ### `%hunk` specs

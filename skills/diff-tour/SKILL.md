@@ -347,6 +347,12 @@ what breaks elsewhere, what invariant appeared or vanished, and what the hunk is
 the function a hunk sits in, or two lines of a hunk another chapter owns. `%quote` reads them
 from the checkout so they are exact; never paste code into a paragraph.
 
+**`%code` is for the code that has no home** — a command the reader can run, three lines
+sketching the alternative you just named. It is the one thing in the report you type
+yourself, so nothing can check it, and the report labels it *"written for this report, not
+taken from the change"* to keep it from being read as something it isn't. Use it where it
+earns that label, and reach for `%quote` whenever the code exists somewhere.
+
 **A quote needs a checkout of the diff's own head.** It reads the file on disk, so touring
 someone else's pull request from a working tree that is not at that PR's head quotes the
 wrong version of the file — fluently, and byte-exactly. `tour-build.py` compares the two and
@@ -379,19 +385,29 @@ branch, a migration that converts one call site, an accessor adopted in three pl
 not the fourth. This is visible in the diff and reliably missed.
 
 **Restore contingency.** A diff reads as inevitable — every line looks like the only line
-that could have been there, and that is what invites a rubber stamp. Naming one real
-alternative breaks the spell: *the author chose X; Y was also available, and would have
-traded A for B.* No comparative adjective, no recommendation, no verdict — the reader
-judges. The bar is that you can **name it, price it, and point at where it already lives**.
-Pricing alone is not a guard: a fluent alternative that never existed prices just as
-convincingly as a real one. So it has to be something you *saw* — the code this diff
-removed (the diff hands you that one for free; the removed lines are literally the road
-not taken), a pattern used elsewhere in this codebase, or a route a comment or commit
-names. If you cannot point at where it lives, don't offer it.
+that could have been there, and that is what invites a rubber stamp. Naming one alternative
+breaks the spell: *the author chose X; Y was also available, and would have traded A for B.*
+No comparative adjective, no recommendation, no verdict — the reader judges.
 
-"This could be one selector instead of four, at the cost of also matching disabled
-controls" earns its place. "A cleaner approach may exist" is the shape of a thought
-without the content, and is worse than silence.
+The alternative is by definition fictional; it is the thing that was *not* done. What must
+not be fictional is **what it would be made of.** So the bar is that you can point at the
+material:
+
+- **the code this diff removed** — the strongest case, and the one the diff hands you for
+  free: a road that demonstrably worked, sitting right there in red;
+- **a pattern this codebase already uses somewhere else** — the pattern is real, applying it
+  here is the hypothetical part;
+- **a platform or library feature that exists** — hand-rolling instead of using it was a
+  real fork in the road;
+- **a route a comment or a commit names.**
+
+Then say what choosing it would have cost.
+
+That distinction is the whole guard, because pricing is not one: an alternative assembled
+from nothing prices just as convincingly as one assembled from something you read. "This
+could be one selector instead of four, at the cost of also matching disabled controls" earns
+its place because `:enabled` is already in that list. "A cleaner approach may exist" is the
+shape of a thought without the content, and is worse than silence.
 
 **Most hunks have no alternative worth naming, and a chapter with none is normal.** A
 forced contingency is boilerplate, and boilerplate is what kills this rule first.
