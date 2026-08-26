@@ -801,6 +801,26 @@ class TestRender(unittest.TestCase):
         html = self.build(tour('%beat A', 'P.', '%code nosuchlang = x', 'y', '%end'))
         self.assertIn('class="language-none"', html)
 
+    def test_the_header_names_the_repo_and_branch_when_given(self):
+        p = patch.parse(SIMPLE)
+        rep, _ = narration.parse(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        narration.resolve(rep, p, '.')
+        html, _ = render.page(rep, p.stats(), 'a..b', '2026-01-01', 'uid',
+                              repo='billing-api', branch='hk/cache-key')
+        self.assertIn('<b>billing-api</b>', html)
+        self.assertIn('<b>hk/cache-key</b>', html)
+        self.assertNotIn('/home/', html)
+
+    def test_the_header_omits_repo_and_branch_when_unknown(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        meta = html[html.index('<p class="meta">'):html.index('</p>')]
+        self.assertTrue(meta.strip().startswith('<p class="meta"><b>1</b> file'), meta)
+
+    def test_the_standfirst_says_what_the_document_is(self):
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
+        self.assertIn('class="standfirst"', html)
+        self.assertIn('not an automated code review', html)
+
     def test_the_metadata_line_reports_the_patch_not_the_report(self):
         html = self.build(tour('%beat A', 'P.',
                                '%hunk src/deep/a.js:10 #3-3 = part of it'))
