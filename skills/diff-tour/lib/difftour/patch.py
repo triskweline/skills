@@ -93,7 +93,11 @@ class Hunk:
         Not the diff's own size: the margin it prints each line with counts too, and
         the whole point of the figure is to keep a call under the tool-output cap.
         """
-        margin = len('%5d ') + 1                     # the offset column, then +/-/space
+        # tour-hunks.py prints '%5d %s%s' — a five-wide offset, a space, the +/-/space
+        # marker — and then a newline. Spelled out because computing it from the format
+        # string got it wrong by two bytes a line, which understates a big read by
+        # enough to walk into the truncation this figure exists to avoid.
+        margin = 5 + 1 + 1
         header = 80                                  # the "@N · … runs: …" line
         return header + sum(len(l.text) + margin + 1 for l in self.lines)
 
@@ -169,11 +173,6 @@ class FileChange:
     hunks: list[Hunk] = field(default_factory=list)
 
     @property
-    def suffix(self):
-        name = self.path.rsplit('/', 1)[-1]
-        return name.rsplit('.', 1)[1].lower() if '.' in name else name.lower()
-
-    @property
     def keys(self):
         """Everything selectable in this file: each hunk's +start, or "bin"."""
         return ['bin'] if self.binary else [h.key for h in self.hunks]
@@ -226,9 +225,6 @@ class Patch:
                     hunks=len(self.hunks),
                     binaries=sum(1 for f in self.files if f.binary))
 
-    def suffixes(self):
-        return sorted({f.suffix for f in self.files if f.suffix})
-
 
 def parse(text):
     """A unified diff -> Patch. Tolerant: anything unrecognised is skipped."""
@@ -240,7 +236,7 @@ def parse(text):
     old_mode = None
 
     def close_file():
-        nonlocal cur, minus, plus, renamed_from
+        nonlocal cur, minus, plus, renamed_from, old_mode
         if cur is not None:
             # +++ and --- are authoritative; the diff --git line is the fallback.
             if plus:

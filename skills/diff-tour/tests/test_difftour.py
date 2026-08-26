@@ -176,6 +176,22 @@ class TestPatch(unittest.TestCase):
 
 # ---------------------------------------------------------------------- code.py
 
+class TestBodySizeEstimate(unittest.TestCase):
+    """The KB figure decides how wide a --body read can be before it truncates.
+
+    Nothing pinned a number, so an arithmetic slip understated every read by two bytes
+    a line — in the direction that walks into the truncation it exists to prevent.
+    """
+
+    def test_the_estimate_matches_what_body_actually_prints(self):
+        p = patch.parse(SIMPLE)
+        h = p.files[0].hunks[0]
+        # Reproduce tour-hunks.py's own line format, exactly.
+        printed = ''.join('%5d %s%s\n' % (i, l.kind, l.text)
+                          for i, l in enumerate(h.lines, 1))
+        self.assertEqual(len(printed) + 80, h.bytes_of_body())
+
+
 class TestLanguages(unittest.TestCase):
     def lang(self, path, lines=()):
         fc = patch.FileChange(path=path)
@@ -398,12 +414,14 @@ class TestNarrationRejects(unittest.TestCase):
                            '%hunk src/deep/a.js:10 #4-5 @h1 = b')
 
     def test_a_quote_cannot_be_referenced(self):
+        """Refused at the label now, which says why rather than only that."""
         here = os.path.dirname(os.path.abspath(__file__))
         _, fatal, _ = problems(tour(
             '%beat A', 'See [[q1]].',
             '%quote test_difftour.py:1-2 @q1 = the top',
             '%hunk src/deep/a.js:10 = x'), self.p, root=here)
-        self.assertTrue(any('has no code' in f for f in fatal), fatal)
+        self.assertTrue(any('cannot take a label' in f for f in fatal), fatal)
+        self.assertTrue(any('[[q1]] names nothing' in f for f in fatal), fatal)
 
     def test_a_link_to_a_positional_code_is_refused(self):
         self.assertRejects('reference the block by its @label',
@@ -526,6 +544,21 @@ class TestNarrationRejects(unittest.TestCase):
         _, fatal, _ = problems(tour('%beat A', 'P.',
                                     '%quote nope/nope.js:1-2 = x'), self.p)
         self.assertTrue(any('cannot read' in f for f in fatal), fatal)
+
+
+    def test_a_label_on_a_quote_or_a_snippet_is_refused(self):
+        """Dead surface: the skeleton never mints one and nothing may reference it."""
+        for line in ('%quote src/deep/a.js:1-2 @q1 = the old shape',
+                     '%code sh @c1 = how to check'):
+            rep, problems = narration.parse(tour('%beat A', 'P.', line, '%end'))
+            self.assertTrue(any('cannot take a label' in p.text for p in problems),
+                            line)
+
+    def test_an_at_sign_inside_a_quoted_path_is_not_a_label(self):
+        rep, problems = narration.parse(
+            tour('%beat A', 'P.', '%quote src/@types/a.js:1-2 = typings'))
+        self.assertFalse(any('cannot take a label' in p.text for p in problems),
+                         [str(p) for p in problems])
 
 
 class TestNarrationWarns(unittest.TestCase):

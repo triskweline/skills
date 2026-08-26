@@ -221,7 +221,12 @@
   function lightAt(hash) {
     if (!hash || hash.length < 2) return;
     var t = document.getElementById(hash.slice(1));
-    if (t) [].slice.call(t.querySelectorAll('pre > code')).forEach(light);
+    if (!t) return;
+    /* Following a reference to a change already marked viewed used to land on a
+       collapsed figure: the target ring showed and the diff stayed hidden. Open it,
+       but leave the viewed mark alone — the reader earned that. */
+    t.classList.remove('collapsed');
+    [].slice.call(t.querySelectorAll('pre > code')).forEach(light);
   }
   addEventListener('hashchange', function () { lightAt(location.hash); });
   lightAt(location.hash);

@@ -293,6 +293,15 @@ def parse(text):
 
             spec, cap = _split_caption(rest)
             spec, label = _take_label(spec)
+            if label and name in ('quote', 'code'):
+                # A label exists so prose can point at a block. A %quote or %code
+                # illustrates something the surrounding prose is already saying, and
+                # tour-skeleton.py never mints a label for one — so a label written
+                # here would be a name nothing may use, silently.
+                err(i, '%%%s cannot take a label. A label is for pointing prose at a '
+                       'change; a quote or a snippet illustrates the prose around it, '
+                       'so there is nothing to point at' % name)
+                continue
             if name in ('hunk', 'file', 'quote', 'code') and not cap:
                 err(i, '%%%s has no caption. The caption is what tells the reader '
                        'what this block is for here' % name)
