@@ -128,6 +128,9 @@ cannot have one name.
   `[text](url)`, and `[[<label>]]`. Headings are not allowed in prose — a chapter is
   `%chapter` and a beat is `%beat`, so the report keeps one hierarchy.
 
+Every flag and exit code of the commands below is in
+[commands.md](commands.md); this page covers the format they consume.
+
 ## The stages
 
     bin/tour-skeleton.py <patch> <narration> [--root DIR]

@@ -512,12 +512,19 @@ and it will be read as one.
 ## The narration file
 
 The format is in **[references/narration.md](references/narration.md)** — read it before
-Step F. It is short, and you will not guess the directive set.
+Step F. It is short, and you will not guess the directive set. The commands that consume it
+are in **[references/commands.md](references/commands.md)**.
 
 ## Where things are
 
 `bin/` holds the commands this procedure runs, and `lib/difftour/` holds what they
 import. Nothing in `lib/` is ever run directly.
+
+**Every flag, every exit code, and exactly what each command prints and changes is in
+[references/commands.md](references/commands.md)** — read it rather than guessing, and rather
+than discovering a flag by having a call fail. Two conventions hold throughout: `<patch>
+<narration>` come first in that order everywhere, and **stdout is the answer while stderr is
+the commentary**, so `2>/dev/null` gives you the answer alone.
 
 | Command | Turns | Into |
 |---|---|---|
