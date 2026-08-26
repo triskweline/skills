@@ -70,6 +70,58 @@ class Hunk:
     def changed_offsets(self):
         return [i for i, l in enumerate(self.lines, 1) if l.changed]
 
+    @property
+    def runs(self):
+        """The hunk's changed lines as contiguous (lo, hi) runs.
+
+        A `git diff` hunk is an accident of proximity, so a hunk with several runs
+        is usually several ideas. The runs are where a fragment naturally begins and
+        ends, and the context between them is where a cut belongs — which is exactly
+        what a caller otherwise has to count by hand off a --body read.
+        """
+        out = []
+        for o in self.changed_offsets:
+            if out and o == out[-1][1] + 1:
+                out[-1][1] = o
+            else:
+                out.append([o, o])
+        return [tuple(r) for r in out]
+
+    def bytes_of_body(self):
+        return sum(len(l.raw()) + 1 for l in self.lines)
+
+    def substitution(self):
+        """(old, new) when every changed line in this hunk is the same swap.
+
+        A mechanical rename sweep is a large share of the hunks in many branches and
+        none of the judgement: "these 15 hunks all replace A with B" is decidable
+        here, so it does not have to be established by reading 15 hunks. Returns None
+        for anything less tidy, which is the common case and the interesting one.
+        """
+        removed = [l.text for l in self.lines if l.kind == '-']
+        added = [l.text for l in self.lines if l.kind == '+']
+        if not removed or len(removed) != len(added):
+            return None
+        found = None
+        for a, b in zip(removed, added):
+            if a == b:
+                return None
+            # The one differing stretch, between the common prefix and suffix.
+            i = 0
+            while i < min(len(a), len(b)) and a[i] == b[i]:
+                i += 1
+            j = 0
+            while (j < min(len(a), len(b)) - i and a[len(a) - 1 - j] == b[len(b) - 1 - j]):
+                j += 1
+            swap = (a[i:len(a) - j], b[i:len(b) - j])
+            if not swap[0] or not swap[1]:
+                return None
+            if found is None:
+                found = swap
+            elif found != swap:
+                return None
+        return found
+
     def slice(self, lo=None, hi=None):
         """A fragment as (lo, hi) inclusive 1-based body offsets, clamped to the hunk."""
         lo = 1 if lo is None else max(1, lo)
