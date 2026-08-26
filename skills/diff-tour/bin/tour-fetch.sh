@@ -76,6 +76,14 @@ case "$TARGET" in
       git -C "$REPO" diff "$base" > "$OUT"       # one coherent diff, base -> working tree
       echo "tour-fetch: included uncommitted changes" >&2
     fi
+    # A brand-new file is invisible to `git diff`, so it would be missing from the
+    # patch and therefore from coverage, which cannot know what it was never given.
+    untracked=$(git -C "$REPO" ls-files --others --exclude-standard | head -20)
+    if [ -n "$untracked" ]; then
+      echo "tour-fetch: these files are untracked, so they are NOT in the diff:" >&2
+      printf '  %s\n' $untracked >&2
+      echo "tour-fetch: git add them to include them, or say so in the overview." >&2
+    fi
     echo "base $base" >&2
     ;;
   *.patch|*.diff)
