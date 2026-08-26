@@ -533,6 +533,7 @@ the commentary**, so `2>/dev/null` gives you the answer alone.
 | `bin/tour-fetch.sh` | any target | a patch file |
 | `bin/tour-hunks.py` | a patch file | the hunk list, or the patch with body offsets |
 | `bin/tour-skeleton.py` | a narration file | labels in it, and the table of what it holds |
+| `bin/tour-splice.py` | narrated chapters | them, back in the narration file |
 | `bin/tour-build.py` | a narration file | the HTML report |
 | `bin/tour-rest.py` | a narration file | what it does not show yet |
 
@@ -863,25 +864,23 @@ running them one at a time is leaving the largest available saving on the floor.
 ### How many
 
 **Not one per chapter.** Wall clock is the longest *fork*, not the longest chapter, so once a
-fork is carrying about as much as the biggest single chapter, another fork saves no time and
+fork carries about as much as the biggest single chapter, another fork saves no time and
 still costs a full context re-prefill. Seventeen chapters do not want seventeen forks.
 
-**Pack them instead.** The skeleton table states how many blocks each chapter holds. Give the
-fattest chapter a fork of its own, then fill further forks with whole chapters until each is
-roughly the size of that fattest one. Seventeen chapters of 30, 17, 12, 10, 5, 5, 4, 4, 3, 3,
-2, 2, 2, 2, 1, 1, 1 blocks pack into four forks of about thirty blocks each — same wall clock
-as seventeen forks, a quarter of the cost, a quarter of the merging.
+**`bin/tour-skeleton.py` prints a suggested packing** under the table — it knows every
+chapter's block count, so the arithmetic is already done and is not yours to spend thinking
+on. Take it, or adjust it for something it cannot see.
 
-**Whole chapters only.** A fork may own several chapters but never part of one, so the
-no-moving-blocks-between-chapters rule and the splice both stay simple. It writes one file
-per chapter it owns, whichever fork wrote it.
+Three things it cannot see:
 
-**Past five or six forks, ask what the sixth is buying.** There is no hard limit, but if
-packing says you want ten, the chapters are probably too finely cut — go back to Step E
-before spending on it.
-
-**And you are not idle while they run.** [Step H](#step-h-narrate-the-leftovers) needs no
-per-chapter facts, so write the leftovers chapter yourself while the forks work.
+- **Whole chapters only.** A fork may own several chapters but never part of one, so the
+  no-moving-blocks-between-chapters rule and the splice both stay simple. It writes one file
+  per chapter it owns, whichever fork wrote it.
+- **Past five or six forks, ask what the sixth is buying.** There is no hard limit, but if the
+  packing wants ten, the chapters are probably cut too finely — that is a Step E problem, not
+  a spending one.
+- **You are not idle while they run.** [Step H](#step-h-narrate-the-leftovers) needs no
+  per-chapter facts, so write the leftovers chapter yourself while the forks work.
 
 ### What to tell each fork
 
@@ -900,10 +899,16 @@ nothing to brief it on. Tell each fork:
   Step I has to collect those, and without this you would have to re-read every word the
   forks wrote — which is the cost forking just paid to avoid.
 
-Then **splice each chapter file over its counterpart in the skeleton** — replacing that
-chapter's block, keeping `%report`, `%intro`, `%leftovers` and `%closing` where they are. Do
-not concatenate the chapter files: they are the middle of a document, not the whole of one,
-and a missing `%report` or `%intro` is only a warning, so a botched merge would build.
+Then put them back:
+
+    bin/tour-splice.py <narration> <narration>.ch2 <narration>.ch5 …
+
+It matches each file on its chapter *title*, so a fork cannot land its work on the wrong
+chapter and the order you pass them in does not matter. Do not concatenate the files by hand:
+they are the middle of a document, not the whole of one, and a missing `%report` or `%intro`
+is only a warning — so a botched merge would build, and quietly. The command also names any
+chapter still un-narrated, which is how a fork that failed becomes visible now rather than as
+a wall of "no prose" on the next build.
 
 **When serial is the right answer:** a report small enough that the whole thing is a few
 blocks, or a host that does not allow subagents. Some sessions carry a standing instruction

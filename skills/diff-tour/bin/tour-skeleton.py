@@ -100,6 +100,39 @@ def _label_in_place(path, existing):
     return n
 
 
+def _suggest_forks(rep):
+    """Group the cluster chapters into forks, so Step G does not have to.
+
+    Wall clock is the longest fork, and the longest fork can never be shorter than
+    the biggest single chapter — so that is the bin size, and anything beyond the
+    bins it takes to fill buys no time while still paying a context re-prefill each.
+    First-fit-decreasing over the block counts, which is a page of arithmetic nobody
+    should be spending thinking tokens on.
+    """
+    chapters = [(len(ch.components), ch.number, ch.title)
+                for ch in rep.chapters if ch.kind == 'chapter' and ch.components]
+    if len(chapters) < 2:
+        return
+    chapters.sort(reverse=True)
+    cap = chapters[0][0]
+    bins = []
+    for size, number, _ in chapters:
+        for b in bins:
+            if b[0] + size <= cap:
+                b[0] += size
+                b[1].append(number)
+                break
+        else:
+            bins.append([size, [number]])
+
+    print('\nSuggested forks — packed so none exceeds the biggest chapter (%d blocks),'
+          '\nbecause that is the floor on wall clock however many you spawn:' % cap)
+    for i, (size, numbers) in enumerate(bins, 1):
+        label = 'chapter%s %s' % ('' if len(numbers) == 1 else 's',
+                                  ', '.join(str(n) for n in sorted(numbers)))
+        print('  fork %d:  %-44s %3d blocks' % (i, label, size))
+
+
 def main(argv):
     args, root = [], '.'
     i = 0
@@ -206,6 +239,8 @@ def main(argv):
                 print('      %-5s %-6s %-*s  %s'
                       % ('[[%s]]' % c.label if c.label else '—',
                          c.code or c.kind, width, c.caption, where))
+
+    _suggest_forks(rep)
 
     shown, total, gaps = narration.coverage(rep, p)
     print()

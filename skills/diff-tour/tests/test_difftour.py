@@ -1172,6 +1172,44 @@ class TestSkeletonCommand(unittest.TestCase):
         self.assertIn('2 · The cluster · 2 blocks', out)
         self.assertIn('1 · Overview  (intro) · 0 blocks', out)
 
+    def _packing(self, sizes):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('sk', self.cmd)
+        sk = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sk)
+        rep = narration.Report(title='T')
+        for i, n in enumerate(sizes, 2):
+            ch = narration.Chapter('chapter', 'C', 1, number=i)
+            b = narration.Beat('b', 1)
+            b.items = [narration.Component('hunk', 1, 'c') for _ in range(n)]
+            ch.beats.append(b)
+            rep.chapters.append(ch)
+        import io, contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            sk._suggest_forks(rep)
+        return buf.getvalue()
+
+    def test_the_packing_never_exceeds_the_biggest_chapter(self):
+        # That size is the floor on wall clock however many forks you spawn, so a
+        # fork bigger than it would make the report slower, not faster.
+        import re
+        out = self._packing([30, 17, 12, 10, 5, 5, 4, 4, 3, 3, 2, 2, 2, 2, 1, 1, 1])
+        loads = [int(n) for n in re.findall(r'(\d+) blocks', out)]
+        self.assertEqual(max(loads[1:]), 30)     # first is the cap in the preamble
+        self.assertEqual(sum(loads[1:]), 104)    # every chapter placed exactly once
+        self.assertEqual(out.count('fork '), 4)
+
+    def test_one_dominant_chapter_packs_into_two(self):
+        out = self._packing([40, 2, 2, 2, 1, 1, 1, 1, 1])
+        self.assertEqual(out.count('fork '), 2)
+
+    def test_even_chapters_get_a_fork_each(self):
+        self.assertEqual(self._packing([8, 8, 8, 8, 8]).count('fork '), 5)
+
+    def test_a_single_chapter_suggests_nothing(self):
+        self.assertEqual(self._packing([12]), '')
+
     def test_an_at_sign_in_a_caption_does_not_pass_for_a_label(self):
         self.write('%beat A', '%hunk src/deep/a.js:10 = strip the @media hack',
                    '%hunk src/deep/b.js:1 = the other')
@@ -1297,6 +1335,10 @@ class _CommandCase(unittest.TestCase):
         with open(self.doc, 'w') as f:
             f.write(text)
 
+    def read(self):
+        with open(self.doc) as f:
+            return f.read()
+
     def build(self, *extra):
         return self.run_cmd('tour-build.py', self.out, *extra)
 
@@ -1364,6 +1406,79 @@ class TestRestCommand(_CommandCase):
         for line in out.split('\n'):
             if line.strip() and not line.startswith(('%#', '%hunk', '%file')):
                 self.fail('not pasteable: %r' % line)
+
+
+class TestSpliceCommand(_CommandCase):
+    """Putting parallel-narrated chapters back without disturbing anything else."""
+
+    def skeleton(self):
+        self.raw('\n'.join(
+            ['%report T', '%intro Overview', '%beat What', 'Prose.',
+             '%chapter First topic', '%beat A', '%hunk src/deep/a.js:10 = a',
+             '%chapter Second topic', '%beat B', '%hunk src/deep/b.js:1 = b',
+             '%closing Wrap-up', '%beat Check', 'Prose.']))
+
+    def part(self, name, title, hunk, note):
+        path = os.path.join(self.dir, name)
+        with open(path, 'w') as f:
+            f.write('\n'.join(['%chapter ' + title, 'Intro.', '%blast narrow', 'E.',
+                               '%beat Beat', note, '%hunk ' + hunk]))
+        return path
+
+    def splice(self, *parts):
+        return self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
+             self.doc] + list(parts), capture_output=True, text=True)
+
+    def test_order_of_arguments_does_not_matter(self):
+        self.skeleton()
+        a = self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.')
+        b = self.part('b', 'Second topic', 'src/deep/b.js:1 = b', 'About B.')
+        r = self.splice(b, a)                       # deliberately reversed
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = self.read()
+        self.assertLess(body.index('First topic'), body.index('Second topic'))
+        self.assertIn('About A.', body)
+        self.assertIn('About B.', body)
+
+    def test_the_wrappers_are_left_alone(self):
+        self.skeleton()
+        r = self.splice(self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.'))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = self.read()
+        for d in ('%report T', '%intro Overview', '%closing Wrap-up'):
+            self.assertIn(d, body)
+        self.assertEqual(body.count('%chapter Second topic'), 1)
+
+    def test_it_names_a_chapter_nobody_narrated(self):
+        self.skeleton()
+        r = self.splice(self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.'))
+        self.assertIn('still un-narrated: Second topic', r.stderr)
+
+    def test_a_title_that_matches_nothing_is_refused(self):
+        self.skeleton()
+        before = self.read()
+        r = self.splice(self.part('a', 'Nonexistent', 'src/deep/a.js:10 = a', 'x'))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('no chapter titled', r.stderr)
+        self.assertEqual(self.read(), before)
+
+    def test_a_file_without_a_chapter_directive_is_refused(self):
+        self.skeleton()
+        path = os.path.join(self.dir, 'stray')
+        with open(path, 'w') as f:
+            f.write('%beat Orphan\nProse.\n')
+        r = self.splice(path)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('does not begin with a chapter directive', r.stderr)
+
+    def test_the_result_builds(self):
+        self.skeleton()
+        self.splice(self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.'),
+                    self.part('b', 'Second topic', 'src/deep/b.js:1 = b', 'About B.'))
+        r = self.build()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('all 5 changed lines shown', r.stderr)
 
 
 class TestBuildCommand(_CommandCase):

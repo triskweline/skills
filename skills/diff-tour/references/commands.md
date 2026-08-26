@@ -148,6 +148,12 @@ what Step G's fork packing is decided from — then each beat, and for each bloc
 the code it currently resolves to, its caption and its location. That table is what a chapter narrated on
 its own needs in order to refer to its neighbours.
 
+After the table, when there is more than one cluster chapter holding blocks, it prints a
+**suggested fork packing** for Step G: the chapters grouped so that no group exceeds the
+biggest single chapter, since that is the floor on wall clock however many forks you spawn.
+Where one chapter is as big as all the rest together it says so instead, because then
+narrating serially costs nothing.
+
 **To stderr:** how many blocks were labelled, whether every changed line is placed, how many
 places still need prose, and whether any `[[label]]` does not resolve yet.
 
@@ -161,6 +167,31 @@ labels it names.
 | 1 | some are not — `bin/tour-rest.py` lists them |
 | 2 | bad arguments, or the narration cannot be written |
 | 6 | the structure is wrong; nothing written |
+
+---
+
+## `bin/tour-splice.py` — narrated chapters → back into the narration
+
+    bin/tour-splice.py <narration> <chapter-file> [<chapter-file> …]
+
+Step G narrates chapters in parallel, each fork writing **only its own chapter to its own
+file**, so nothing writes the narration while that happens and there is no race. This puts
+them back.
+
+A chapter file must begin with the chapter directive it replaces, and its title must match
+exactly one chapter in the narration — **matching on the title, not on position or filename**,
+so a fork cannot land its work on the wrong chapter and argument order does not matter.
+`%report`, `%intro`, `%leftovers` and `%closing` stay where they are.
+
+**Writes** the narration, atomically, once, after every part has been placed. **Prints** what
+it replaced. To stderr: how many chapters were spliced, and the title of any cluster chapter
+still un-narrated — so a fork that failed is visible now, rather than as a wall of "no prose"
+on the next build.
+
+| Exit | Meaning |
+|---|---|
+| 0 | spliced |
+| 2 | a missing file, a chapter file with no chapter directive, or a title that matches no chapter or several |
 
 ---
 
