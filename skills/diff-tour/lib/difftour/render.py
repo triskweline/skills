@@ -66,6 +66,11 @@ def _where(comp):
         bits.append(esc(comp.path))
     elif comp.kind == 'quote':
         bits.append('%s:%d–%d' % (esc(comp.path), comp.lo, comp.hi))
+    elif comp.kind == 'code':
+        # Every other block states where its bytes came from. This one came from the
+        # narration, so it says so rather than leaving the line blank and letting the
+        # reader assume it was read from something.
+        bits.append('written for this report, not taken from the change')
     if comp.siblings:
         bits.append('also ' + ', '.join('<a href="#%s">%s</a>' % (esc(s), esc(s))
                                         for s in comp.siblings))

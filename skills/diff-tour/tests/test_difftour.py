@@ -806,6 +806,15 @@ class TestRender(unittest.TestCase):
         ids = re.findall(r'<figure class="hunk quote" id="([^"]+)"', html)
         self.assertEqual(len(ids), len(set(ids)))
 
+    def test_a_snippet_says_it_was_not_taken_from_the_change(self):
+        # It is the only code in the report nobody verified, so the line where every
+        # other block states its provenance has to state this one's too.
+        html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = real',
+                               '%code sh = how to check', 'grep -rn x src/', '%end'))
+        self.assertIn('written for this report, not taken from the change', html)
+        # and it must not be mistaken for a numbered block of the change
+        self.assertIn('<span class="code">snippet</span>', html)
+
     def test_a_snippet_language_goes_through_the_alias_table(self):
         html = self.build(tour('%beat A', 'P.', '%code sh = how to run it',
                                'bin/test', '%end'))
