@@ -1625,5 +1625,46 @@ class TestBuildCommand(_CommandCase):
         self.assertNotIn('%quote reads the checkout', r.stderr)
 
 
+class TestTheDocsAgreeWithTheCode(unittest.TestCase):
+    """The documentation is read by every fork, so drift in it is drift in the tour.
+
+    Three times in one day a rule changed and its example did not. These are the two
+    places where a doc makes a claim a test can hold it to.
+    """
+
+    SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def test_the_worked_example_in_the_narration_reference_parses(self):
+        """The one example every fork imitates has to be a legal narration file.
+
+        It was not: it showed prose unindented under a %hunk, which is fatal. A fork
+        copying that shape fails at the orchestrator's build, in prose the
+        orchestrator never read — so this asserts the example, not a copy of it.
+        """
+        doc = open(os.path.join(self.SKILL, 'references', 'narration.md'),
+                      encoding='utf-8').read()
+        body = doc.split('## Example', 1)[1].split('\n##', 1)[0]
+        # The example is an indented code block. Take exactly those lines, dedented.
+        text = '\n'.join(l[4:] if l.startswith('    ') else l
+                          for l in body.split('\n')
+                          if not l.strip() or l.startswith('    '))
+        self.assertIn('%report', text, 'the example moved; this test cannot find it')
+        rep, problems = narration.parse(text)
+        real = [str(x) for x in problems
+                if x.fatal and not (x.premature or x.needs_labels)]
+        self.assertEqual([], real)
+        # And it must model the reference style it documents: labels, not codes.
+        self.assertIn('[[h1]]', text)
+        self.assertNotRegex(text, r'`\d+\.\d+`')
+
+    def test_the_design_fixture_shows_the_real_standfirst(self):
+        """layout.html opens standalone and promises it looks like a report."""
+        fixture = open(os.path.join(self.SKILL, 'assets', 'layout.html'),
+                          encoding='utf-8').read()
+        shown = re.search(r'<p class="standfirst">(.*?)</p>', fixture, re.S).group(1)
+        self.assertEqual(' '.join(render.STANDFIRST.split()),
+                         ' '.join(shown.split()))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

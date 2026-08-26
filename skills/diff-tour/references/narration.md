@@ -22,18 +22,18 @@ which is what `tour-rest.py` uses so its output can be pasted whole.
     resource `7` shared one entry.
 
     %chapter Thread the tenant through every key
-    The premise of the cluster, in a sentence or two, before any code.
+    The premise of the chapter, in a sentence or two, before any code.
     %blast moderate
     Reaches the four call sites in `billing/` that the caller index found; this
     diff changes two of them.
 
     %beat Why the key is built in one place now
     The old code assembled the key at each call site, which is how the tenant
-    came to be missing from one of them. `2.1` moves that into `cacheKey()`.
-    %hunk src/cache.js:88 = the key builder, and its one caller
-    The `??` is doing precise work: an explicit `null` tenant is a real value
-    and has to survive.
-    %hunk src/cache.js:140 #12-26 = the read path, same shape
+    came to be missing from one of them. [[h1]] moves that into `cacheKey()`.
+    %hunk src/cache.js:88 @h1 = the key builder, and its one caller
+      The `??` is doing precise work: an explicit `null` tenant is a real value
+      and has to survive.
+    %hunk src/cache.js:140 #12-26 @h2 = the read path, same shape
     %quote src/cache.js:41-48 = what the old key looked like
     %code sh = how to check for stragglers
     grep -rn 'cacheKey(' src/
@@ -43,11 +43,11 @@ which is what `tour-rest.py` uses so its output can be pasted whole.
     %beat Dependency bumps
     Nothing in the change would lose these if it were reverted.
     %hunk package-lock.json:all = a lockfile refresh, 812 lines
-    %file assets/logo@2x.png = the retina asset, replaced
+    %file assets/logo@2x.png @h3 = the retina asset, replaced
 
     %closing Wrap-up
     %beat What you still need to check yourself
-    - `2.2` — I could not find what reads the value it writes.
+    - [[h2]] — I could not find what reads the value it writes.
     - I did not run the tests.
 
 ## Directives

@@ -561,7 +561,7 @@ If the arguments are exactly `help`, `--help`, `-h`, or `?`, print this block ve
 stop — don't gather a diff.
 
 ```
-diff-tour — a guided, cluster-by-cluster walkthrough of a code change
+diff-tour — a guided, chapter-by-chapter walkthrough of a code change
 
 Usage: /diff-tour [target]
 
@@ -575,7 +575,7 @@ Target (optional, defaults to your working diff):
   <patch file>  a .patch or .diff you already have
 
 The report is one self-contained HTML file: syntax-highlighted diffs beside the
-narration that explains them, a chapter sidebar, and a viewed mark per hunk.
+narration that explains them, a chapter sidebar, and a viewed mark per change.
 Needs git and python3 (3.10+). Nothing to install.
 ```
 
