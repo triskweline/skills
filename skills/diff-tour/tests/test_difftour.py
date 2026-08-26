@@ -110,6 +110,35 @@ class TestPatch(unittest.TestCase):
             ('bin/run', 'changed', False, None, 0),
         ])
 
+    def test_a_mode_change_survives_alongside_content_hunks(self):
+        # A script gaining +x while being edited: invisible unless the mode is kept.
+        p = patch.parse('diff --git a/bin/run b/bin/run\nold mode 100644\n'
+                        'new mode 100755\n--- a/bin/run\n+++ b/bin/run\n'
+                        '@@ -1,1 +1,2 @@\n keep\n+added\n')
+        f = p.files[0]
+        self.assertEqual(f.mode, ('100644', '100755'))
+        self.assertEqual(len(f.hunks), 1)
+
+    def test_a_file_with_no_mode_change_has_no_mode(self):
+        self.assertIsNone(patch.parse(SIMPLE).files[0].mode)
+
+    def test_a_no_prefix_patch_keeps_every_path_segment(self):
+        # git diff --no-prefix, or a patch from someone with diff.noprefix set.
+        p = patch.parse('diff --git src/deep/a.js src/deep/a.js\n'
+                        '--- src/deep/a.js\n+++ src/deep/a.js\n'
+                        '@@ -1,1 +1,2 @@\n keep\n+added\n')
+        self.assertEqual([f.path for f in p.files], ['src/deep/a.js'])
+
+    def test_mnemonic_prefixes_are_stripped_like_a_and_b(self):
+        p = patch.parse('diff --git i/src/a.js w/src/a.js\n--- i/src/a.js\n'
+                        '+++ w/src/a.js\n@@ -1,1 +1,2 @@\n keep\n+added\n')
+        self.assertEqual([f.path for f in p.files], ['src/a.js'])
+
+    def test_a_directory_actually_named_a_is_not_mistaken_for_a_prefix(self):
+        p = patch.parse('diff --git a/a/b.js b/a/b.js\n--- a/a/b.js\n+++ b/a/b.js\n'
+                        '@@ -1,1 +1,2 @@\n keep\n+added\n')
+        self.assertEqual([f.path for f in p.files], ['a/b.js'])
+
     def test_only_a_newline_ends_a_line(self):
         # splitlines() also breaks on U+2028, form feed and U+0085, which silently
         # truncates a diff line. Byte-exactness is the whole promise.
@@ -219,6 +248,13 @@ class TestProse(unittest.TestCase):
                          '<ul><li>a wrapped</li><li>b</li></ul>')
         self.assertEqual(prose.render(['1. a', '2. b']),
                          '<ol><li>a</li><li>b</li></ol>')
+
+    def test_an_ordered_list_keeps_the_number_it_starts_at(self):
+        # The overview numbers its chapter list from 2. Renumbering from 1 silently
+        # contradicts the sidebar and every heading.
+        self.assertEqual(prose.render(['2. two', '3. three']),
+                         '<ol start="2"><li>two</li><li>three</li></ol>')
+        self.assertEqual(prose.render(['1. one']), '<ol><li>one</li></ol>')
 
     def test_a_list_switching_kind_starts_a_new_list(self):
         self.assertEqual(prose.render(['- a', '1. b']),
@@ -658,6 +694,12 @@ class TestRender(unittest.TestCase):
         html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
         self.assertIn('+2 −1', html)
 
+    def test_a_mode_flip_is_surfaced_on_the_blocks_of_that_file(self):
+        src = ('diff --git a/bin/run b/bin/run\nold mode 100644\nnew mode 100755\n'
+               '--- a/bin/run\n+++ b/bin/run\n@@ -1,1 +1,2 @@\n keep\n+added\n')
+        html = self.build(tour('%beat A', 'P.', '%hunk bin/run:1 = the edit'), src=src)
+        self.assertIn('mode 100644 → 100755', html)
+
     def test_a_renamed_and_edited_file_says_where_it_came_from(self):
         src = ('diff --git a/old/n.js b/new/n.js\nsimilarity index 80%\n'
                'rename from old/n.js\nrename to new/n.js\n'
@@ -677,7 +719,7 @@ class TestRender(unittest.TestCase):
         self.assertIn('This binary file changed.', html)
         self.assertIn('Renamed from <code>o.js</code>', html)
         self.assertIn('A new empty file.', html)
-        self.assertIn('a file mode change', html)
+        self.assertIn('mode changed from <code>100644</code> to <code>100755</code>', html)
 
     def test_a_no_newline_change_is_visible(self):
         src = ('diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1,1 +1,1 @@\n'

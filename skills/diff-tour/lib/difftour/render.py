@@ -53,6 +53,10 @@ def _where(comp):
             bits.append('lines %d–%d of %d' % (lo, hi, len(h.lines)))
         if h.file.old_path:
             bits.append('was <code>%s</code>' % esc(h.file.old_path))
+        if h.file.mode:
+            # A mode flip riding along with edits is a change a reviewer should see,
+            # and the model never has to remember to mention it.
+            bits.append('mode %s → %s' % (esc(h.file.mode[0]), esc(h.file.mode[1])))
         add = sum(1 for l in h.body(lo, hi) if l.kind == '+')
         rem = sum(1 for l in h.body(lo, hi) if l.kind == '-')
         # A collapsed hunk still says how big it is, so folding never hides scale.
@@ -122,8 +126,11 @@ def _body(comp):
             text = 'A new empty file.'
         elif fc.kind == 'deleted':
             text = 'An empty file, deleted.'
+        elif fc.mode:
+            text = ('The file mode changed from <code>%s</code> to <code>%s</code>, with '
+                    'no change to its contents.' % (esc(fc.mode[0]), esc(fc.mode[1])))
         else:
-            text = 'A change with no diff body — a file mode change.'
+            text = 'A change with no diff body.'
         return '<div class="binary">%s</div>' % text
 
     return '<pre class="code"><code class="language-%s">%s</code></pre>' % (
