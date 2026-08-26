@@ -203,13 +203,30 @@ def chapter(ch, refs=None):
     return '\n'.join(out)
 
 
-def _meta_line(stats, source, date):
-    return ('<b>%d</b> file%s · <b>+%s</b> <b>−%s</b> · <b>%d</b> hunk%s · '
-            '<code>%s</code> · %s') % (
-        stats['files'], '' if stats['files'] == 1 else 's',
-        '{:,}'.format(stats['added']), '{:,}'.format(stats['removed']),
-        stats['hunks'], '' if stats['hunks'] == 1 else 's',
-        esc(source), esc(date))
+# What the report is, in the report. Fixed text, emitted by the builder rather than
+# written each time: it describes the tour itself, so it cannot be allowed to drift,
+# and it is not the model's tokens to spend.
+STANDFIRST = (
+    'A guided tour through one change, for a human reviewing code they did not write. '
+    'It says what each change is for, what the code did before, and where to look '
+    'closely. It rarely makes a judgement and it is not an automated code review — '
+    'pair it with one.')
+
+
+def _meta_line(stats, source, date, repo=None, branch=None):
+    bits = []
+    if repo:
+        bits.append('<b>%s</b>' % esc(repo))
+    if branch:
+        bits.append('<b>%s</b>' % esc(branch))
+    bits.append('<b>%d</b> file%s' % (stats['files'], '' if stats['files'] == 1 else 's'))
+    bits.append('<b>+%s</b> <b>−%s</b>' % ('{:,}'.format(stats['added']),
+                                           '{:,}'.format(stats['removed'])))
+    bits.append('<b>%d</b> hunk%s' % (stats['hunks'],
+                                      '' if stats['hunks'] == 1 else 's'))
+    bits.append('<code>%s</code>' % esc(source))
+    bits.append(esc(date))
+    return ' · '.join(bits)
 
 
 def _swap(html, mark, content):
@@ -219,7 +236,7 @@ def _swap(html, mark, content):
     return html[:i + len(a)] + content + html[j:]
 
 
-def page(rep, stats, source, date, uid, layout=None):
+def page(rep, stats, source, date, uid, layout=None, repo=None, branch=None):
     """The whole report as one self-contained HTML document."""
     path = layout or os.path.join(ASSETS, 'layout.html')
     with open(path, encoding='utf-8') as f:
@@ -231,7 +248,8 @@ def page(rep, stats, source, date, uid, layout=None):
     prism, missing = codemod.bundle()
 
     body = ['<h1>%s</h1>' % inline(rep.title, rep.refs),
-            '<p class="meta">%s</p>' % _meta_line(stats, source, date)]
+            '<p class="meta">%s</p>' % _meta_line(stats, source, date, repo, branch),
+            '<p class="standfirst">%s</p>' % STANDFIRST]
     body += [chapter(ch, rep.refs) for ch in rep.chapters]
 
     html = _swap(html, 'PRISM', '\n<script>%s</script>\n' % prism)

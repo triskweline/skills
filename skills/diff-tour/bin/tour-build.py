@@ -40,6 +40,31 @@ def _head_of(patch_path):
         return None
 
 
+def _repo_and_branch(root):
+    """The checkout's folder name and branch, for the report's header.
+
+    The folder name, never the path: a reader wants to know which project this is,
+    not where it sat on the machine that built the report.
+    """
+    import subprocess
+    folder = os.path.basename(os.path.abspath(root)) or None
+    branch = None
+    try:
+        out = subprocess.run(['git', '-C', root, 'rev-parse', '--abbrev-ref', 'HEAD'],
+                             capture_output=True, text=True, timeout=10)
+        name = out.stdout.strip()
+        # A detached HEAD reports "HEAD", which is not a branch name.
+        if out.returncode == 0 and name and name != 'HEAD':
+            branch = name
+        top = subprocess.run(['git', '-C', root, 'rev-parse', '--show-toplevel'],
+                             capture_output=True, text=True, timeout=10)
+        if top.returncode == 0 and top.stdout.strip():
+            folder = os.path.basename(top.stdout.strip()) or folder
+    except Exception:
+        pass
+    return folder, branch
+
+
 def _head_of_checkout(root):
     import subprocess
     try:
@@ -103,11 +128,12 @@ def main(argv):
         return 6
 
     uid = hashlib.sha1(os.path.abspath(out).encode()).hexdigest()[:10]
+    repo, branch = _repo_and_branch(root)
     html, missing = render.page(
         rep, p.stats(),
         opts.get('source', os.path.basename(src)),
         opts.get('date', datetime.date.today().isoformat()),
-        uid)
+        uid, repo=repo, branch=branch)
 
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, 'w', encoding='utf-8') as f:

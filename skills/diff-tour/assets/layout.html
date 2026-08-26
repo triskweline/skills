@@ -14,7 +14,8 @@
 
   THE COMPONENTS, and which narration directive produces each:
 
-    h1 + p.meta                    %report            the report's title and the diff's shape
+    h1 + p.meta                    %report            the title, the repo, the branch, the shape
+    p.standfirst                   (fixed text)       what this document is, said once
     section.chapter > h2           %intro %chapter %leftovers %closing
     div.intro                      prose under %chapter
     aside.blast                    %blast narrow|moderate|wide
@@ -80,7 +81,11 @@
 <main>
 <!--REPORT-->
 <h1>Thread the tenant id through the cache key</h1>
-<p class="meta"><b>12</b> files · <b>+204</b> <b>−58</b> · <b>31</b> hunks · <code>main..HEAD</code> · 2026-08-25</p>
+<p class="meta"><b>billing-api</b> · <b>hk/tenant-cache-key</b> · <b>12</b> files · <b>+204</b> <b>−58</b> · <b>31</b> hunks · <code>main..HEAD</code> · 2026-08-25</p>
+<p class="standfirst">A guided tour through one change, for a human reviewing code they did
+not write. It says what each change is for, what the code did before, and where to look
+closely. It rarely makes a judgement and it is not an automated code review — pair it with
+one.</p>
 
 <section class="chapter" id="ch1">
   <h2><span class="n">1</span><span class="t">Overview</span></h2>

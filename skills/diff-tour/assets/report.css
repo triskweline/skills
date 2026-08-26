@@ -202,6 +202,18 @@ p.meta {
 }
 p.meta b { color: var(--ink-2); font-weight: 500; }
 
+/* What this document is, said once, in a voice that is plainly not the narration. */
+p.standfirst {
+  max-width: 900px;
+  margin: 1.5rem 0 0;
+  padding: 0 0 0 1rem;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.6;
+}
+
 section.chapter { margin-top: 4.5rem; scroll-margin-top: 1.5rem; }
 section.chapter h2 {
   display: flex; align-items: baseline; gap: .75rem;
