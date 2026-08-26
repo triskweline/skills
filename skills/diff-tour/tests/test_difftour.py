@@ -918,6 +918,58 @@ class TestHunksCommand(unittest.TestCase):
         self.assertIn('@10', out)
         self.assertIn('added one', self.run('--body').stdout)
 
+    def test_the_list_gives_fragment_boundaries_without_a_body_read(self):
+        # A hunk of several runs is several ideas; the runs are where a fragment
+        # begins and ends, so a caller should not have to count them by hand.
+        out = self.run('src/deep/a.js').stdout
+        self.assertNotIn('runs:', out)          # one run, nothing to say
+        with open(self.patch.name, 'a') as f:
+            f.write('diff --git a/src/many.js b/src/many.js\n--- a/src/many.js\n'
+                    '+++ b/src/many.js\n@@ -1,9 +1,9 @@\n'
+                    ' ctx\n-a\n+A\n ctx\n ctx\n-b\n+B\n ctx\n')
+        out = self.run('src/many.js').stdout
+        self.assertIn('2 runs: 2-3, 6-7', out)
+
+    def test_the_list_says_what_a_full_read_would_cost(self):
+        self.assertRegex(self.run('src/deep/a.js').stdout, r'\d+\.\d KB to read')
+
+    def test_renames_groups_only_swaps_that_repeat(self):
+        with open(self.patch.name, 'a') as f:
+            for n in (1, 2, 3):
+                f.write('diff --git a/src/r%d.js b/src/r%d.js\n--- a/src/r%d.js\n'
+                        '+++ b/src/r%d.js\n@@ -1,2 +1,2 @@\n ctx\n'
+                        '-use(links_to_content)\n+use(external_link_enabled)\n'
+                        % (n, n, n, n))
+        r = self.run('--renames')
+        self.assertIn("'links_to_content'  ->  'external_link_enabled'    (3 hunks)",
+                      r.stdout)
+        self.assertIn('3 hunks in 1 sweep', r.stderr)
+        # the one-off changes in SIMPLE are changes, not a sweep
+        self.assertNotIn('src/deep/a.js', r.stdout)
+
+    def test_renames_reports_the_minimal_substitution(self):
+        # `call(oldName)` -> `call(newName)` shares the suffix `Name)`, so the swap
+        # that actually happened is old -> new. Reporting the whole token would
+        # overstate what changed.
+        with open(self.patch.name, 'a') as f:
+            for n in (1, 2):
+                f.write('diff --git a/src/s%d.js b/src/s%d.js\n--- a/src/s%d.js\n'
+                        '+++ b/src/s%d.js\n@@ -1,2 +1,2 @@\n ctx\n'
+                        '-call(oldName)\n+call(newName)\n' % (n, n, n, n))
+        self.assertIn("'old'  ->  'new'    (2 hunks)", self.run('--renames').stdout)
+
+    def test_renames_ignores_a_hunk_that_is_not_a_clean_swap(self):
+        with open(self.patch.name, 'a') as f:
+            for n in (1, 2):
+                f.write('diff --git a/src/m%d.js b/src/m%d.js\n--- a/src/m%d.js\n'
+                        '+++ b/src/m%d.js\n@@ -1,3 +1,3 @@\n ctx\n'
+                        '-one(a)\n+two(b)\n-three(c)\n+four(d)\n' % (n, n, n, n))
+        self.assertNotIn('src/m1.js', self.run('--renames').stdout)
+
+    def test_renames_says_so_when_there_is_no_mechanical_tier(self):
+        r = self.run('--renames')
+        self.assertIn('no swap repeats across hunks', r.stderr)
+
     def test_body_prints_offsets_a_fragment_selector_can_use(self):
         out = self.run('--body', 'src/deep/a.js').stdout
         self.assertIn('    3 -gone', out)
