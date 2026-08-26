@@ -42,8 +42,10 @@ range: the patch itself becomes the smaller thing, so coverage still means "all 
 reaches it.
 
 **Writes** `<out-file>`, and `<out-file>.head` with the commit the diff ends at when there is
-one (including for a PR or MR, via `gh` / `glab`). `tour-build.py` reads that file to decide
-whether it can name a branch and whether `%quote` is reading the right checkout.
+one (including for a PR or MR by number or URL, via `gh` / `glab`). That file is what
+`tour-checkout.sh` matches a checkout to, and what `tour-build.py` reads to decide whether it
+can name a branch and whether `%quote` is reading the right checkout. Only a patch file from
+elsewhere has no head recorded.
 
 **Prints** the out-file path to stdout. To stderr: the hunk and file count, the base it chose
 when there was no target, a note if uncommitted work was folded in, a list of untracked files
@@ -60,6 +62,39 @@ parses.
 | 2 | bad arguments |
 | 3 | target could not be resolved, or the diff is empty |
 | 4 | needs `gh` or `glab` for this target and it is not installed |
+
+---
+
+## `bin/tour-checkout.sh` — a patch → a checkout of the code it ends at
+
+    bin/tour-checkout.sh <patch>
+
+**Prints on stdout the path to pass as `--root` and to grep in.** Hunks come from the patch
+and are always exact; everything else a tour reads comes off a disk — `%quote` reads a file,
+and Step G's caller index greps a repository — and those have to read the version of the code
+*this diff ends at*. Your HEAD is often not that: `HEAD~3..HEAD~1` does not end at HEAD, and
+`gh pr diff 807` works whether or not the branch was ever fetched. On the wrong version a
+quote shows the wrong lines, and a grep for callers of a symbol the branch introduces finds
+nothing — so the report says "no other callers" and means "I looked in a tree without it".
+Neither failure announces itself.
+
+What it prints is either **the repository itself**, when HEAD is already the diff's end commit
+(the ordinary case for the default target, where the diff *is* the working tree and
+uncommitted work belongs in the tour), or **a detached worktree** at that commit under
+`$TMPDIR`. It never switches your branch and never touches the working tree, so uncommitted
+work is not in its way. It is idempotent: a second run reuses the worktree rather than adding
+another.
+
+Run it in [Step B](../SKILL.md#step-b-get-the-diff-and-a-checkout-that-matches-it), while the
+human is still watching, because exit 4 is a question only they can answer. A worktree it
+created is the tour's own leftover — the removal command is on stderr, and Step J passes it on.
+
+| Exit | Meaning |
+|---|---|
+| 0 | stdout holds a usable checkout |
+| 2 | bad arguments, no such patch, or not a git repository |
+| 3 | the patch records no end commit, so none can be matched — don't `%quote`, and treat every grep as evidence about a possibly different version |
+| 4 | the commit is not here and could not be fetched — ask the human now |
 
 ---
 
@@ -269,7 +304,7 @@ bearing on what is covered.
 
 ## What is *not* a command
 
-`lib/difftour/` is the implementation these five share. Nothing in it is run directly.
+`lib/difftour/` is the implementation these commands share. Nothing in it is run directly.
 `assets/layout.html` is the page shell and also opens standalone in a browser as a design
 fixture — see its opening comment. `vendor/prism/` is the highlighter, inlined into every
 report.

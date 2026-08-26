@@ -355,9 +355,12 @@ earns that label, and reach for `%quote` whenever the code exists somewhere.
 
 **A quote needs a checkout of the diff's own head.** It reads the file on disk, so touring
 someone else's pull request from a working tree that is not at that PR's head quotes the
-wrong version of the file — fluently, and byte-exactly. `tour-build.py` compares the two and
-says so, and `--root` points it at the right checkout. If there is no such checkout, don't
-quote: cite the block by its label instead.
+wrong version of the file — fluently, and byte-exactly.
+[Step B](#step-b-get-the-diff-and-a-checkout-that-matches-it) establishes that checkout with
+`bin/tour-checkout.sh`; quote from the path it printed, and pass the same path as `--root`.
+`tour-build.py` compares the two and refuses a `--final` build when they disagree, so this is
+caught rather than trusted. If no such checkout could be established, don't quote at all:
+cite the change by its label instead.
 
 **Say what the code did before.** Describing only the new code leaves the reader to
 reverse-engineer the delta they were just shown, which is the expensive half of reviewing
@@ -581,48 +584,24 @@ narration that explains them, a chapter sidebar, and a viewed mark per change.
 Needs git and python3 (3.10+). Nothing to install.
 ```
 
-## Step B: Say it will take a while, then go quiet
+## Step B: Get the diff, and a checkout that matches it
 
-**Before any of the slow work**, in two or three lines: that the report is a single HTML
-file you will hand over a path to at the end, and **that this will take a few minutes** —
-reading the diff, clustering it and building the skeleton all happen before a word of
-narration exists. Without that the reader is watching an idle session and wondering whether
-it is stuck.
+**This is the only step in which you may ask the human anything.** They are watching now and
+they will not be in a minute, so everything that might need them happens here, before the
+slow work starts. After this step, questions are worse than useless — see the end of
+[Step C](#step-c-say-it-will-take-a-while-then-go-quiet).
 
-**If the commit log shows the range holds more than one body of work, name them** — and then
-tour all of them. Don't ask which they want. They cannot answer yet; they have not seen the
-diff, and you have only just seen it yourself.
-
-That means **doing [Step C](#step-c-acquire-the-diff) first when you cannot yet say what the
-range holds.** Fetching the diff and reading the log takes seconds, and it is what turns
-"this will take a few minutes" into "this range holds two things, an auth refactor and a
-lockfile bump; I am touring both" — which is the difference between a warning and an
-orientation. Announce once, after you know.
-
-If the reader *volunteers* that they only want part of a range, don't tour the rest as
-leftovers — **narrow the patch**: `bin/tour-fetch.sh <out> <target> -- <paths>`. Then the
-diff itself is the smaller thing, coverage still means all of it, and the overview says
-plainly what was excluded. Never narrow to make a tour cheaper; that hides work behind a
-guarantee that no longer reaches it.
-
-**Ask nothing once you have started.** This takes minutes, so the reader is somewhere else
-by the second one. A question waiting in a terminal nobody is watching is not a checkpoint,
-it is a stall that costs them the whole run — they come back to a prompt and no report.
-Where the diff leaves you a real choice, make it, tour everything, and say what you chose in
-the overview where they will actually read it.
-
-Then work. Don't narrate the intermediate steps — there is nothing useful to report between
-here and the finished report, and progress chatter is worse than the silence you warned
-about.
-
-## Step C: Acquire the diff
+### The patch
 
 **`bin/tour-fetch.sh <out-file> [<target>]` resolves any target to a patch file.** It
-autodetects the form, so you rarely need to know which git command applies:
-
-Every target form it accepts, and what each resolves to, is in
+autodetects the form, so you rarely need to know which git command applies. Every target form
+it accepts, and what each resolves to, is in
 [references/commands.md](references/commands.md) — a git range, one commit, a branch, a PR or
 MR number or URL, a patch file, or nothing at all for your working diff.
+
+**Name the out-file after the target**, not `t.patch`: the header calls the diff by the
+patch's filename unless `--source` overrides it, and "main..feature" in the most trusted line
+of the page is worth more than a temp name.
 
 It prints the hunk and file count, and the base it chose when there was no target — say
 both to the reader, so a wrong guess is visible. If the host has a GitHub or GitLab MCP
@@ -642,6 +621,46 @@ branch target needs three dots, or you diff the working tree against it.
 immune to the branch moving under it: a range is re-resolved on every call, so a commit
 landing mid-tour would shift every hunk's start line and invalidate the whole narration file.
 
+If the diff is empty, report exactly what was compared and stop. Don't invent a tour.
+
+### The checkout
+
+    bin/tour-checkout.sh <patch>            # prints the path to use as --root
+
+**A patch alone is not enough to write a tour from.** Hunks are spliced from the patch and
+are always exact, but everything else you will read comes off a disk: `%quote` reads a file,
+and [Step G](#step-g-narrate-the-cluster-chapters)'s caller index and its "does anything test
+this" greps read a repository. Those have to read *the version of the code this diff ends
+at*, and your HEAD is very often not that:
+
+- `HEAD~3..HEAD~1` — an ordinary local range that simply does not end at HEAD;
+- a pull request — `gh pr diff 807` hands you the diff whether or not that branch was ever
+  fetched;
+- someone's branch you are reviewing without checking out.
+
+On the wrong version, a quote shows the wrong lines under a caption that says otherwise, and
+a grep for callers of a symbol the branch *introduces* finds nothing — so the report says
+"no other callers" and means "I looked in a tree where this does not exist". **Neither
+failure announces itself.** That is why this is a step and not a caveat.
+
+`tour-checkout.sh` resolves it once, here. It prints on stdout the path to use as `--root`
+and to grep in, which is either the repository itself (when HEAD is already the diff's end
+commit — the ordinary case for your working diff, where uncommitted work belongs in the
+tour) or a detached worktree at the right commit. It never switches your branch and never
+touches the working tree, so uncommitted work is not in its way, and re-running it is free.
+
+**Carry that path through the whole tour.** Pass it as `--root` to `tour-build.py`, and run
+Step D's and Step G's greps there — not in the current directory.
+
+When it exits non-zero, **this is the moment to ask.** Exit 4 means the commit is not here
+and could not be fetched: a human can fetch the branch, add a remote, or tell you to go
+ahead without quotes, and it costs them seconds now versus a wasted run later. Exit 3 means
+the patch came from elsewhere and records no end commit, so no checkout can be matched to
+it — then don't use `%quote` at all, treat every grep as evidence about a possibly different
+version of the code, and say so in the handover.
+
+### The log
+
 For every target, read the commit log over the range. It is the cheapest signal you will
 get for intent, and for whether the range holds more than one body of work. It is not a
 signal for where the cluster boundaries are — see Step E. Skip merge commits when reading
@@ -652,7 +671,39 @@ pure-formatting churn. Excluded means not narrated, never hidden — those chang
 appear in the Leftovers chapter under one caption naming what they are. Say what was
 excluded and how many lines.
 
-If the diff is empty, report exactly what was compared and stop. Don't invent a tour.
+## Step C: Say it will take a while, then go quiet
+
+**Before any of the slow work**, in two or three lines: that the report is a single HTML
+file you will hand over a path to at the end, and **that this will take a few minutes** —
+reading the diff, clustering it and building the skeleton all happen before a word of
+narration exists. Without that the reader is watching an idle session and wondering whether
+it is stuck.
+
+This comes *after* Step B so that it can say something worth reading. You now hold the diff
+and the log, so "this will take a few minutes" becomes "this range holds two things, an auth
+refactor and a lockfile bump; I am touring both" — a warning turned into an orientation.
+Announce once, here.
+
+**If the commit log showed the range holds more than one body of work, name them** — and then
+tour all of them. Don't ask which they want. They cannot answer yet; they have not seen the
+diff, and you have only just seen it yourself.
+
+If the reader *volunteers* that they only want part of a range, don't tour the rest as
+leftovers — **narrow the patch**: `bin/tour-fetch.sh <out> <target> -- <paths>`. Then the
+diff itself is the smaller thing, coverage still means all of it, and the overview says
+plainly what was excluded. Never narrow to make a tour cheaper; that hides work behind a
+guarantee that no longer reaches it.
+
+**Ask nothing from here on.** This takes minutes, so the reader is somewhere else by the
+second one. A question waiting in a terminal nobody is watching is not a checkpoint, it is a
+stall that costs them the whole run — they come back to a prompt and no report. Where the
+diff leaves you a real choice, make it, tour everything, and say what you chose in the
+overview where they will actually read it. Anything that genuinely needed them was Step B's
+business, and Step B is over.
+
+Then work. Don't narrate the intermediate steps — there is nothing useful to report between
+here and the finished report, and progress chatter is worse than the silence you warned
+about.
 
 ## Step D: Understand what changed
 
@@ -754,7 +805,7 @@ come for.** Under [Step H](#step-h-narrate-the-leftovers), substantial work gets
 however unrelated it is, and a chapter cannot be written from a file listing. This read is bounded by
 the size of the diff — you read each hunk once — which is what keeps it affordable even on a
 range with three bodies of work, and it is the cost of the report being worth reading; if the
-reader only wants one body, that is a decision for them to make in Step B, not one to make
+reader only wants one body, that is a decision for them to make in Step B or C, while they are still there, not one to make
 silently by skimping here.
 
 What you may still read by path alone is what Step H's first kind covers: mechanical churn.
@@ -839,7 +890,10 @@ introductory paragraph, its `%blast` level and the evidence for it, each beat's 
 each block's own indented prose. How much to say, where to say nothing, what to admit, when
 to name an alternative — all of that is [Narration](#narration) and [Beats](#beats).
 
-**Gathering a chapter's facts**, and none of it for hunks outside the chapter:
+**Gathering a chapter's facts**, and none of it for hunks outside the chapter. **Every grep
+below runs in the checkout Step B printed**, not in the current directory — on the wrong
+version of the code, a grep for callers of a symbol this branch introduces finds nothing, and
+"no other callers" is then a confident false statement rather than a missing one:
 
 - **Its caller index.** Grep the symbols this chapter changes *at a module boundary* —
   exports, public API, anything another file can name — whole-word, and keep the `file:line`
@@ -1085,6 +1139,10 @@ whole. Fix, rebuild, and only then say three things and stop:
   cannot contain this invitation; it is the only interactive surface the conversation has,
   and a reader holding a path has no other signal that you are still here.
 - **The path**, on its own line, last, with nothing after it.
+
+If Step B created a worktree, say so in one clause and give the `git worktree remove` line
+it printed. It is additive and harmless, but it is yours, not theirs, and they cannot remove
+what they were never told about.
 
 ## Troubleshooting
 

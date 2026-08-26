@@ -12,8 +12,10 @@ two files on disk, which is the seam these tests sit on:
 
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 
@@ -1773,7 +1775,23 @@ class TestBuildCommand(_CommandCase):
                    '%hunk src/deep/b.js:1 = b',
                    '%quote quoted.js:1-2 = the top of the file')
         r = self.build('--root', self._checkout())
-        self.assertIn('%quote reads the checkout', r.stderr)
+        self.assertIn('reads its lines from the wrong version', r.stderr)
+        self.assertIn('warning', r.stderr)              # counted, not merely printed
+
+    def test_final_refuses_a_quote_read_from_the_wrong_checkout(self):
+        """The one way wrong *content* could reach a reader past a passing build.
+
+        Every other hazard is refused or warned; this one used to print and exit 0, so
+        --final called the report whole while its quotes came from another version.
+        """
+        with open(self.patch + '.head', 'w') as f:
+            f.write('0' * 40 + '\n')
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b',
+                   '%quote quoted.js:1-2 = the top of the file')
+        r = self.build('--root', self._checkout(), '--final')
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertEqual('', r.stdout.strip())          # no path to hand over
 
     def test_it_does_not_warn_when_there_is_no_recorded_head(self):
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
@@ -1781,7 +1799,105 @@ class TestBuildCommand(_CommandCase):
                    '%quote quoted.js:1-2 = the top of the file')
         r = self.build('--root', self._checkout())
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertNotIn('%quote reads the checkout', r.stderr)
+        self.assertNotIn('wrong version', r.stderr)
+
+
+class TestCheckoutCommand(unittest.TestCase):
+    """bin/tour-checkout.sh — the step that stops quotes and greps reading the wrong code.
+
+    Real repositories, because the whole point is what git does with a commit that is not
+    HEAD, and a fake cannot be wrong in the way that matters.
+    """
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        self.repo = os.path.join(self.dir, 'r')
+        os.makedirs(self.repo)
+        self.git('init', '-q', '-b', 'main')
+        self.git('config', 'user.email', 't@t')
+        self.git('config', 'user.name', 'T')
+        self.commits = []
+        for text in ('one\n', 'two\n', 'three\n'):
+            with open(os.path.join(self.repo, 'f.txt'), 'w') as f:
+                f.write(text)
+            self.git('add', '-A')
+            self.git('commit', '-q', '-m', text.strip())
+            self.commits.append(self.git('rev-parse', 'HEAD').strip())
+
+    def git(self, *args):
+        return subprocess.run(['git', '-C', self.repo] + list(args),
+                              capture_output=True, text=True).stdout
+
+    def run_it(self, head=None, patch='p.patch'):
+        path = os.path.join(self.dir, patch)
+        with open(path, 'w') as f:
+            f.write('')                     # content is irrelevant; only .head is read
+        if head is not None:
+            with open(path + '.head', 'w') as f:
+                f.write(head + '\n')
+        r = subprocess.run(
+            ['bash', os.path.join(self.root, 'bin', 'tour-checkout.sh'), path],
+            capture_output=True, text=True, cwd=self.repo,
+            env=dict(os.environ, TOUR_REPO=self.repo, TMPDIR=self.dir))
+        return r
+
+    def test_it_uses_the_repository_when_head_already_matches(self):
+        r = self.run_it(self.commits[-1])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(os.path.realpath(self.repo),
+                         os.path.realpath(r.stdout.strip()))
+        self.assertIn('already at', r.stderr)
+
+    def test_it_makes_a_worktree_at_the_commit_the_diff_ends_at(self):
+        """The core case: an ordinary range that does not end at HEAD."""
+        r = self.run_it(self.commits[0])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = r.stdout.strip()
+        self.assertNotEqual(os.path.realpath(self.repo), os.path.realpath(out))
+        at = subprocess.run(['git', '-C', out, 'rev-parse', 'HEAD'],
+                            capture_output=True, text=True).stdout.strip()
+        self.assertEqual(self.commits[0], at)
+        # And the file there is the old version — which is the whole point.
+        with open(os.path.join(out, 'f.txt')) as f:
+            self.assertEqual('one\n', f.read())
+
+    def test_it_leaves_the_working_tree_and_branch_alone(self):
+        before = self.git('rev-parse', 'HEAD').strip()
+        branch = self.git('rev-parse', '--abbrev-ref', 'HEAD').strip()
+        self.run_it(self.commits[0])
+        self.assertEqual(before, self.git('rev-parse', 'HEAD').strip())
+        self.assertEqual(branch, self.git('rev-parse', '--abbrev-ref', 'HEAD').strip())
+        self.assertEqual('', self.git('status', '--porcelain').strip())
+
+    def test_it_works_with_uncommitted_changes_in_the_way(self):
+        """A branch switch could not do this, which is why it is a worktree."""
+        with open(os.path.join(self.repo, 'f.txt'), 'w') as f:
+            f.write('dirty\n')
+        r = self.run_it(self.commits[0])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(os.path.join(self.repo, 'f.txt')) as f:
+            self.assertEqual('dirty\n', f.read())      # still theirs
+
+    def test_it_is_idempotent(self):
+        first = self.run_it(self.commits[0]).stdout.strip()
+        again = self.run_it(self.commits[0])
+        self.assertEqual(first, again.stdout.strip())
+        self.assertIn('reusing', again.stderr)
+
+    def test_a_patch_with_no_recorded_head_is_reported_not_guessed(self):
+        r = self.run_it(None)
+        self.assertEqual(r.returncode, 3)
+        self.assertEqual('', r.stdout.strip())          # nothing to carry forward
+        self.assertIn('%quote', r.stderr)
+
+    def test_an_unfetchable_commit_asks_for_a_human(self):
+        r = self.run_it('0' * 40)
+        self.assertEqual(r.returncode, 4)
+        self.assertEqual('', r.stdout.strip())
+        self.assertIn('needs a human', r.stderr)
 
 
 class TestTheDocsAgreeWithTheCode(unittest.TestCase):

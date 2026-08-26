@@ -146,10 +146,18 @@ def main(argv):
         want = _head_of(src)
         have = _head_of_checkout(root)
         if want and have and want != have:
-            print('tour-build: the diff ends at %s but %s is at %s. %%quote reads the '
-                  'checkout, so its context lines are from the wrong version. Point '
-                  '--root at a checkout of %s, or drop the quotes.'
-                  % (want[:9], os.path.abspath(root), have[:9], want[:9]), file=sys.stderr)
+            # A real problem, not a bare print: this is the one way wrong *content* can
+            # reach a reader through a build that otherwise passes, so --final has to
+            # refuse it. bin/tour-checkout.sh exists to make it impossible upstream;
+            # this is the backstop for a run that skipped it.
+            line = min((c.line for c in rep.components if c.kind == 'quote'), default=1)
+            problems.append(narration.Problem(
+                line,
+                'the diff ends at %s but %s is at %s, so every %%quote reads its lines '
+                'from the wrong version of the file. Run bin/tour-checkout.sh and pass '
+                'what it prints as --root, or drop the quotes.'
+                % (want[:9], os.path.abspath(root), have[:9]),
+                fatal=False))
 
     # A document is meant to be built after every chapter is appended, so most builds
     # happen while later chapters are still bare skeletons: missing prose does not stop
