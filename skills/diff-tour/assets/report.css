@@ -406,6 +406,15 @@ figure.hunk > figcaption:focus-visible { outline: 2px solid var(--accent); outli
 figure.hunk:target { box-shadow: 0 0 0 3px var(--accent); }
 figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 
+/* One control for a run of changes read as a group — a lockfile's forty hunks under one
+   caption. It sits above them rather than inside any of them, because it is about all
+   of them. */
+.groupbar { margin: 0 0 .6rem; }
+button.seen.group { padding: .3rem .6rem; }
+button.seen.group.seen, button.seen.group[aria-pressed="true"] {
+  color: var(--seen); border-color: var(--seen);
+}
+
 figure.hunk .binary {
   padding: .8rem .85rem; color: var(--muted); font-size: 14.5px;
 }

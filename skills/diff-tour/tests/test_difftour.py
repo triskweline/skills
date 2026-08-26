@@ -1503,6 +1503,34 @@ class TestFetch(unittest.TestCase):
         self.assertNotIn('docs/guide.md', body)
         self.assertIn('narrowed to src/', r.stderr)
 
+    def test_a_pathspec_is_refused_where_it_cannot_be_applied(self):
+        """Four target forms arrive as a whole diff and cannot be narrowed.
+
+        They used to ignore the pathspec silently and *still* print "narrowed to … —
+        say so in the overview", so a full tour shipped with an overview claiming an
+        exclusion that never happened. Coverage then forced the whole diff to be
+        toured anyway, and the one interactive moment was long over.
+        """
+        r, out, _ = self.fetch('main..feature')          # a patch file to feed back in
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r2 = self.sub.run(
+            ['bash', os.path.join(self.root, 'bin', 'tour-fetch.sh'),
+             out + '.copy', out, '--', 'src/'],
+            capture_output=True, text=True, cwd=self.repo,
+            env=dict(os.environ, TOUR_REPO=self.repo))
+        self.assertEqual(2, r2.returncode, r2.stderr)
+        self.assertIn('cannot be narrowed', r2.stderr)
+        self.assertNotIn('narrowed to', r2.stderr)       # and it does not claim it did
+
+    def test_a_patch_file_without_a_pathspec_still_copies(self):
+        r, out, _ = self.fetch('main..feature')
+        r2 = self.sub.run(
+            ['bash', os.path.join(self.root, 'bin', 'tour-fetch.sh'),
+             out + '.copy', out],
+            capture_output=True, text=True, cwd=self.repo,
+            env=dict(os.environ, TOUR_REPO=self.repo))
+        self.assertEqual(0, r2.returncode, r2.stderr)
+
     def test_it_records_the_head_the_diff_ends_at(self):
         r, out, _ = self.fetch('main..feature')
         with open(out + '.head') as f:
@@ -1685,6 +1713,17 @@ class TestSkeletonCommand(unittest.TestCase):
 
     def test_even_chapters_pack_evenly(self):
         self._assert_packing_invariants([8, 8, 8, 8, 8])
+
+    def test_a_tiny_report_suggests_no_forks_at_all(self):
+        """Step G calls a small report the serial case, and says to take the packing.
+
+        With no floor, two one-block chapters printed "fork 1 / fork 2" — pointing an
+        obedient agent at two subagents for two blocks, against the advice of the step
+        that reads the suggestion.
+        """
+        self.assertEqual('', self._packing([1, 1]))
+        self.assertEqual('', self._packing([3, 2, 2]))
+        self.assertNotEqual('', self._packing([6, 5, 4]))
 
     def test_a_single_chapter_suggests_nothing(self):
         self.assertEqual(self._packing([12]), '')
@@ -2225,6 +2264,27 @@ class TestBuildCommand(_CommandCase):
         self.assertEqual(r.returncode, 0)
         self.assertIn('3 of 5 changed lines shown', r.stderr)
         self.assertIn('tour-rest.py', r.stderr)
+
+    def test_the_header_counts_the_blocks_the_page_shows(self):
+        """The header and the sidebar tally must agree about "changes".
+
+        The header counted the patch's *hunks* while every numbered figure and the
+        sidebar counted *blocks*. They differ the moment a hunk is fragmented or a file
+        is shown as a `:all` group — on one real report, 131 against 159 — and both are
+        labelled with the one reader-facing word this report standardised on.
+        """
+        self.write('%beat A', 'P.',
+                   '%hunk src/deep/a.js:10 #3-4 = the first part',
+                   '%hunk src/deep/a.js:10 #5-5 = the second part',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build()
+        self.assertEqual(0, r.returncode, r.stderr)
+        with open(self.out) as f:
+            html = f.read()
+        figures = len(re.findall(r'data-code=', html))
+        meta = html[html.index('<p class="meta">'):html.index('</p>')]
+        self.assertIn('<b>%d</b> change' % figures, meta)
+        self.assertEqual(3, figures)        # 2 fragments + 1 whole, not 2 hunks
 
     def test_the_header_names_the_project_not_the_worktree(self):
         """The ordinary PR flow points --root at a worktree under /tmp, whose directory

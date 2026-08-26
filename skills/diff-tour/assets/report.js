@@ -124,6 +124,52 @@
     paint(fig);
   });
 
+  /* ---- one control for a run of changes that is read as a group ----
+
+     A `%hunk path:all` group expands to one figure per hunk, and a lockfile can be
+     forty of them under one repeated caption. Nothing is hidden — that is the point —
+     but the narration says outright that nobody reads a lockfile line by line, while
+     the viewed marks demanded forty separate acknowledgements of exactly that. So a
+     beat holding several changes gets one control for all of them. Injected here
+     rather than emitted by the builder, so the markup of a two-block beat is
+     unchanged and no report needs rebuilding to gain it. */
+  [].slice.call(document.querySelectorAll('section.beat .show')).forEach(function (show) {
+    var own = [].slice.call(show.querySelectorAll('figure.hunk[data-code]'));
+    if (own.length < 4) return;                 /* four is where clicking starts to nag */
+    var bar = document.createElement('div');
+    bar.className = 'groupbar';
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'seen group';
+
+    function allSeen() {
+      return own.every(function (f) { return f.classList.contains('seen'); });
+    }
+    function paintGroup() {
+      var n = own.filter(function (f) { return f.classList.contains('seen'); }).length;
+      b.classList.toggle('seen', allSeen());
+      b.textContent = allSeen()
+        ? 'All ' + own.length + ' viewed'
+        : 'Mark all ' + own.length + ' viewed' + (n ? ' (' + n + ' done)' : '');
+      b.setAttribute('aria-pressed', allSeen() ? 'true' : 'false');
+    }
+    b.addEventListener('click', function () {
+      var to = !allSeen();
+      own.forEach(function (f) { setSeen(f, to); });
+      paintGroup();
+    });
+    /* Keep the group control honest when the figures are marked one at a time. */
+    own.forEach(function (f) {
+      var cap = f.querySelector('figcaption');
+      if (cap) cap.addEventListener('click', paintGroup);
+      var ib = f.querySelector('button.seen');
+      if (ib) ib.addEventListener('click', paintGroup);
+    });
+    paintGroup();
+    bar.appendChild(b);
+    show.insertBefore(bar, show.firstChild);
+  });
+
   /* ---- navigation, built from the chapters themselves so the report's own
      markup stays minimal ---- */
   var nav = document.getElementById('nav');
