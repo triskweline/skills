@@ -50,7 +50,11 @@ def main(argv):
         return 2
     with open(doc, encoding='utf-8') as f:
         rep, problems = narration.parse(f.read())
-    problems += narration.resolve(rep, p, '.')
+    # Coverage never depends on a quote, so this does not read one. Otherwise the
+    # command Step G mandates right after the splice would fail on the ordinary PR
+    # tour — where the checkout is a worktree and a quote correct there looks
+    # out-of-range from here — and it would say "does not parse" about a file that does.
+    problems += narration.resolve(rep, p, quotes=False)
     # Missing prose does not affect coverage, and this command's whole job is to be
     # useful on a skeleton — which by definition has none yet.
     fatal = [x for x in problems if x.fatal and not (x.premature or x.needs_labels)]

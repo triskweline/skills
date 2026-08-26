@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Put narrated chapters back into the narration file.
 
-  tour-splice.py [--check] <narration> <chapter-file> [<chapter-file> …]
+  tour-splice.py [--check] [--root DIR] <patch> <narration> <chapter-file> …
 
 `--check` validates the chapter files and writes nothing — that is how a fork verifies
-its own work before returning, when a format error still costs only its own minute.
+its own work before returning, when a mistake still costs only its own minute. The patch
+is what makes that check worth running: it resolves every spec, so a hunk that does not
+exist, a fragment outside its hunk and a quote range no file has are caught here rather
+than at the orchestrator's build, in prose the orchestrator never read.
 
 Step G narrates chapters in parallel. A fork may own several chapters, and writes
 one file per chapter it owns — never the narration file, which only the orchestrator
@@ -31,7 +34,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
-from difftour import narration   # noqa: E402
+from difftour import narration, patch as patchmod   # noqa: E402
 
 CHAPTER = ('%intro', '%chapter', '%leftovers', '%closing')
 
@@ -63,9 +66,16 @@ ENVELOPE_LINES = ENVELOPE.count('\n')      # the fragment's line 1 is line 5 of 
 WHOLE_DOC = ('%closing', '%intro', '%leftovers')
 
 
-def _fragment_problems(text):
-    """Problems that are really in this chapter, with the fragment's own line numbers."""
-    _, problems = narration.parse(ENVELOPE + text)
+def _fragment_problems(text, patch=None, root='.'):
+    """Problems that are really in this chapter, with the fragment's own line numbers.
+
+    With a patch, every spec is resolved too — which is the point: a fork is expected to
+    add %quote and to split its own hunks, so the specs it writes are the only ones that
+    can be wrong, and they are exactly what a parse-only check cannot see.
+    """
+    rep, problems = narration.parse(ENVELOPE + text)
+    if patch is not None:
+        problems += narration.resolve(rep, patch, root)
     out = []
     for x in problems:
         # Complaints about the envelope, or about parts of a document a fragment does not
@@ -98,17 +108,30 @@ def _labels_in(lines):
 
 
 def main(argv):
-    check = False
-    if argv and argv[0] == '--check':
-        check, argv = True, argv[1:]
-    if len(argv) < 2:
+    check, root, rest = False, '.', []
+    i = 0
+    while i < len(argv):
+        if argv[i] == '--check':
+            check = True
+            i += 1
+        elif argv[i] == '--root':
+            if i + 1 >= len(argv):
+                print('tour-splice: --root needs a value', file=sys.stderr)
+                return 2
+            root = argv[i + 1]
+            i += 2
+        else:
+            rest.append(argv[i])
+            i += 1
+    if len(rest) < 3:
         print(__doc__.strip(), file=sys.stderr)
         return 2
-    doc, parts = argv[0], argv[1:]
-    for path in [doc] + parts:
+    src, doc, parts = rest[0], rest[1], rest[2:]
+    for path in [src, doc] + parts:
         if not os.path.isfile(path):
             print('tour-splice: no such file: %s' % path, file=sys.stderr)
             return 2
+    patch = patchmod.load(src)
 
     with open(doc, encoding='utf-8') as f:
         lines = f.read().split('\n')
@@ -116,10 +139,11 @@ def main(argv):
     # Validate every part before placing any of them, so a bad file cannot leave the
     # narration half-updated — and so --check can answer without writing.
     bad = 0
+    seen_titles = {}
     for path in parts:
         with open(path, encoding='utf-8') as f:
             text = f.read()
-        problems = _fragment_problems(text)
+        problems = _fragment_problems(text, patch, root)
         fatal = [x for x in problems
                  if x.fatal and not (x.premature or x.needs_labels)]
         for x in problems:
@@ -149,6 +173,16 @@ def main(argv):
             print('tour-splice: %s has %d chapters titled %r, so %s cannot be placed '
                   'unambiguously' % (doc, len(hits), title, path), file=sys.stderr)
             bad += 1
+        elif title in seen_titles:
+            # Two forks were given the same chapter. Placing both would silently keep
+            # only the last, discarding a fork's whole narration — while Step I is
+            # written from both forks' reports, so the wrap-up would describe prose
+            # that is not on the page.
+            print('tour-splice: %s and %s both claim chapter %r. Only one can be it, '
+                  'and splicing both would keep whichever came last and drop the '
+                  'other silently. Decide which, or the packing gave one chapter to '
+                  'two forks.' % (seen_titles[title], path, title), file=sys.stderr)
+            bad += 1
         else:
             # A retyped directive loses its @label, and then every [[…]] a sibling
             # chapter wrote at that block dangles at build time — in prose nobody here
@@ -157,14 +191,16 @@ def main(argv):
             after = [c[0] for c in here if c[0] > start]
             was = _labels_in(lines[start:after[0] if after else len(lines)])
             now = _labels_in(text.split('\n'))
+            seen_titles[title] = path
             lost = [l for l in was if l not in now]
             if lost:
                 print('tour-splice: %s drops label%s %s that the chapter it replaces '
-                      'carried. Copy the directive lines rather than retyping them; a '
-                      'reference to a dropped label fails at build, in prose written '
-                      'elsewhere.' % (path, '' if len(lost) == 1 else 's',
-                                      ', '.join('@' + l for l in lost)),
-                      file=sys.stderr)
+                      'carried. A reference to a dropped label fails at build, in prose '
+                      'written elsewhere. Copy the directive lines rather than retyping '
+                      'them — and if you split a labelled hunk, keep its label on one of '
+                      'the fragments and leave the others bare.'
+                      % (path, '' if len(lost) == 1 else 's',
+                         ', '.join('@' + l for l in lost)), file=sys.stderr)
                 bad += 1
         if fatal:
             bad += 1

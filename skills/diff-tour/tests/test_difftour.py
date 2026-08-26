@@ -1294,6 +1294,14 @@ class TestSkeletonCommand(unittest.TestCase):
         self.assertEqual(sum(loads[1:]), 104)    # every chapter placed exactly once
         self.assertEqual(out.count('fork '), 4)
 
+    def test_many_small_chapters_do_not_get_a_fork_each(self):
+        """First-fit-decreasing on uniform chapters degenerates to one fork per chapter,
+        which contradicts the skill's own "past five or six, ask what it buys"."""
+        out = self._packing([1] * 12)
+        forks = [l for l in out.split('\n') if l.strip().startswith('fork')]
+        self.assertLessEqual(len(forks), 6, out)
+        self.assertGreater(len(forks), 1, out)
+
     def test_one_dominant_chapter_packs_into_two(self):
         out = self._packing([40, 2, 2, 2, 1, 1, 1, 1, 1])
         self.assertEqual(out.count('fork '), 2)
@@ -1536,7 +1544,13 @@ class TestSpliceCommand(_CommandCase):
     def splice(self, *parts):
         return self.sub.run(
             [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
-             self.doc] + list(parts), capture_output=True, text=True)
+             self.patch, self.doc] + list(parts), capture_output=True, text=True)
+
+    def check(self, *parts):
+        return self.sub.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
+             '--check', self.patch, self.doc] + list(parts),
+            capture_output=True, text=True)
 
     def test_order_of_arguments_does_not_matter(self):
         self.skeleton()
@@ -1600,9 +1614,7 @@ class TestSpliceCommand(_CommandCase):
         self.skeleton()
         before = self.read()
         part = self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.')
-        r = self.sub.run(
-            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
-             '--check', self.doc, part], capture_output=True, text=True)
+        r = self.check(part)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('check out', r.stderr)
         self.assertEqual(before, self.read())  # a fork must not write the narration
@@ -1611,12 +1623,44 @@ class TestSpliceCommand(_CommandCase):
         """A chapter file has no %report and no %closing. That is not its problem."""
         self.skeleton()
         part = self.part('a', 'First topic', 'src/deep/a.js:10 = a', 'About A.')
-        r = self.sub.run(
-            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
-             '--check', self.doc, part], capture_output=True, text=True)
+        r = self.check(part)
         self.assertEqual(r.returncode, 0, r.stderr)
         for word in ('%report', '%closing', '%intro'):
             self.assertNotIn(word, r.stderr)
+
+    def test_two_files_claiming_one_chapter_are_refused(self):
+        """Last-wins would discard a fork's whole narration and still report success,
+        while Step I is written from both forks' reports."""
+        self.skeleton()
+        before = self.read()
+        a = self.raw_part('a', '%chapter First topic', 'VARIANT ONE.', '%beat A',
+                          'Prose.', '%hunk src/deep/a.js:10 = a')
+        b = self.raw_part('b', '%chapter First topic', 'VARIANT TWO.', '%beat A',
+                          'Prose.', '%hunk src/deep/a.js:10 = a')
+        r = self.splice(a, b)
+        self.assertEqual(r.returncode, 6)
+        self.assertIn('both claim chapter', r.stderr)
+        self.assertEqual(before, self.read())
+
+    def test_check_resolves_the_specs_a_fork_writes(self):
+        """A fork adds quotes and splits its own hunks, so its specs are the only ones
+        that can be wrong — and a parse-only check could not see any of them."""
+        self.skeleton()
+        for bad, want in (('%hunk src/deep/a.js:999 = no such hunk', 'no hunk at'),
+                          ('%hunk src/deep/a.js:10 #1-999 = outside', 'outside this hunk')):
+            part = self.raw_part('a', '%chapter First topic', 'Prose.', '%beat A',
+                                 'Prose.', bad)
+            r = self.check(part)
+            self.assertEqual(r.returncode, 6, r.stderr)
+            self.assertIn(want, r.stderr)
+
+    def test_check_accepts_a_fork_that_split_its_own_hunk(self):
+        self.skeleton()
+        part = self.raw_part('a', '%chapter First topic', 'Prose.', '%beat A', 'Prose.',
+                             '%hunk src/deep/a.js:10 #3-4 = first part',
+                             '%hunk src/deep/a.js:10 #5-5 = second part')
+        r = self.check(part)
+        self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_a_title_that_matches_nothing_is_refused(self):
         """The title is the splice key, so a wrong one is a content error (6), and it
@@ -1633,9 +1677,7 @@ class TestSpliceCommand(_CommandCase):
         chapter passed its own check and failed at the orchestrator's splice."""
         self.skeleton()
         part = self.part('a', 'A better title', 'src/deep/a.js:10 = a', 'x')
-        r = self.sub.run(
-            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
-             '--check', self.doc, part], capture_output=True, text=True)
+        r = self.check(part)
         self.assertEqual(r.returncode, 6)
         self.assertIn('matches no chapter', r.stderr)
 
@@ -1646,9 +1688,7 @@ class TestSpliceCommand(_CommandCase):
         self.labelled_skeleton()
         part = self.raw_part('a', '%chapter Retitled', 'Prose.', '%beat A', 'Prose.',
                              '%hunk src/deep/a.js:10 = a')
-        r = self.sub.run(
-            [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
-             '--check', self.doc, part], capture_output=True, text=True)
+        r = self.check(part)
         self.assertEqual(r.returncode, 6)
         self.assertIn('matches no chapter', r.stderr)
 
@@ -1721,6 +1761,30 @@ class TestBuildCommand(_CommandCase):
         self.assertIn('3 of 5 changed lines shown', r.stderr)
         self.assertIn('tour-rest.py', r.stderr)
 
+    def test_the_header_names_the_project_not_the_worktree(self):
+        """The ordinary PR flow points --root at a worktree under /tmp, whose directory
+        name is a temp name. The reader's "which project is this" line must not be it."""
+        d = self._checkout()
+        wt = os.path.join(self.dir, 'difftour-deadbeef')
+        head = subprocess.run(['git', '-C', d, 'rev-parse', 'HEAD'],
+                              capture_output=True, text=True).stdout.strip()
+        subprocess.run(['git', '-C', d, 'worktree', 'add', '--detach', '-q', wt, head],
+                       capture_output=True, text=True)
+        self.addCleanup(subprocess.run,
+                        ['git', '-C', d, 'worktree', 'remove', '--force', wt],
+                        capture_output=True)
+        with open(self.patch + '.head', 'w') as f:
+            f.write(head + '\n')
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build('--root', wt)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(self.out) as f:
+            html = f.read()
+        meta = html[html.index('<p class="meta">'):html.index('</p>')]
+        self.assertIn('<b>co</b>', meta)             # the repository the worktree is of
+        self.assertNotIn('difftour-deadbeef', meta)
+
     def test_final_refuses_a_report_with_an_unshown_line(self):
         """The last gate. Every other exit code is 0 in this state, by design."""
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')   # b.js unshown
@@ -1766,7 +1830,9 @@ class TestBuildCommand(_CommandCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         with open(self.out) as f:
             meta = f.read()
-        self.assertIn('<b>co</b>', meta)                 # the folder is still true
+        # Neither is claimed: naming an unrelated repository is as wrong as naming its
+        # branch, and running from the wrong directory is how that happens.
+        self.assertNotIn('<b>co</b>', meta)
         self.assertNotIn('<b>master</b>', meta)
         self.assertNotIn('<b>main</b>', meta)
 
@@ -1787,7 +1853,7 @@ class TestBuildCommand(_CommandCase):
         with open(self.out) as f:
             html = f.read()
         meta = html[html.index('<p class="meta">'):html.index('</p>')]
-        self.assertIn('<b>co</b>', meta)                 # the folder is knowable
+        self.assertNotIn('<b>co</b>', meta)
         branch = subprocess.run(['git', '-C', d, 'rev-parse', '--abbrev-ref', 'HEAD'],
                                 capture_output=True, text=True).stdout.strip()
         self.assertNotIn('<b>%s</b>' % branch, meta)

@@ -50,11 +50,16 @@ def _repo_and_branch(root, want_head=None):
     The folder name, never the path: a reader wants to know which project this is,
     not where it sat on the machine that built the report.
 
-    Both are stated only when they are true of *this diff*. Touring someone else's
-    pull request from a checkout that sits on `master` must not print "master" in
-    the header — that is a confident wrong fact in the most trusted line of the
-    page. So the branch appears only when the checkout is actually at the commit
-    the patch ends at, and the folder only when --root is a git repository at all.
+    Both are stated only when they are true of *this diff*, and both are therefore
+    gated on the same thing: that this checkout is at the commit the patch ends at.
+    Touring someone else's pull request from a checkout sitting on `master` must not
+    print "master" — and running without --root from an unrelated repository must not
+    print that repository's name. Either would be a confident wrong fact in the line
+    of the page a reader trusts most.
+
+    The folder is read from the *main* worktree, not from --root itself: the ordinary
+    PR flow points --root at a detached worktree under /tmp, whose directory name is
+    a temp name and not the project.
     """
     import subprocess
 
@@ -69,18 +74,24 @@ def _repo_and_branch(root, want_head=None):
     top = git('rev-parse', '--show-toplevel')
     if not top:
         return None, None                       # not a checkout; claim nothing
-    folder = os.path.basename(top) or None
+
+    # --git-common-dir is the *shared* .git: `.git` in a normal checkout, and the main
+    # repository's .git in a linked worktree. Its parent is the project either way, so
+    # a worktree reports the project rather than /tmp/difftour-<sha>.
+    common = git('rev-parse', '--git-common-dir') or '.git'
+    if not os.path.isabs(common):
+        common = os.path.join(top, common)
+    folder = os.path.basename(os.path.dirname(os.path.abspath(common))) or None
 
     branch = git('rev-parse', '--abbrev-ref', 'HEAD')
     if branch == 'HEAD':
-        branch = None                           # detached: there is no branch name
-    if not want_head:
-        # Nothing to check the checkout against, so there is nothing to claim. This
-        # is the case for a patch file from elsewhere; tour-fetch.sh records a head
-        # for everything it resolves itself, PR numbers included.
-        branch = None
-    elif branch and git('rev-parse', 'HEAD') != want_head:
-        branch = None                           # this checkout is not this diff
+        branch = None                           # detached: a worktree has no branch
+
+    # No proof that this checkout is this diff means no claim about either — not the
+    # branch, and not the project. tour-fetch.sh records a head for everything it
+    # resolves itself, PR numbers included; only a patch file from elsewhere has none.
+    if not want_head or git('rev-parse', 'HEAD') != want_head:
+        return None, None
     return folder, branch
 
 

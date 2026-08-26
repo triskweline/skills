@@ -389,6 +389,14 @@ def parse(text):
     return rep, problems
 
 
+WHY_EMPTY = {
+    'intro': 'It is where a reader decides what to read, and the only place the shape '
+             'of the whole change is stated.',
+    'closing': 'It is where what you could not verify is admitted, which is the part a '
+               'reviewer most needs and the part no diff can supply.',
+}
+
+
 def _check_shape(rep):
     """Checks about the document's shape.
 
@@ -426,6 +434,19 @@ def _check_shape(rep):
             out.append(Problem(ch.line, 'a cluster chapter opens with an introductory '
                                         'paragraph, before its beats',
                                fatal=False, premature=True))
+    # The overview and the wrap-up are the two chapters a reader uses to decide what to
+    # read, and they are written last — at the end of a long run, when skimping is most
+    # tempting. Empty ones used to pass every gate, because the checks above apply only
+    # to cluster chapters and the check below only to beats that exist.
+    for ch in rep.chapters:
+        if ch.kind not in ('intro', 'closing'):
+            continue
+        if not ch.beats and not ''.join(ch.intro).strip():
+            out.append(Problem(
+                ch.line,
+                '%%%s is empty. %s' % (ch.kind, WHY_EMPTY[ch.kind]),
+                fatal=False, premature=True))
+
     for ch in rep.chapters:
         for b in ch.beats:
             # Fatal: a beat with no prose is the one defect the two-column layout
@@ -453,10 +474,16 @@ def _digest(*parts):
     return h.hexdigest()[:8]
 
 
-def resolve(rep, patch, root='.'):
+def resolve(rep, patch, root='.', quotes=True):
     """Bind every component to the patch, assign codes, cross-link fragments.
 
     Returns [Problem]. Mutates the report.
+
+    `quotes=False` skips reading %quote from disk. Coverage is a function of the patch
+    and the %hunk/%file directives alone, so a caller that only wants coverage must not
+    be made to depend on which checkout it happens to be standing in — the diff's head
+    is often not HEAD, and a quote that is correct there would otherwise be reported as
+    a fatal error by a command that never needed to read it.
     """
     problems = []
 
@@ -498,7 +525,7 @@ def resolve(rep, patch, root='.'):
                 _resolve_hunk(comp, patch, err)
             elif comp.kind == 'file':
                 _resolve_file(comp, patch, err)
-            elif comp.kind == 'quote':
+            elif comp.kind == 'quote' and quotes:
                 _resolve_quote(comp, root, err)
             if comp.coded:
                 n += 1

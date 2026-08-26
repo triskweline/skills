@@ -114,7 +114,14 @@ def _suggest_forks(rep):
     if len(chapters) < 2:
         return
     chapters.sort(reverse=True)
-    cap = chapters[0][0]
+    # The biggest chapter is the floor on wall clock, so it is the natural bin size —
+    # but with many small chapters that degenerates to one fork each, which contradicts
+    # the advice a few lines away in SKILL.md and pays a context re-prefill per fork for
+    # nothing. So a bin also has to be worth a fork: at most MOST forks, whatever the
+    # arithmetic wants.
+    MOST = 6
+    total = sum(size for size, _, _ in chapters)
+    cap = max(chapters[0][0], -(-total // MOST))
     bins = []
     for size, number, _ in chapters:
         for b in bins:
@@ -125,12 +132,15 @@ def _suggest_forks(rep):
         else:
             bins.append([size, [number]])
 
-    print('\nSuggested forks — packed so none exceeds the biggest chapter (%d blocks),'
-          '\nbecause that is the floor on wall clock however many you spawn:' % cap)
+    print('\nSuggested forks — packed so none holds more than %d block%s: the biggest '
+          'chapter,\nor a %dth of the work, whichever is larger. Below the first, forks '
+          'cannot go\nfaster; below the second, each one buys less than its own '
+          'context costs.' % (cap, '' if cap == 1 else 's', MOST))
     for i, (size, numbers) in enumerate(bins, 1):
         label = 'chapter%s %s' % ('' if len(numbers) == 1 else 's',
                                   ', '.join(str(n) for n in sorted(numbers)))
-        print('  fork %d:  %-44s %3d blocks' % (i, label, size))
+        print('  fork %2d:  %-44s %3d block%s'
+              % (i, label, size, '' if size == 1 else 's'))
 
 
 def main(argv):

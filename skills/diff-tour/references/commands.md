@@ -184,8 +184,10 @@ the code it currently resolves to, its caption and its location. That table is w
 its own needs in order to refer to its neighbours.
 
 After the table, when there is more than one cluster chapter holding blocks, it prints a
-**suggested fork packing** for Step G: the chapters grouped so that no group exceeds the
-biggest single chapter, since that is the floor on wall clock however many forks you spawn.
+**suggested fork packing** for Step G: the chapters grouped so that no group holds more than
+the biggest single chapter, or a sixth of all the blocks, whichever is larger. The first is
+the floor on wall clock however many forks you spawn; the second stops a dozen small chapters
+from suggesting a dozen forks, each paying a context re-prefill to save almost nothing.
 
 **To stderr:** how many blocks were labelled, whether every changed line is placed, how many
 places still need prose, and whether any `[[label]]` does not resolve yet.
@@ -205,7 +207,7 @@ labels it names.
 
 ## `bin/tour-splice.py` — narrated chapters → back into the narration
 
-    bin/tour-splice.py [--check] <narration> <chapter-file> [<chapter-file> …]
+    bin/tour-splice.py [--check] [--root DIR] <patch> <narration> <chapter-file> …
 
 Step G narrates chapters in parallel, each fork writing **one file per chapter it owns**
 and nothing else. Forks only ever read the narration file — the orchestrator is the only
@@ -230,8 +232,17 @@ A fork that retypes a directive instead of copying it loses its `@hN`, and then 
 `[[…]]` a sibling chapter wrote at that block fails at build time, in prose whoever is
 splicing never read.
 
+**Every spec is resolved, not just parsed** — a hunk that does not exist, a fragment outside
+its hunk, a quote range no file has. Those are the specs a *fork* writes, since forks add
+`%quote` and split their own hunks, so they are the only ones that can be wrong. `--root` is
+where quotes are read from, as everywhere else.
+
 **`--check` does the validation and writes nothing.** That is how a fork verifies its own
-chapter before returning it, when a format error still costs only its own minute.
+chapter before returning it, when a mistake still costs only its own minute.
+
+**Two files claiming the same chapter are refused.** Splicing both would keep whichever came
+last and drop the other silently — a whole fork's narration gone, while the wrap-up is
+written from both forks' reports.
 
 **Writes** the narration, atomically, once, after every part has been placed. **Prints** what
 it replaced. To stderr: how many chapters were spliced, and the title of any cluster chapter
@@ -242,7 +253,7 @@ on the next build.
 |---|---|
 | 0 | spliced, or `--check` found nothing wrong |
 | 2 | bad arguments, or a missing file |
-| 6 | a chapter file does not parse, has no chapter directive, names no chapter or several, or drops a label; nothing written |
+| 6 | a chapter file does not parse, has a spec that does not resolve, has no chapter directive, names no chapter or several, collides with another part, or drops a label; nothing written |
 
 ---
 
@@ -294,8 +305,11 @@ the narration file and then captioned. Where a gap sits next to a fragment you a
 it says which fragment to widen instead — widening is the fix, not pasting an orphan.
 
 It is a pure function of the two files: no state, nothing to go stale, safe to run as often
-as you like. It works on a skeleton as well as a finished narration, since prose has no
-bearing on what is covered.
+as you like, and **it takes no `--root` because it reads nothing from disk** — `%quote` is
+skipped, since coverage cannot depend on a quote. That matters on the ordinary PR tour, where
+the checkout is a worktree and a quote correct there would look out of range from anywhere
+else. It works on a skeleton as well as a finished narration, since prose has no bearing on
+what is covered.
 
 | Exit | Meaning |
 |---|---|

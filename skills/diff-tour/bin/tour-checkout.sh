@@ -82,7 +82,10 @@ if ! git -C "$REPO" cat-file -e "$WANT^{commit}" 2>/dev/null; then
   exit 4
 fi
 
-DIR="${TMPDIR:-/tmp}/difftour-${WANT:0:12}"
+# Named after the project as well as the commit, so a human looking at their temp
+# directory can tell which repository a leftover worktree belongs to.
+NAME=$(basename "$(cd "$REPO" && git rev-parse --show-toplevel 2>/dev/null || pwd)")
+DIR="${TMPDIR:-/tmp}/difftour-$NAME-${WANT:0:12}"
 
 # Reuse an earlier run's worktree when it is still at the right commit, so re-running
 # this command is free and never accumulates directories.

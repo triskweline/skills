@@ -508,7 +508,8 @@ what a hunk *says*, you have read it.
 Every cluster chapter states one, above its beats: `%blast narrow`, `moderate`, or `wide`.
 
 - **narrow** — effects confined to files this diff already changes.
-- **moderate** — reaches other modules, through call sites this chapter's index found.
+- **moderate** — reaches other modules, through call sites found by grepping for them
+  ([Step G](#step-g-narrate-the-cluster-chapters) calls this the chapter's caller index).
   Name them.
 - **wide** — public API, or behavior observable outside the codebase. **A new error or
   refusal on a path that previously succeeded is always wide**, however few lines it took
@@ -603,8 +604,11 @@ MR number or URL, a patch file, or nothing at all for your working diff.
 patch's filename unless `--source` overrides it, and "main..feature" in the most trusted line
 of the page is worth more than a temp name.
 
-It prints the hunk and file count, and the base it chose when there was no target — say
-both to the reader, so a wrong guess is visible. If the host has a GitHub or GitLab MCP
+It prints the hunk and file count, the base it chose when there was no target, and any
+**untracked files**, which are *not* in the diff. Say all three to the reader. The untracked
+list matters more than it looks: coverage guarantees every line of the patch is shown, and an
+untracked file is not in the patch — so it is the one omission the guarantee cannot see, and
+the only way the reader learns of it is you repeating it. If the host has a GitHub or GitLab MCP
 server, fetching the diff through that and saving it to the same path is equivalent; the
 script is a convenience, not a gate.
 
@@ -649,8 +653,10 @@ commit — the ordinary case for your working diff, where uncommitted work belon
 tour) or a detached worktree at the right commit. It never switches your branch and never
 touches the working tree, so uncommitted work is not in its way, and re-running it is free.
 
-**Carry that path through the whole tour.** Pass it as `--root` to `tour-build.py`, and run
-Step D's and Step G's greps there — not in the current directory.
+**Carry that path through the whole tour.** Pass it as `--root` to **every command that
+takes one** — `tour-skeleton.py` and `tour-build.py` — and run Step D's and Step G's greps
+there, not in the current directory. `tour-rest.py` needs no root: coverage is a function of
+the patch and the directives alone, so it never reads a file from disk.
 
 When it exits non-zero, **this is the moment to ask.** Exit 4 means the commit is not here
 and could not be fetched: a human can fetch the branch, add a remote, or tell you to go
@@ -666,10 +672,10 @@ get for intent, and for whether the range holds more than one body of work. It i
 signal for where the cluster boundaries are — see Step E. Skip merge commits when reading
 intent.
 
-Note but exclude from the narrative: lockfiles, generated code, vendored directories, and
-pure-formatting churn. Excluded means not narrated, never hidden — those changes still
-appear in the Leftovers chapter under one caption naming what they are. Say what was
-excluded and how many lines.
+Note which files are mechanical churn — lockfiles, generated code, vendored directories,
+pure formatting. They are not narrated in a chapter, and they are never hidden either;
+[Step H](#step-h-narrate-the-leftovers) says what becomes of them. Say what you excluded and
+how many lines.
 
 ## Step C: Say it will take a while, then go quiet
 
@@ -975,15 +981,22 @@ nothing to brief it on. Tell each fork:
   to read the block properly, and "[a caption states what you read](#captions)" outranks
   the copy. Correcting a caption its reading disproves is the fork's job, not an
   overstep — and it costs nothing, because nothing matches on a caption;
-- to **leave any block it adds unlabelled**. A fork that mints its own `@h50` can collide
-  with a sibling doing the same, and the collision surfaces as a refused build in chapters
-  you never read. Adding `%quote` and `%code` is expected; if it splits one of its own
-  hunks into two fragments, those go in without labels and a `tour-skeleton.py` run after
-  the splice names them safely;
+- to **leave any block it adds unlabelled**, and never to mint a label itself. Two forks
+  both inventing `@h50` collide, and the collision surfaces as a refused build in chapters
+  you never read. Adding `%quote` and `%code` is expected. **If it splits a labelled hunk
+  into fragments, the original label stays on one of them** — its first, by convention —
+  and the others go in bare; that keeps every `[[…]]` a sibling already wrote pointing at
+  real code, which is why the splice refuses a chapter that dropped a label. The bare
+  fragments get named by the `tour-skeleton.py` run in [Step I](#step-i-the-overview-and-the-wrap-up);
 - to **check its own file before returning**, with
-  `bin/tour-splice.py --check <narration> <its file>`. That validates the fragment and
-  writes nothing. A format error caught by the fork costs the fork a minute; the same error
-  caught after the splice costs you a debugging round in a chapter you never read;
+
+      bin/tour-splice.py --check --root <checkout> <patch> <narration> <its file>
+
+  which validates the fragment and writes nothing. It resolves every spec, so the `%quote`
+  and the split fragments the fork just wrote are checked against the real patch and the
+  real checkout — those are the only specs that can be wrong, because they are the only new
+  ones. A mistake caught by the fork costs the fork a minute; the same mistake caught after
+  the splice costs you a debugging round in a chapter you never read;
 - to **end its report to you with these five things**, each keyed to a block's label where it has
   one. You will not read the prose it wrote — that is the cost forking paid to avoid — so
   this report is the only thing you get, and Step I is written from it:
@@ -1008,7 +1021,7 @@ nothing to brief it on. Tell each fork:
 
 Then put them back:
 
-    bin/tour-splice.py <narration> <narration>.ch2 <narration>.ch5 …
+    bin/tour-splice.py --root <checkout> <patch> <narration> <narration>.ch2 <narration>.ch5 …
 
 It matches each file on its chapter *title*, so a fork cannot land its work on the wrong
 chapter and the order you pass them in does not matter. It validates every file before it
@@ -1138,23 +1151,30 @@ mechanical can tell that `[[h29]]` points at the export list when the explanatio
 misfired citations do the most damage, because they are where a reader decides what to
 read.
 
-**Re-run `bin/tour-skeleton.py <patch> <narration>` to get a current table.** The one from
-Step F is stale by now: blocks moved between chapters after the splice, so the codes have
-shifted, and a fork may have corrected a caption. Re-running is safe at any time — it only
-ever *adds* a label to a block that lacks one, and by now none do — and it reprints the
-table against the document as it actually stands.
+**Re-run the skeleton command to get a current table**, with the checkout Step B printed:
+
+    bin/tour-skeleton.py <patch> <narration> --root <checkout>
+
+The Step F table is stale by now: blocks moved between chapters after the splice, so the
+codes have shifted, and a fork may have corrected a caption. Re-running is safe at any time —
+it only ever *adds* labels, never changes or removes one — and this is also where the blocks
+a fork added without labels get named. **`--root` is not optional here**: without it the
+command reads `%quote` from the current directory, and on a worktree tour a quote that is
+correct will be reported as out of range.
 
 ## Step J: Hand it over
 
 **Build it one last time with `--final`:**
 
-    bin/tour-build.py <patch> <narration> <out.html> --final
+    bin/tour-build.py <patch> <narration> <out.html> --root <checkout> --final
 
 **A report with an unshown line, a pending item or a single warning is not finished.** An
 ordinary build exits 0 in that state on purpose, because most builds happen while later
 chapters are still skeletons — so this last one is the build that refuses. It writes the
-file, says what is wrong, prints no path and exits 1. If it printed a path, the report is
-whole. Fix, rebuild, and only then say three things and stop:
+file, says on stderr what is wrong, prints **nothing on stdout**, and exits 1. Exit 0 with a
+path on stdout is the only signal that the report is whole; the path in a refusal message is
+there so you can open the file, not so you can hand it over. Fix, rebuild, and only then say
+three things and stop:
 
 - **What the page has**, in a clause: chapters in the sidebar, a viewed mark on every change.
 - **Invite questions.** They can ask about anything they have just read, and **every change
