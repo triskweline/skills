@@ -167,20 +167,14 @@ def beat(b, ch, refs=None):
     say = ['<h3 id="%s">%s</h3>' % (ident, inline(b.subtitle, refs))]
     if b.prose:
         say.append(prose(b.prose, refs))
-    # Prose in the code column introduces the block *below* it, so a reader never has
-    # to guess which of two blocks a paragraph between them belongs to. A note with no
-    # block after it has nothing to introduce, and resolve() warns about that.
-    show, lead = [], ''
+    # A block's own prose is part of the block, so it is emitted with it — above the
+    # diff, the way its caption is. There is nothing to guess about which block a
+    # paragraph belongs to.
+    show = []
     for n, item in enumerate(b.items, 1):
-        if isinstance(item, tuple):
-            body = prose(item[1], refs)
-            if body:
-                lead = '<div class="note">%s</div>' % body
-        else:
-            show.append(lead + component(item, seq=n, refs=refs))
-            lead = ''
-    if lead:
-        show.append(lead)
+        lead = prose(item.lead, refs)
+        show.append(('<div class="note">%s</div>' % lead if lead else '')
+                    + component(item, seq=n, refs=refs))
     cls = 'beat' if show else 'beat solo'
     if b.fold:
         cls += ' fold'

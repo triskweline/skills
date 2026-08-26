@@ -69,6 +69,7 @@ class Component:
     hi: int | None = None
     body: list = field(default_factory=list)   # %code only
     lang: str = ''
+    lead: list = field(default_factory=list)    # its own prose, indented under it
     label: str = ''                 # "h17", written by bin/tour-skeleton.py
     code: str = ''                  # "3.2", assigned by the builder
     hunk: object = None             # resolved patch.Hunk
@@ -88,7 +89,7 @@ class Beat:
     line: int
     prose: list = field(default_factory=list)      # markdown lines, left column
     fold: bool = False
-    items: list = field(default_factory=list)      # Component | ('note', [lines])
+    items: list = field(default_factory=list)      # Component
 
 
 @dataclass
@@ -104,7 +105,7 @@ class Chapter:
 
     @property
     def components(self):
-        return [i for b in self.beats for i in b.items if isinstance(i, Component)]
+        return [i for b in self.beats for i in b.items]
 
 
 @dataclass
@@ -179,27 +180,15 @@ def parse(text):
     def err(n, msg, fatal=True):
         problems.append(Problem(n, msg, fatal))
 
-    def prose_target(create=True):
-        """Where a line of prose goes right now.
+    # Where prose goes right now, and whether that place is a block's own prose.
+    # A block's prose is written indented under it — the paragraph version of its
+    # caption — so it belongs to the block and moves with it.
+    sink = None
+    in_lead = False
 
-        `create=False` asks without opening a new note, which is what a blank line
-        needs: a blank line after a block must not conjure an empty annotation, or
-        every beat that ends with a block looks like it has trailing prose.
-        """
-        if beat is not None:
-            if beat.items:
-                last = beat.items[-1]
-                if isinstance(last, tuple):
-                    return last[1]
-                if not create:
-                    return None
-                note = ('note', [])
-                beat.items.append(note)
-                return note[1]
-            return beat.prose
-        if chapter is not None:
-            return chapter.blast if chapter.blast_level else chapter.intro
-        return None
+    def aim(target, lead=False):
+        nonlocal sink, in_lead
+        sink, in_lead = target, lead
 
     lines = text.split('\n')
     for i, raw in enumerate(lines, 1):
@@ -222,11 +211,16 @@ def parse(text):
                 continue
 
         if line.startswith('%%'):
-            t = prose_target()
-            if t is None:
+            # A literal % at the start of a prose line. Only column-0 prose ever needs
+            # it — a block's own prose is indented, so its % is already just a %.
+            if sink is None:
                 err(i, 'prose before the first chapter')
+            elif in_lead:
+                err(i, 'prose here is not attached to anything. Indent it to make it '
+                       'this block\'s own prose, or move it into the beat\'s narration '
+                       'above the first block')
             else:
-                t.append(line[1:])
+                sink.append(line[1:])
             continue
 
         if line.startswith('%'):
@@ -262,6 +256,7 @@ def parse(text):
                 chapter = Chapter(name, rest, i, number=len(rep.chapters) + 1)
                 rep.chapters.append(chapter)
                 beat = None
+                aim(chapter.intro)
                 continue
 
             if chapter is None:
@@ -279,6 +274,7 @@ def parse(text):
                 if chapter.blast_level:
                     err(i, 'this chapter already has a %blast')
                 chapter.blast_level = rest if rest in BLAST_LEVELS else 'moderate'
+                aim(chapter.blast)
                 continue
 
             if name == 'beat':
@@ -286,6 +282,7 @@ def parse(text):
                     err(i, '%beat needs a subtitle')
                 beat = Beat(rest, i)
                 chapter.beats.append(beat)
+                aim(beat.prose)
                 continue
 
             if name == 'fold':
@@ -330,11 +327,13 @@ def parse(text):
                     continue
                 beat.items.append(Component('hunk', i, cap, path, key, lo, hi,
                                             label=label))
+                aim(beat.items[-1].lead, lead=True)
             elif name == 'file':
                 if not spec:
                     err(i, '%file needs a path')
                     continue
                 beat.items.append(Component('file', i, cap, spec, label=label))
+                aim(beat.items[-1].lead, lead=True)
             elif name == 'quote':
                 if ':' not in spec:
                     err(i, 'cannot read %r — want path:from-to' % spec)
@@ -348,27 +347,34 @@ def parse(text):
                 beat.items.append(Component('quote', i, cap, path.strip(),
                                             lo=int(m.group(1)), hi=int(m.group(2)),
                                             label=label))
+                aim(beat.items[-1].lead, lead=True)
             elif name == 'code':
                 comp = Component('code', i, cap, lang=spec.strip(), label=label)
                 beat.items.append(comp)
+                aim(comp.lead, lead=True)
                 in_code = comp
             continue
 
         # ---- prose ----
         if not line.strip():
-            t = prose_target(create=False)
-            if t is not None and t and t[-1].strip():
-                t.append('')
+            if sink and sink[-1].strip():
+                sink.append('')
             continue
         if line.lstrip().startswith('#') and not line.lstrip().startswith('#!'):
             err(i, 'a markdown heading in prose. Chapters are %chapter and beats are '
                    '%beat, so the report keeps one heading hierarchy')
             continue
-        t = prose_target()
-        if t is None:
+        if sink is None:
             err(i, 'prose before the first chapter')
             continue
-        t.append(line)
+        # Once a beat has a block, prose has to say which it belongs to, and the way
+        # it says so is by being indented under it.
+        if in_lead and line == line.lstrip():
+            err(i, 'prose here is not attached to anything. Indent it to make it this '
+                   'block\'s own prose, or move it into the beat\'s narration above '
+                   'the first block')
+            continue
+        sink.append(line.strip())
 
     if in_code is not None:
         err(in_code.line, '%code was never closed by a %end line')
@@ -416,12 +422,6 @@ def _check_shape(rep):
                           'before its beats')
     for ch in rep.chapters:
         for b in ch.beats:
-            if (b.items and isinstance(b.items[-1], tuple)
-                    and ''.join(b.items[-1][1]).strip()):
-                warn(b.line, 'the prose after the last block in this beat has nothing '
-                             'to introduce. Prose beside the code always introduces the '
-                             'block below it, so move this into the beat\'s narration '
-                             'or give it the block it is about')
             # Fatal: a beat with no prose is the one defect the two-column layout
             # cannot survive. The prose is the only thing the reader cannot get
             # from the diff, and an empty left column beside code is the report
@@ -575,10 +575,7 @@ def _prose_blocks(ch):
     for b in ch.beats:
         yield b.subtitle + ' ' + ' '.join(b.prose), b.line
         for item in b.items:
-            if isinstance(item, tuple):
-                yield ' '.join(item[1]), b.line
-            else:
-                yield item.caption, item.line
+            yield item.caption + ' ' + ' '.join(item.lead), item.line
 
 
 def _resolve_hunk(comp, patch, err):

@@ -430,11 +430,15 @@ the reader.
 - **In a multi-block beat, refer to blocks by label** — `[[h17]]`, which renders as that
   block's code. With three diffs beside one paragraph, the code is the only thing that pairs
   a sentence with the diff it is about.
-- **Every block is framed before the reader meets it.** A paragraph between two `%hunk`
-  lines introduces the block *below* it, and the builder renders it there, in the code
-  column. So the direction is never something the reader has to infer: the beat's own prose
-  sits in the left column, and a paragraph in the code column always belongs to the block
-  under it. Prose with no block after it has nothing to introduce, and the builder says so.
+- **A block may carry its own prose.** Indent a paragraph under a `%hunk` and it
+  belongs to that block — it is the paragraph version of the caption, and it renders
+  above that block's diff. Use it for the thing that is about *this* diff and no other:
+  "the reordering here is a real fix and easy to miss". Because it lives inside the
+  block, it moves when the block moves, and it can never end up describing the wrong
+  diff.
+- **The beat's own prose is the unindented paragraph under `%beat`.** That is the left
+  column: what the beat is about, the argument that runs across its blocks. Once a beat
+  has a block, unindented prose has nowhere to belong and the builder says so.
 - **Don't make a beat per hunk.** A subtitle over one obvious hunk is boilerplate; that
   hunk is a caption and, if it needs a word, an annotation under it.
 - **Structure a long chapter with beats, not with paragraph breaks.** Past three or four
@@ -706,6 +710,8 @@ The skeleton is not gospel. **While narrating a chapter you may reorder its beat
 blocks freely**, and you should when writing reveals a better order — "order follows the
 explanation" is the rule, and you sometimes only find the explanation by writing it. Labels
 move with their blocks, so nothing that points at them breaks.
+
+A block is a unit: its directive, and any prose indented under it. Move the unit.
 
 Two things are frozen once the skeleton is checked:
 

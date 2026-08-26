@@ -23,8 +23,8 @@
       div.show > figure.hunk       %hunk              a diff, or a fragment of one
                  figure.hunk.file  %file              a change with no diff body
                  figure.hunk.quote %quote %code       code that is not part of the change
-                 div.note          prose between two components: the lead for the
-                                   component *below* it
+                 div.note          a component's own prose, written indented under
+                                   it and rendered above its diff
     section.beat.solo              a beat with no components — full width
 
   A hunk's id IS its code, so [the guard](#3.2) in narration just works.
@@ -134,9 +134,8 @@
  }
 </code></pre>
       </figure>
-      <div class="note"><p>An annotation: prose between two components lands here, above
-      the block it introduces, so a paragraph between two blocks can never be read as
-      belonging to the wrong one.</p></div>
+      <div class="note"><p>A block's own prose: written indented under its directive,
+      rendered here above its diff. It is part of the block, so it moves with it.</p></div>
       <figure class="hunk" id="2.2" data-code="2.2" data-key="cafebabe">
         <figcaption>
           <span class="code">2.2</span>

@@ -107,11 +107,18 @@ cannot have one name.
 
 - Under `%chapter`: the chapter's introductory paragraph.
 - Under `%blast`: the evidence for that level.
-- Under `%beat`, **before** the first block: the beat's narration. Renders in the left
-  column, beside the code, and stays there as the reader scrolls.
-- **Between two blocks**: the lead for the block *below* it. Renders above that block, in
-  the code column, so a paragraph between two blocks can never be read as belonging to the
-  wrong one. Prose after the last block has nothing to introduce, and warns.
+- **Unindented under `%beat`**: the beat's narration. Renders in the left column, beside
+  the code, and stays there as the reader scrolls.
+- **Indented under a block**: that block's own prose — the paragraph version of its
+  caption. Renders above that block's diff, in the code column. It is part of the block,
+  so moving the block moves it.
+
+        %hunk src/cache.js:88 @h4 = the key builder
+          The `??` is doing precise work: an explicit `null` tenant is a real
+          value and has to survive.
+
+  Once a beat has a block, unindented prose has nowhere to belong, and the builder says so
+  rather than guessing which block you meant.
 - Markdown subset: paragraphs, `-` and `1.` lists, `**bold**`, `*italic*`, `` `code` ``,
   `[text](url)`, and `[[<label>]]`. Headings are not allowed in prose — a chapter is
   `%chapter` and a beat is `%beat`, so the report keeps one hierarchy.

@@ -11,6 +11,7 @@ two files on disk, which is the seam these tests sit on:
 """
 
 import os
+import re
 import sys
 import time
 import unittest
@@ -287,13 +288,36 @@ class TestNarrationStructure(unittest.TestCase):
             '%hunk src/deep/a.js:10 = real'), self.p)
         self.assertEqual([c.code for c in rep.chapters[1].components], ['', '2.1'])
 
-    def test_the_first_prose_is_beat_prose_and_the_rest_are_notes(self):
-        rep, _, _ = problems(tour(
-            '%beat A', 'Beat prose.', '%hunk src/deep/a.js:10 #3-3 = x',
-            'A lead.', '%hunk src/deep/a.js:10 #4-5 = y'), self.p)
+    def test_indented_prose_belongs_to_the_block_above_it(self):
+        rep, fatal, _ = problems(tour(
+            '%beat A', 'Beat prose.',
+            '%hunk src/deep/a.js:10 #3-3 @h1 = x', '  About h1.',
+            '%hunk src/deep/a.js:10 #4-5 @h2 = y', '  About h2.'), self.p)
+        self.assertEqual(fatal, [])
         beat = rep.chapters[1].beats[0]
         self.assertEqual(beat.prose, ['Beat prose.'])
-        self.assertEqual(beat.items[1], ('note', ['A lead.']))
+        self.assertEqual([(c.label, c.lead) for c in beat.items],
+                         [('h1', ['About h1.']), ('h2', ['About h2.'])])
+
+    def test_a_blocks_prose_travels_with_it_when_it_moves(self):
+        # The whole reason it lives inside the block: swapping two blocks as units
+        # cannot leave their prose behind describing the wrong diff.
+        a = ['%hunk src/deep/a.js:10 #3-3 @h1 = first', '  About the first.']
+        b = ['%hunk src/deep/a.js:10 #4-5 @h2 = second', '  About the second.']
+        head = ['%beat A', 'Narration.']
+        one = problems(tour(*(head + a + b)), self.p)[0]
+        two = problems(tour(*(head + b + a)), self.p)[0]
+        self.assertEqual([(c.code, c.lead[0]) for c in one.chapters[1].components],
+                         [('2.1', 'About the first.'), ('2.2', 'About the second.')])
+        self.assertEqual([(c.code, c.lead[0]) for c in two.chapters[1].components],
+                         [('2.1', 'About the second.'), ('2.2', 'About the first.')])
+
+    def test_a_blocks_prose_may_run_to_several_paragraphs(self):
+        rep, fatal, _ = problems(tour(
+            '%beat A', 'Narration.', '%hunk src/deep/a.js:10 @h1 = x',
+            '  One paragraph.', '', '  And another.'), self.p)
+        self.assertEqual(fatal, [])
+        self.assertEqual(rep.components[0].lead, ['One paragraph.', '', 'And another.'])
 
     def test_all_expands_to_one_component_per_hunk(self):
         p = patch.parse(SIMPLE + 'diff --git a/src/deep/a.js b/src/deep/a.js\n'
@@ -391,6 +415,11 @@ class TestNarrationRejects(unittest.TestCase):
     def test_a_label_may_not_impersonate_a_chapter(self):
         self.assertRejects('already means chapter 3',
                            '%beat A', 'P.', '%hunk src/deep/a.js:10 @ch3 = x')
+
+    def test_unindented_prose_after_a_block_belongs_nowhere(self):
+        self.assertRejects('not attached to anything',
+                           '%beat A', 'Narration.', '%hunk src/deep/a.js:10 = x',
+                           'Which block is this about?')
 
     def test_unknown_directive(self):
         self.assertRejects('unknown directive %beet', '%beet A', 'P.')
@@ -534,20 +563,11 @@ class TestNarrationWarns(unittest.TestCase):
         self.assertEqual(fatal, [])
         self.assertTrue(any('overlaps' in w for w in warn), warn)
 
-    def test_a_blank_line_after_a_block_is_not_trailing_prose(self):
-        # A beat that simply ends with its block, followed by a blank line, must not
-        # look like it has prose with nothing to introduce.
+    def test_a_blank_line_after_a_block_is_harmless(self):
         _, fatal, warn = problems(tour(
             '%beat A', 'Beat prose.', '%hunk src/deep/a.js:10 = x', '',
             '%beat B', 'More prose.'), self.p)
         self.assertEqual((fatal, warn), ([], []))
-
-    def test_prose_after_the_last_block_has_nothing_to_introduce(self):
-        _, fatal, warn = problems(tour(
-            '%beat A', 'Beat prose.', '%hunk src/deep/a.js:10 = x',
-            'Trailing prose.'), self.p)
-        self.assertEqual(fatal, [])
-        self.assertTrue(any('nothing to introduce' in w for w in warn), warn)
 
     def test_a_label_reference_resolves_and_does_not_warn(self):
         rep, fatal, warn = problems(tour(
@@ -735,18 +755,17 @@ class TestRender(unittest.TestCase):
     def test_a_beat_with_no_blocks_is_full_width(self):
         self.assertIn('class="beat solo"', self.build(tour('%beat A', 'Only prose.')))
 
-    def test_a_note_introduces_the_block_below_it_not_the_one_above(self):
+    def test_a_blocks_own_prose_renders_above_its_diff(self):
         html = self.build(tour('%beat A', 'Beat prose.',
                                '%hunk src/deep/a.js:10 #3-3 = first',
-                               'This introduces the second one.',
-                               '%hunk src/deep/a.js:10 #4-5 = second'))
+                               '  About the first.',
+                               '%hunk src/deep/a.js:10 #4-5 = second',
+                               '  About the second.'))
         show = html[html.index('<div class="show">'):]
-        first = show.index('id="2.1"')
-        note = show.index('<div class="note">')
-        second = show.index('id="2.2"')
-        self.assertLess(first, note)
-        self.assertLess(note, second)
-        self.assertIn('<p>This introduces the second one.</p>', html)
+        order = re.findall(r'class="note"|id="2\.\d"', show)
+        self.assertEqual(order[:4], ['class="note"', 'id="2.1"',
+                                     'class="note"', 'id="2.2"'])
+        self.assertIn('<p>About the first.</p>', html)
 
     def test_the_language_class_comes_from_the_files_extension(self):
         html = self.build(tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x'))
