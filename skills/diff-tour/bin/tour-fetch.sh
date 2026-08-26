@@ -50,6 +50,21 @@ git() {
 OUT="$1"; TARGET="${2:-}"
 # Everything after -- is a pathspec, passed to git and reported in the summary.
 PATHS=()
+NARROWED=          # set only where the pathspec was actually applied
+
+# Four target forms cannot take a pathspec: a patch file is copied through, and the
+# forge CLIs hand back a whole diff. Narrowing has to happen *in the patch*, because
+# coverage guarantees every line of it is shown — so silently ignoring the pathspec
+# would produce a full tour while the overview claimed an exclusion that never
+# happened. Refuse, and say what to do instead.
+no_pathspec() {
+  [ ${#PATHS[@]} -eq 0 ] && return 0
+  echo "tour-fetch: a $1 cannot be narrowed with a pathspec — it arrives as a whole" >&2
+  echo "tour-fetch: diff. Coverage shows every line of the patch, so narrowing has to" >&2
+  echo "tour-fetch: happen here or not at all. Fetch the branch and pass a range:" >&2
+  echo "tour-fetch:   bin/tour-fetch.sh <out> <base>..<head> -- ${PATHS[*]}" >&2
+  exit 2
+}
 if [ $# -gt 2 ]; then
   shift 2
   [ "${1:-}" = -- ] && shift
@@ -97,9 +112,9 @@ git_ref() {
   && { git -C "$REPO" show-ref --verify --quiet "refs/heads/$1" \
     || git -C "$REPO" show-ref --verify --quiet "refs/remotes/origin/$1"; }; then
     require_default_branch
-    git -C "$REPO" diff "$DB...$1" -- "${PATHS[@]}" > "$OUT"                      # a branch: three dots
+    git -C "$REPO" diff "$DB...$1" -- "${PATHS[@]}" > "$OUT"; NARROWED=1                      # a branch: three dots
   else
-    git -C "$REPO" diff "$1^..$1" -- "${PATHS[@]}" > "$OUT"                      # one commit
+    git -C "$REPO" diff "$1^..$1" -- "${PATHS[@]}" > "$OUT"; NARROWED=1                      # one commit
   fi
 }
 
@@ -108,10 +123,10 @@ case "$TARGET" in
     require_default_branch
     base=$(git -C "$REPO" merge-base --fork-point "$DB" HEAD 2>/dev/null \
         || git -C "$REPO" merge-base "$DB" HEAD)
-    git -C "$REPO" diff "$base..HEAD" -- "${PATHS[@]}" > "$OUT"
+    git -C "$REPO" diff "$base..HEAD" -- "${PATHS[@]}" > "$OUT"; NARROWED=1
     # Uncommitted work is part of "what I am looking at", so fold it in.
     if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no)" ]; then
-      git -C "$REPO" diff "$base" -- "${PATHS[@]}" > "$OUT"       # one coherent diff, base -> working tree
+      git -C "$REPO" diff "$base" -- "${PATHS[@]}" > "$OUT"; NARROWED=1       # one coherent diff, base -> working tree
       echo "tour-fetch: included uncommitted changes" >&2
     fi
     # A brand-new file is invisible to `git diff`, so it would be missing from the
@@ -130,25 +145,29 @@ case "$TARGET" in
     echo "base $base" >&2
     ;;
   *.patch|*.diff)
+    no_pathspec "patch file"
     [ -f "$TARGET" ] || { echo "tour-fetch: no such patch file: $TARGET" >&2; exit 3; }
     cp -f "$TARGET" "$OUT" ;;
   *://*/pull/*|*://*/pulls/*)
+    no_pathspec "pull request"
     need gh
     slug=$(printf '%s' "$TARGET" | sed -E 's|^[a-z]+://[^/]+/([^/]+/[^/]+)/pulls?/([0-9]+).*|\1|')
     num=$(printf '%s' "$TARGET" | sed -E 's|.*/pulls?/([0-9]+).*|\1|')
     gh pr diff "$num" --repo "$slug" > "$OUT" ;;
   *://*/merge_requests/*)
+    no_pathspec "merge request"
     need glab
     slug=$(printf '%s' "$TARGET" | sed -E 's|^[a-z]+://[^/]+/(.+)/-/merge_requests/[0-9]+.*|\1|')
     num=$(printf '%s' "$TARGET" | sed -E 's|.*/merge_requests/([0-9]+).*|\1|')
     glab mr diff "$num" --repo "$slug" --raw > "$OUT" ;;
   *..*)
-    git -C "$REPO" diff "$TARGET" -- "${PATHS[@]}" > "$OUT" ;;
+    git -C "$REPO" diff "$TARGET" -- "${PATHS[@]}" > "$OUT"; NARROWED=1 ;;
   [0-9]*)
     if [ -n "${TARGET//[0-9]/}" ]; then
       # Digits plus something else — a sha like 9290f61a, not a PR number.
       git_ref "$TARGET" || { echo "tour-fetch: cannot resolve target: $TARGET" >&2; exit 3; }
     else
+      no_pathspec "PR or MR number"
       # A bare number is a PR or MR in this repo. Try GitHub, then GitLab.
       # An all-digit string can be both a PR number and an abbreviated sha. Say which won.
       if git -C "$REPO" rev-parse --verify --quiet "$TARGET^{commit}" >/dev/null; then
@@ -198,4 +217,4 @@ esac
 
 echo "$OUT"
 echo "tour-fetch: $(grep -c '^@@' "$OUT") hunks, $(grep -c '^diff --git' "$OUT") files -> $OUT" >&2
-[ ${#PATHS[@]} -eq 0 ] || echo "tour-fetch: narrowed to ${PATHS[*]} — say so in the overview" >&2
+[ -z "$NARROWED" ] || echo "tour-fetch: narrowed to ${PATHS[*]} — say so in the overview" >&2

@@ -217,7 +217,7 @@ STANDFIRST = (
     'automated code review — pair it with one.')
 
 
-def _meta_line(stats, source, date, repo=None, branch=None):
+def _meta_line(stats, source, date, repo=None, branch=None, blocks=None):
     bits = []
     if repo:
         bits.append('<b>%s</b>' % esc(repo))
@@ -227,8 +227,13 @@ def _meta_line(stats, source, date, repo=None, branch=None):
     bits.append('<b class="added">+%s</b> <b class="removed">−%s</b>'
                 % ('{:,}'.format(stats['added']), '{:,}'.format(stats['removed'])))
     # "hunk" is a git word. The reader is a reviewer, not a git user.
-    bits.append('<b>%d</b> change%s' % (stats['hunks'],
-                                        '' if stats['hunks'] == 1 else 's'))
+    # The number of things the reader will actually click through, which is the number
+    # of numbered figures on the page — not the patch's hunk count. They differ whenever
+    # a hunk is split into fragments or a file is shown as a `:all` group, and the
+    # sidebar tally counts figures, so quoting hunks here made the two disagree about
+    # the one word this report standardised on.
+    n = stats['hunks'] if blocks is None else blocks
+    bits.append('<b>%d</b> change%s' % (n, '' if n == 1 else 's'))
     bits.append('<code>%s</code>' % esc(source))
     bits.append(esc(date))
     return ' · '.join(bits)
@@ -257,7 +262,9 @@ def page(rep, stats, source, date, uid, layout=None, repo=None, branch=None):
     prism, missing = codemod.bundle()
 
     body = ['<h1>%s</h1>' % inline(rep.title, rep.refs),
-            '<p class="meta">%s</p>' % _meta_line(stats, source, date, repo, branch),
+            '<p class="meta">%s</p>' % _meta_line(
+                stats, source, date, repo, branch,
+                blocks=sum(1 for c in rep.components if c.code)),
             '<p class="standfirst">%s</p>' % STANDFIRST]
     # One counter for the whole report: an uncoded block's id has to be unique across
     # the page, not within its beat, or the same quote in two beats collides.

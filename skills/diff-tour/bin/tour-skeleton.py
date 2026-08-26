@@ -30,6 +30,12 @@ invalidates the coverage this command just proved.
 import os
 import re
 import sys
+
+# stdout is block-buffered when piped while stderr never is, so a summary
+# written to stderr lands in the middle of the listing above it and the
+# whole thing reads as corrupted output. Line buffering costs nothing here
+# and fixes every stderr write in this file, not one call site.
+sys.stdout.reconfigure(line_buffering=True)
 import tempfile
 
 sys.path.insert(0, os.path.join(
@@ -112,6 +118,11 @@ def _suggest_forks(rep):
     chapters = [(len(ch.components), ch.number, ch.title)
                 for ch in rep.chapters if ch.kind == 'chapter' and ch.components]
     if len(chapters) < 2:
+        return
+    # Below this, one pass is already short and a fork costs more context than it saves
+    # — and Step G calls a small report the serial case, so suggesting forks here would
+    # contradict the step that reads the suggestion.
+    if sum(size for size, _, _ in chapters) < 10:
         return
     chapters.sort(reverse=True)
     # The biggest chapter is the floor on wall clock, so it is the natural bin size —
@@ -243,11 +254,6 @@ def main(argv):
                          c.code or c.kind, width, c.caption, where))
 
     _suggest_forks(rep)
-
-    # stdout is block-buffered when piped and stderr never is, so without this the
-    # summary below lands in the middle of the table above it and the whole thing looks
-    # like corrupted output.
-    sys.stdout.flush()
 
     shown, total, gaps = narration.coverage(rep, p)
     print()

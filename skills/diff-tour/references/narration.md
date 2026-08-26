@@ -173,7 +173,9 @@ format they consume. The order the commands run in, and why, is
   and removed runs.
 
 Everything is inlined — CSS, JavaScript, and the vendored Prism — so the file works from
-disk with no network and no server. Expect roughly three times the patch's size, plus 110 KB.
+disk with no network and no server. Expect roughly twice the patch's size, plus 110 KB — measured on two
+real reports of 431 KB and 390 KB. The fixed part is the inlined highlighter, so a small
+tour is mostly that and a large one is mostly diff.
 
 ## Tests
 

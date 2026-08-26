@@ -20,6 +20,12 @@ per gap.
 import os
 import sys
 
+# stdout is block-buffered when piped while stderr never is, so a summary
+# written to stderr lands in the middle of the listing above it and the
+# whole thing reads as corrupted output. Line buffering costs nothing here
+# and fixes every stderr write in this file, not one call site.
+sys.stdout.reconfigure(line_buffering=True)
+
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
 PROG = 'tour-rest'
@@ -102,9 +108,9 @@ def main(argv):
             else:
                 print('%%hunk %s:%s #%d-%d = ' % (path, key, lo, hi))
         print()
-    print('%# Every %hunk above needs a caption before this builds. An EDIT line is not')
-    print('%# pasteable — it names a fragment to widen in place. A leftover group also')
-    print('%# says why no topic claimed it.')
+    print('%# Every directive above needs a caption before this builds. An EDIT line is')
+    print('%# not pasteable — it names a fragment to widen in place. A leftover group')
+    print('%# also says why no topic claimed it.')
     return 1
 
 

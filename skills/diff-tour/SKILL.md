@@ -323,6 +323,13 @@ rather than a budget to hit.
 single body.** Don't compress the extra bodies to hit a number. Group each body's chapters
 together, in the order the overview announces them, so a reader can read one body and stop.
 
+**So does one policy applied across many surfaces.** A change that threads the same decision
+through a controller, a model, four views, a cache and an API version has a chapter per
+surface, because that is where a reviewer checks it — one real tour of a single body of work
+ran to thirteen chapters and was right to. The range catches a diff carved at arbitrary
+joints, not a diff that genuinely touches many places once each. If every chapter answers a
+different question, the count is fine however high it is.
+
 If the count is far outside the range for a single body, re-run pass 1. Too many usually
 means one topic was found repeatedly under different names; too few usually means the change
 is smaller than its line count suggests. The defect is in the topic list, not in the
@@ -624,8 +631,11 @@ It prints the hunk and file count, the base it chose when there was no target, a
 list matters more than it looks: coverage guarantees every line of the patch is shown, and an
 untracked file is not in the patch — so it is the one omission the guarantee cannot see, and
 the only way the reader learns of it is you repeating it. If the host has a GitHub or GitLab MCP
-server, fetching the diff through that and saving it to the same path is equivalent; the
-script is a convenience, not a gate.
+server, fetching the diff through that and saving it to the same path works — **but write the
+PR's head SHA to `<out>.patch.head` as well.** Without that file no checkout can be matched to
+the diff, which forbids `%quote` for the whole tour and downgrades every Step G grep to
+evidence about a possibly different version of the code. The MCP response carries the SHA; the
+script is a convenience, not a gate, but the sidecar is not optional.
 
 **Run it from inside the repository you are touring.** It resolves a git target against the
 current directory unless `TOUR_REPO` says otherwise, so running it from somewhere else
@@ -954,6 +964,22 @@ for is cheaper asked once by you and handed down:
 What stays per-chapter is what only that chapter turns on: its own before-and-after, and
 the one or two specific questions its sentences need.
 
+**A fact about the world outside the diff is either read from the checkout or hedged.**
+Release dates, end-of-life dates, what a library dropped in which version, what is
+"maintained until" when — none of that is in the patch, none of it is checkable by the reader
+against anything on the page, and it is where an explanation is most likely to be fluent and
+wrong. A dependency-upgrade tour leans on such claims heavily, so decide per claim:
+
+- **Read it** from the checkout — a changelog, a gemspec, a comment, the lockfile — and cite
+  where, or quote it with `%quote`. Then it is evidence like any other.
+- **Or attribute it**: "per the Rails maintenance policy as I understand it", "reportedly".
+  A hedged date a reviewer can go and check beats a bare one they cannot.
+
+And **never state a fact about the reader's machine or the author's**. You know what is in the
+diff and what is in the checkout you were given. "The pin this branch replaces named a Ruby
+that was not installed on the author's machine" is not something you can know — at most it was
+not installed on *yours*, which is a different and much less interesting claim.
+
 **A negative has to arrive as evidence.** A positive finding can be summarized — "three
 callers, all in `billing/`". But **a claim that something does *not* exist must be backed by
 the command and its output**: nothing tests this, nothing else calls that, no other call site
@@ -973,13 +999,21 @@ running them one at a time is leaving the largest available saving on the floor.
 ### "Unless the user requested it" — they did
 
 Many sessions carry a standing instruction of the shape **"do not spawn subagents unless the
-user requested it."** That instruction is *conditional*, and on this run the condition is
-already met: **the reader asked for a diff tour, and forking is part of what a diff tour is.**
-It is in this document, which they can read, and the handover tells them it happened. Treating
-that instruction as a prohibition is a misreading, and an expensive one — it silently turns
-every large tour into the slowest possible run of itself.
+user requested it."** Reading that as a flat ban is expensive — it turns every large tour into
+the slowest possible run of itself, and the reader did ask for a tour, of which forking is a
+documented part. But it is not yours to declare satisfied either: some operators mean exactly
+"unless they asked for subagents", and overruling that silently is not a call this document
+gets to make on your behalf.
 
-So: **a conditional instruction is satisfied. Fork.**
+**So say it, in the announcement, and go.** [Step C](#step-c-say-it-will-take-a-while-then-go-quiet)
+is the last moment anyone is watching, and this costs it one clause:
+
+> …a few minutes. I'll narrate the chapters in parallel with subagents — say now if you'd
+> rather I didn't.
+
+That is a statement, not a question: **do not wait for an answer, and do not stall.** Fork and
+carry on. If they object, they are still there to say so, and Step G is early enough that a
+serial restart costs one phase rather than the run.
 
 **Serial is right in three cases, and only these:**
 
