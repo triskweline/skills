@@ -29,6 +29,8 @@ import sys
 
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
+PROG = 'tour-build'
+
 from difftour import narration, patch as patchmod, render   # noqa: E402
 
 
@@ -40,28 +42,40 @@ def _head_of(patch_path):
         return None
 
 
-def _repo_and_branch(root):
+def _repo_and_branch(root, want_head=None):
     """The checkout's folder name and branch, for the report's header.
 
     The folder name, never the path: a reader wants to know which project this is,
     not where it sat on the machine that built the report.
+
+    Both are stated only when they are true of *this diff*. Touring someone else's
+    pull request from a checkout that sits on `master` must not print "master" in
+    the header — that is a confident wrong fact in the most trusted line of the
+    page. So the branch appears only when the checkout is actually at the commit
+    the patch ends at, and the folder only when --root is a git repository at all.
     """
     import subprocess
-    folder = os.path.basename(os.path.abspath(root)) or None
-    branch = None
-    try:
-        out = subprocess.run(['git', '-C', root, 'rev-parse', '--abbrev-ref', 'HEAD'],
-                             capture_output=True, text=True, timeout=10)
-        name = out.stdout.strip()
-        # A detached HEAD reports "HEAD", which is not a branch name.
-        if out.returncode == 0 and name and name != 'HEAD':
-            branch = name
-        top = subprocess.run(['git', '-C', root, 'rev-parse', '--show-toplevel'],
-                             capture_output=True, text=True, timeout=10)
-        if top.returncode == 0 and top.stdout.strip():
-            folder = os.path.basename(top.stdout.strip()) or folder
-    except Exception:
-        pass
+
+    def git(*args):
+        try:
+            out = subprocess.run(['git', '-C', root] + list(args),
+                                 capture_output=True, text=True, timeout=10)
+            return out.stdout.strip() if out.returncode == 0 else None
+        except Exception:
+            return None
+
+    top = git('rev-parse', '--show-toplevel')
+    if not top:
+        return None, None                       # not a checkout; claim nothing
+    folder = os.path.basename(top) or None
+
+    branch = git('rev-parse', '--abbrev-ref', 'HEAD')
+    if branch == 'HEAD':
+        branch = None                           # detached: there is no branch name
+    if branch and want_head:
+        here = git('rev-parse', 'HEAD')
+        if here != want_head:
+            branch = None                       # this checkout is not this diff
     return folder, branch
 
 
@@ -99,6 +113,16 @@ def main(argv):
             return 2
 
     p = patchmod.load(src)
+    dupes = p.duplicate_keys()
+    if dupes:
+        print('%s: this patch has two hunks at the same line in one file, so one of '
+              'them could never be selected and coverage would credit its lines to the '
+              'other:' % PROG, file=sys.stderr)
+        for path, key in dupes[:10]:
+            print('  %s at +%s' % (path, key), file=sys.stderr)
+        print('%s: it looks hand-assembled. Regenerate it with bin/tour-fetch.sh.'
+              % PROG, file=sys.stderr)
+        return 2
     with open(doc, encoding='utf-8') as f:
         text = f.read()
 
@@ -118,17 +142,23 @@ def main(argv):
                   '--root at a checkout of %s, or drop the quotes.'
                   % (want[:9], os.path.abspath(root), have[:9], want[:9]), file=sys.stderr)
 
-    fatal = [x for x in problems if x.fatal]
+    # A document is meant to be built after every chapter is appended, so most builds
+    # happen while later chapters are still bare skeletons. Missing prose is therefore
+    # premature rather than wrong here too — it just has to be gone by Step J, which
+    # refuses to hand over a report with any warning at all.
+    fatal = [x for x in problems if x.fatal and not x.premature]
     warn = [x for x in problems if not x.fatal]
+    pending = [x for x in problems if x.premature]
     for x in sorted(problems, key=lambda x: (not x.fatal, x.line)):
-        print(x, file=sys.stderr)
+        if not x.premature:
+            print(x, file=sys.stderr)
     if fatal:
         print('\ntour-build: %d problem%s in %s. Nothing written.'
               % (len(fatal), '' if len(fatal) == 1 else 's', doc), file=sys.stderr)
         return 6
 
     uid = hashlib.sha1(os.path.abspath(out).encode()).hexdigest()[:10]
-    repo, branch = _repo_and_branch(root)
+    repo, branch = _repo_and_branch(root, _head_of(src))
     html, missing = render.page(
         rep, p.stats(),
         opts.get('source', os.path.basename(src)),
@@ -153,6 +183,10 @@ def main(argv):
               % (shown, total, len(gaps), '' if len(gaps) == 1 else 's'), file=sys.stderr)
     else:
         print('tour-build: all %d changed lines shown.' % total, file=sys.stderr)
+    if pending:
+        print('tour-build: %d place%s still without prose — expected while chapters are '
+              'still skeletons, but not in the report you hand over.'
+              % (len(pending), '' if len(pending) == 1 else 's'), file=sys.stderr)
     if warn:
         print('tour-build: %d warning%s above.'
               % (len(warn), '' if len(warn) == 1 else 's'), file=sys.stderr)

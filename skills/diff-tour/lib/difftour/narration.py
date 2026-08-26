@@ -372,6 +372,11 @@ def parse(text):
             err(i, 'a markdown heading in prose. Chapters are %chapter and beats are '
                    '%beat, so the report keeps one heading hierarchy')
             continue
+        if line.lstrip().startswith('```'):
+            err(i, 'a code fence in prose. Prose renders it as text, not as code — quote '
+                   'real code with %quote <path>:<from>-<to>, which reads it from the '
+                   'checkout, or use inline `backticks` for a fragment')
+            continue
         if sink is None:
             err(i, 'prose before the first chapter')
             continue
@@ -479,6 +484,12 @@ def resolve(rep, patch, root='.'):
                         err(item.line, '%r has no hunks — it is a %s, so use %%file'
                             % (item.path, 'binary change' if fc.binary else fc.kind))
                         continue
+                    if item.lead:
+                        # One paragraph cannot belong to eight blocks, and silently
+                        # dropping it loses the only explanation a folded group has.
+                        err(item.line, 'indented prose cannot attach to %s:all, which '
+                                       'stands for %d blocks. Put it in the beat\'s '
+                                       'narration instead.' % (item.path, len(fc.hunks)))
                     for h in fc.hunks:
                         out.append(Component('hunk', item.line, item.caption,
                                              item.path, h.key))
