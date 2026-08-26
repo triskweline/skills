@@ -209,8 +209,8 @@ def chapter(ch, refs=None):
 STANDFIRST = (
     'A guided tour through one change, for a human reviewing code they did not write. '
     'It says what each change is for, what the code did before, and where to look '
-    'closely. It rarely makes a judgement and it is not an automated code review — '
-    'pair it with one.')
+    'closely. It points at risk rather than ruling on the change, and it is not an '
+    'automated code review — pair it with one.')
 
 
 def _meta_line(stats, source, date, repo=None, branch=None):
@@ -232,6 +232,10 @@ def _meta_line(stats, source, date, repo=None, branch=None):
 def _swap(html, mark, content):
     """Replace what sits between <!--MARK--> and <!--/MARK-->."""
     a, b = '<!--%s-->' % mark, '<!--/%s-->' % mark
+    if a not in html or b not in html:
+        raise SystemExit('tour-build: assets/layout.html has no %s marker pair. The '
+                         'builder fills the report in between those markers, so the '
+                         'layout cannot be edited away.' % mark)
     i, j = html.index(a), html.index(b)
     return html[:i + len(a)] + content + html[j:]
 

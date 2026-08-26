@@ -1,7 +1,13 @@
 #!/bin/bash
 # Resolve any tour target to a patch file, and print the path.
 #
-#   Usage: tour-fetch.sh <out-file> [<target>]
+#   Usage: tour-fetch.sh <out-file> [<target>] [-- <pathspec> …]
+#
+#     A trailing "-- <pathspec>" narrows the diff to those paths. Use it when the
+#     reader asked for part of a range: the patch itself becomes the smaller thing, so
+#     coverage still means "all of it" and the report can say honestly what was left
+#     out. Never narrow to make a tour cheaper — that hides work behind a guarantee
+#     that no longer covers it.
 #
 #     <target> forms, autodetected:
 #       (omitted)                    this branch since its branch point, plus uncommitted work
@@ -40,8 +46,15 @@ git() {
               "${args[@]}"
 }
 
-[ $# -ge 1 ] || { echo "usage: tour-fetch.sh <out-file> [<target>]" >&2; exit 2; }
+[ $# -ge 1 ] || { echo "usage: tour-fetch.sh <out-file> [<target>] [-- <pathspec> …]" >&2; exit 2; }
 OUT="$1"; TARGET="${2:-}"
+# Everything after -- is a pathspec, passed to git and reported in the summary.
+PATHS=()
+if [ $# -gt 2 ]; then
+  shift 2
+  [ "${1:-}" = -- ] && shift
+  PATHS=("$@")
+fi
 REPO="${TOUR_REPO:-$PWD}"
 mkdir -p "$(dirname "$OUT")"
 
@@ -60,9 +73,9 @@ git_ref() {
   if [ "$1" != HEAD ] && [ "$1" != @ ] && [ "${1%%[~^]*}" = "$1" ] \
   && { git -C "$REPO" show-ref --verify --quiet "refs/heads/$1" \
     || git -C "$REPO" show-ref --verify --quiet "refs/remotes/origin/$1"; }; then
-    git -C "$REPO" diff "$(default_branch)...$1" > "$OUT"       # a branch: three dots
+    git -C "$REPO" diff "$(default_branch)...$1" -- "${PATHS[@]}" > "$OUT"       # a branch: three dots
   else
-    git -C "$REPO" diff "$1^..$1" > "$OUT"                      # one commit
+    git -C "$REPO" diff "$1^..$1" -- "${PATHS[@]}" > "$OUT"                      # one commit
   fi
 }
 
@@ -70,10 +83,10 @@ case "$TARGET" in
   "")
     base=$(git -C "$REPO" merge-base --fork-point "$(default_branch)" HEAD 2>/dev/null \
         || git -C "$REPO" merge-base "$(default_branch)" HEAD)
-    git -C "$REPO" diff "$base..HEAD" > "$OUT"
+    git -C "$REPO" diff "$base..HEAD" -- "${PATHS[@]}" > "$OUT"
     # Uncommitted work is part of "what I am looking at", so fold it in.
     if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no)" ]; then
-      git -C "$REPO" diff "$base" > "$OUT"       # one coherent diff, base -> working tree
+      git -C "$REPO" diff "$base" -- "${PATHS[@]}" > "$OUT"       # one coherent diff, base -> working tree
       echo "tour-fetch: included uncommitted changes" >&2
     fi
     # A brand-new file is invisible to `git diff`, so it would be missing from the
@@ -100,7 +113,7 @@ case "$TARGET" in
     num=$(printf '%s' "$TARGET" | sed -E 's|.*/merge_requests/([0-9]+).*|\1|')
     glab mr diff "$num" --repo "$slug" --raw > "$OUT" ;;
   *..*)
-    git -C "$REPO" diff "$TARGET" > "$OUT" ;;
+    git -C "$REPO" diff "$TARGET" -- "${PATHS[@]}" > "$OUT" ;;
   [0-9]*)
     if [ -n "${TARGET//[0-9]/}" ]; then
       # Digits plus something else — a sha like 9290f61a, not a PR number.
@@ -122,11 +135,20 @@ esac
 
 [ -s "$OUT" ] || { echo "tour-fetch: the diff is empty" >&2; exit 3; }
 
-# The commit the diff ends at, for the %quote check in tour-build.py. A patch file from
-# elsewhere has no such commit here, and then there is nothing to compare.
+# The commit the diff ends at, for the %quote check and the header's branch name in
+# tour-build.py. A PR is the case both were built for, so ask the forge for its head
+# rather than skipping it. A patch file from elsewhere has no such commit here.
 rm -f "$OUT.head"
 case "$TARGET" in
-  *.patch|*.diff|*://*) ;;
+  *.patch|*.diff) ;;
+  *://*/pull/*|*://*/pulls/*)
+    gh pr view "$num" --repo "$slug" --json headRefOid -q .headRefOid > "$OUT.head" 2>/dev/null \
+      || rm -f "$OUT.head" ;;
+  *://*/merge_requests/*)
+    glab mr view "$num" --repo "$slug" -F json 2>/dev/null \
+      | sed -n 's/.*\"sha\":[[:space:]]*\"\([0-9a-f]*\)\".*/\1/p' | head -1 > "$OUT.head" \
+      || rm -f "$OUT.head"
+    [ -s "$OUT.head" ] || rm -f "$OUT.head" ;;
   *..*) git -C "$REPO" rev-parse --verify --quiet "${TARGET##*..}^{commit}" > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
   "") git -C "$REPO" rev-parse --verify --quiet 'HEAD^{commit}' > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
   *) git -C "$REPO" rev-parse --verify --quiet "$TARGET^{commit}" > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
@@ -134,3 +156,4 @@ esac
 
 echo "$OUT"
 echo "tour-fetch: $(grep -c '^@@' "$OUT") hunks, $(grep -c '^diff --git' "$OUT") files -> $OUT" >&2
+[ ${#PATHS[@]} -eq 0 ] || echo "tour-fetch: narrowed to ${PATHS[*]} — say so in the overview" >&2
