@@ -965,16 +965,28 @@ class TestHunksCommand(unittest.TestCase):
         # the one-off changes in SIMPLE are changes, not a sweep
         self.assertNotIn('src/deep/a.js', r.stdout)
 
-    def test_renames_reports_the_minimal_substitution(self):
-        # `call(oldName)` -> `call(newName)` shares the suffix `Name)`, so the swap
-        # that actually happened is old -> new. Reporting the whole token would
-        # overstate what changed.
+    def test_renames_reports_a_greppable_identifier(self):
+        # The character-minimal swap for `call(oldName)` -> `call(newName)` is
+        # old -> new, and the next instruction is to grep the old name for
+        # stragglers — where `old` also matches `older` and `bold`. The needle has to
+        # be the identifier.
         with open(self.patch.name, 'a') as f:
             for n in (1, 2):
                 f.write('diff --git a/src/s%d.js b/src/s%d.js\n--- a/src/s%d.js\n'
                         '+++ b/src/s%d.js\n@@ -1,2 +1,2 @@\n ctx\n'
                         '-call(oldName)\n+call(newName)\n' % (n, n, n, n))
-        self.assertIn("'old'  ->  'new'    (2 hunks)", self.run('--renames').stdout)
+        self.assertIn("'oldName'  ->  'newName'    (2 hunks)",
+                      self.run('--renames').stdout)
+
+    def test_renames_widens_through_an_underscore(self):
+        with open(self.patch.name, 'a') as f:
+            for n in (1, 2):
+                f.write('diff --git a/src/u%d.rb b/src/u%d.rb\n--- a/src/u%d.rb\n'
+                        '+++ b/src/u%d.rb\n@@ -1,2 +1,2 @@\n ctx\n'
+                        '-use(links_to_content)\n+use(links_to_media)\n'
+                        % (n, n, n, n))
+        self.assertIn("'links_to_content'  ->  'links_to_media'",
+                      self.run('--renames').stdout)
 
     def test_renames_ignores_a_hunk_that_is_not_a_clean_swap(self):
         with open(self.patch.name, 'a') as f:
@@ -1506,7 +1518,11 @@ class TestBuildCommand(_CommandCase):
         r = self.build()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertTrue(os.path.exists(self.out))
-        self.assertIn('still without prose', r.stderr)
+        # It builds, and it says what is pending *with a line number* — a gate cannot
+        # be held against something invisible.
+        self.assertIn('still pending above', r.stderr)
+        self.assertIn('pending line', r.stderr)
+        self.assertIn('has no prose', r.stderr)
 
     def test_a_bad_narration_writes_nothing_and_exits_6(self):
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:999 = nope')
