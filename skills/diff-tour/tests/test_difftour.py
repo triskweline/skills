@@ -231,6 +231,40 @@ class TestBodySizeEstimate(unittest.TestCase):
         self.assertGreaterEqual(est, body)
 
 
+class TestNoPrefixPatches(unittest.TestCase):
+    """`diff.noprefix=true` patches, which tour-fetch.sh pins away but a copied-in
+    .patch file can still be. The heuristic reads `diff --git X X`; a rename names two
+    different paths, which is the one shape it cannot read."""
+
+    def make(self, commits):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        repo = os.path.join(d, 'r')
+        git_repo(repo, commits, config=(('diff.noprefix', 'true'),))
+        out = subprocess.run(['git', '-C', repo, 'diff', 'HEAD~1..HEAD'],
+                             capture_output=True, text=True).stdout
+        return patch.parse(out)
+
+    def test_a_renamed_and_edited_file_keeps_its_whole_path(self):
+        p = self.make([
+            ('one', {'src/old.js': 'alpha\nbeta\ngamma\n'}),
+            ('two', {'src/old.js': None, 'src/new.js': 'alpha\nBETA\ngamma\n'}),
+        ])
+        # git writes `diff --git src/old.js src/new.js` here, so unprefixing the +++
+        # line would turn src/new.js into new.js and every caption would name a file
+        # that does not exist. "rename to" is unprefixed always, so it wins.
+        paths = sorted(f.path for f in p.files)
+        self.assertEqual(['src/new.js'], paths)
+        self.assertEqual('src/old.js', p.files[0].old_path)
+
+    def test_an_ordinary_edit_keeps_its_whole_path(self):
+        p = self.make([
+            ('one', {'src/deep/a.js': 'alpha\nbeta\n'}),
+            ('two', {'src/deep/a.js': 'alpha\nBETA\n'}),
+        ])
+        self.assertEqual(['src/deep/a.js'], [f.path for f in p.files])
+
+
 class TestLanguages(unittest.TestCase):
     def lang(self, path, lines=()):
         fc = patch.FileChange(path=path)
@@ -933,13 +967,43 @@ class TestRender(unittest.TestCase):
         self.assertIn('class="hunk quote"', html)
 
     def test_two_identical_quotes_do_not_share_an_id(self):
+        """In one beat, and — the case this used to miss — in two.
+
+        An uncoded block's id was numbered within its beat, so the same quote as the
+        first item of two beats produced the same id twice. The test named the
+        behaviour without covering it, because both quotes sat in one beat.
+        """
         here = os.path.dirname(os.path.abspath(__file__))
-        html = self.build(tour('%beat A', 'P.',
-                               '%quote test_difftour.py:1-2 = once',
-                               '%quote test_difftour.py:1-2 = twice'), root=here)
-        import re
-        ids = re.findall(r'<figure class="hunk quote" id="([^"]+)"', html)
-        self.assertEqual(len(ids), len(set(ids)))
+        for body in (
+            ('%beat A', 'P.', '%quote test_difftour.py:1-2 = once',
+             '%quote test_difftour.py:1-2 = twice'),
+            ('%beat A', 'P.', '%quote test_difftour.py:1-2 = once',
+             '%beat B', 'P.', '%quote test_difftour.py:1-2 = twice'),
+        ):
+            html = self.build(tour(*body), root=here)
+            ids = re.findall(r'<figure class="hunk quote" id="([^"]+)"', html)
+            self.assertEqual(2, len(ids), body)
+            self.assertEqual(len(ids), len(set(ids)), ids)
+
+    def test_a_quote_cannot_run_one_line_past_the_end_of_the_file(self):
+        """split('\\n') on a newline-terminated file leaves a phantom empty element, so
+        quoting it resolved while the caption claimed a line the file does not have."""
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        with open(os.path.join(d, 'three.js'), 'w') as f:
+            f.write('one\ntwo\nthree\n')
+        rep, problems = narration.parse(
+            tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x',
+                 '%quote three.js:1-4 = past the end'))
+        problems += narration.resolve(rep, patch.parse(SIMPLE), d)
+        self.assertTrue(any('out of range' in x.text for x in problems if x.fatal),
+                        [str(x) for x in problems])
+        # ...and the three lines that do exist are still quotable.
+        rep, problems = narration.parse(
+            tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x',
+                 '%quote three.js:1-3 = the whole file'))
+        problems += narration.resolve(rep, patch.parse(SIMPLE), d)
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
 
     def test_a_snippet_says_it_was_not_taken_from_the_change(self):
         # It is the only code in the report nobody verified, so the line where every
@@ -1546,6 +1610,27 @@ class TestRestCommand(_CommandCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn('does not parse', r.stderr)
 
+    def test_its_output_pasted_back_closes_the_gap_exactly(self):
+        """The stronger form of the round-trip: paste what it prints, captions filled
+        in, and it must then report full coverage. Asserting only that the lines start
+        with %hunk would pass even if every key it printed were wrong."""
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a')
+        first = self.run_cmd('tour-rest.py')
+        self.assertEqual(1, first.returncode)
+        pasted = []
+        for line in first.stdout.split('\n'):
+            if line.startswith('%hunk') or line.startswith('%file'):
+                pasted.append(line + ' the rest')      # captions are required
+        self.assertTrue(pasted, first.stdout)
+        with open(self.doc) as f:
+            body = f.read().rstrip('\n').split('\n')
+        at = next(i for i, l in enumerate(body) if l.startswith('%closing'))
+        body = body[:at] + pasted + [''] + body[at:]
+        with open(self.doc, 'w') as f:
+            f.write('\n'.join(body) + '\n')
+        again = self.run_cmd('tour-rest.py')
+        self.assertEqual(0, again.returncode, again.stdout + again.stderr)
+
     def test_it_runs_on_a_skeleton_which_has_no_prose_at_all(self):
         # The stage Step F prescribes. Prose has no bearing on coverage, so a
         # skeleton must not be refused here.
@@ -1752,6 +1837,34 @@ class TestSpliceCommand(_CommandCase):
                              '%hunk src/deep/a.js:10 #5-5 = second part')
         r = self.check(part)
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_file_holding_two_chapters_is_refused(self):
+        """One file per chapter. Two would replace one chapter's span with both, leaving
+        a duplicated chapter and duplicated labels — and then the *sibling* fork's
+        legitimate file is refused for an ambiguous title, blaming the wrong party."""
+        self.labelled_skeleton()
+        before = self.read()
+        part = self.raw_part(
+            'a', '%chapter First topic', 'Narrated.', '%beat A', 'Prose.',
+            '%hunk src/deep/a.js:10 @h1 = a',
+            '%chapter Second topic', 'Also here by mistake.', '%beat B', 'Prose.',
+            '%hunk src/deep/b.js:1 @h2 = b')
+        self.assertEqual(6, self.check(part).returncode)
+        r = self.splice(part)
+        self.assertEqual(6, r.returncode)
+        self.assertIn('holds 2 chapters', r.stderr)
+        self.assertEqual(before, self.read())
+
+    def test_check_refuses_a_quote_a_fork_cannot_read(self):
+        """A %quote is one of the two specs a fork writes itself, so it is one of the
+        two that can be wrong. commands.md names it; nothing held --check to it."""
+        self.skeleton()
+        part = self.raw_part('a', '%chapter First topic', 'Prose.', '%beat A', 'Prose.',
+                             '%hunk src/deep/a.js:10 = a',
+                             '%quote no/such/file.js:1-2 = context')
+        r = self.check(part)
+        self.assertEqual(6, r.returncode)
+        self.assertIn('cannot read', r.stderr)
 
     def test_a_title_that_matches_nothing_is_refused(self):
         """The title is the splice key, so a wrong one is a content error (6), and it
@@ -2178,8 +2291,12 @@ def git_repo(path, commits, config=()):
     for message, files in commits:
         for name, text in files.items():
             full = os.path.join(path, name)
-            os.makedirs(os.path.dirname(full), exist_ok=True) if os.path.dirname(name) \
-                else None
+            if text is None:            # None means: delete it in this commit
+                if os.path.exists(full):
+                    os.unlink(full)
+                continue
+            if os.path.dirname(name):
+                os.makedirs(os.path.dirname(full), exist_ok=True)
             with open(full, 'w') as f:
                 f.write(text)
         g('add', '-A')
