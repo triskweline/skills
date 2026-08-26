@@ -550,10 +550,15 @@ Needs git and python3 (3.10+). Nothing to install.
 **Before any of the slow work**, in two or three lines: that the report is a single HTML
 file you will hand over a path to at the end, and **that this will take a few minutes**.
 
-**If the commit log shows the range holds more than one body of work, say so here and ask
-which they want.** Touring all of them is the default and the honest one, but it costs
-proportionally, and a reader who only came for the bug fix should get to say so before you
-spend the time rather than after.
+**If the commit log shows the range holds more than one body of work, name them here** — and
+then tour all of them. Don't ask which they want. They cannot answer yet; they have not seen
+the diff, and you have only just seen it yourself.
+
+**Ask nothing once you have started.** This takes minutes, so the reader is somewhere else
+by the second one. A question waiting in a terminal nobody is watching is not a checkpoint,
+it is a stall that costs them the whole run — they come back to a prompt and no report.
+Where the diff leaves you a real choice, make it, tour everything, and say what you chose in
+the overview where they will actually read it.
 Reading the diff, tracing callers, clustering and building the skeleton all happen before a
 word of narration exists. Without this the reader is watching an idle session and wondering
 whether it is stuck.
