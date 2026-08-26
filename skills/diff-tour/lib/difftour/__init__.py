@@ -6,6 +6,6 @@
     code.py        which Prism grammar highlights which file, and the bundle
     render.py      a validated report -> one self-contained HTML page
 
-The split is simply run-vs-import: bin/ holds the four commands the SKILL tells
-you to run, lib/ holds what they import.
+The split is simply run-vs-import: bin/ holds the commands the SKILL tells you to
+run, lib/ holds what they import.
 """

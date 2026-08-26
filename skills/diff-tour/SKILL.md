@@ -226,6 +226,12 @@ clustering is too fine.
 **It is understandable from its predecessors alone.** The reader should never need a later
 chapter to follow an earlier one. If chapter 4 only makes sense after chapter 6, reorder.
 
+A hub-and-spoke change cannot fully satisfy this, and shouldn't try: when one decision
+causes four others, the hub belongs first even though its code touches names the spokes
+later define. Name the forward reference and link it — "`assertFieldsInSameLayer` is
+[[ch6]]'s subject" — so the reader knows the explanation is coming rather than missing. What
+the rule forbids is an *unsignposted* dependency, not an acknowledged one.
+
 **It is as separate as the diff permits, and no more.** You are reverse-engineering a
 history from a net result, not writing one: you see only the final state of every line.
 Where a location was rewritten in several rounds, the surviving hunk carries all of them at
@@ -452,13 +458,25 @@ Inline code renders in a caption, and often should: `` `form.elements`, and noth
 Captions carry extra weight now that a chapter can be narrated on its own: the skeleton's
 captions are all another chapter knows about this one.
 
+**A caption states what you read, never what you assume.** It is the most trusted line in
+the report and the least defended: prose can hedge, a caption cannot. So a caption over a
+hunk you have not read may name its kind or its provenance — "a lockfile refresh, 812
+lines", "part of the guide overhaul" — and may not state its content. The moment you write
+what a hunk *says*, you have read it.
+
 ### Blast radius
 
 Every cluster chapter states one, above its beats: `%blast narrow`, `moderate`, or `wide`.
 
 - **narrow** — effects confined to files this diff already changes.
 - **moderate** — reaches other modules, through call sites the Step D index found. Name them.
-- **wide** — public API, or behavior observable outside the codebase.
+- **wide** — public API, or behavior observable outside the codebase. **A new error or
+  refusal on a path that previously succeeded is always wide**, however few lines it took
+  and however local its call sites: the people it reaches are users of the library, not
+  callers of the function.
+
+The levels are the cheap half of this. The evidence under them is the product, so if the
+level is arguable, write the evidence and pick the higher one.
 
 It is **inferred scope, not a verdict** — which is what keeps it clear of "never certify".
 It is also the one place the caller index pays off visibly, so a `moderate` or `wide`
@@ -588,10 +606,18 @@ The tour is only as good as this step, and it happens before any output.
    anyway. **A path argument is a prefix, so reading narrow and then wide reprints the
    narrow part**; `--not <path>` excludes what you have already read.
 
-   **Anything you narrate beyond a caption, you must have read in `--body`.** The list
-   says a hunk exists and how big it is; it does not say what the code does. A chapter
-   written from the list is exactly the fluent, plausible, wrong explanation that
-   [Narration](#narration) calls the worst thing this skill can produce.
+   **You must have read, in `--body`, every hunk you write a caption for.** The list says
+   a hunk exists and how big it is; it does not say what the code does. A caption written
+   from a filename is exactly the fluent, plausible, wrong explanation that
+   [Narration](#narration) calls the worst thing this skill can produce — and it is worse
+   there than anywhere else, because a caption is the one line every scanning reader
+   believes.
+
+   The economy is not "caption without reading". It is **`path:all`**: one caption over
+   every hunk of a file, stating what the group *is* rather than what any line says. That
+   is how a lockfile refresh or a docs sweep costs ten words. A hunk that gets a caption of
+   its own gets read first — and the list prints its changed-line count, so you can see
+   that most of them cost nothing.
 
    On a small diff the ladder collapses to one `--body` of the whole patch, which is
    correct. The staging is for the range that holds more than you are touring.
@@ -634,11 +660,16 @@ returns more text than reading the whole repository — measured on one 52-file 
 in git's `@@` header, once per hunk, free — `tour-hunks.py` prints it. Reading the file to
 rediscover what the diff told you is where unbounded cost comes from.
 
-**Don't read at depth what is going to Leftovers.** A second body of work, or churn in a
-subsystem the report is not about, needs *identifying*, not comprehending — it ends up as one
-folded group with one caption. `tour-hunks.py` lists those hunks in milliseconds; reading
-their diffs costs thousands of input tokens to produce about ten words. Read the body you are
-touring at depth, and the rest by path only.
+**Don't read at depth what is going to Leftovers** — but do read what you caption. A second
+body of work, or churn in a subsystem the report is not about, needs *identifying*, not
+comprehending, and it ends up as one `path:all` group per file with one caption naming what
+the group is. That is where the saving lives.
+
+What this rule does **not** license is a per-hunk caption written from a path. Leftovers is
+the tail of the report, the model is tired, and the hunks look boring — which is exactly the
+combination that produces "the version" over a line that is not a version. If you are
+writing a caption for one specific hunk, read that hunk. A leftover hunk is usually two to
+seven lines; the list tells you which, and those are free.
 
 **Delegate only when the reading is genuinely large.** If answering a cluster's questions
 needs substantially more code than the cluster contains, and several clusters need that
@@ -780,6 +811,13 @@ knows which half of the branch the report covers.
   certificate, and manufacturing that reassurance is the thing this section exists to
   prevent.
 - **Open questions** for the author, if any.
+
+**Before citing a label anywhere in these two chapters, read that label's caption in the
+skeleton table.** A label reference is guaranteed to *resolve*, never to *aim* — nothing
+mechanical can tell that `[[h29]]` points at the export list when the explanation is in
+`[[h28]]`. The table makes that a one-glance check, and these two chapters are where
+misfired citations do the most damage, because they are where a reader decides what to
+read.
 - **Suggested next step** — usually a dedicated correctness pass over the same diff
   (`/code-review` in Claude Code), or a specific file worth reading in full.
 
