@@ -12,6 +12,7 @@ two files on disk, which is the seam these tests sit on:
 
 import os
 import re
+import subprocess
 import sys
 import time
 import unittest
@@ -1560,6 +1561,28 @@ class TestBuildCommand(_CommandCase):
         self.assertIn('<b>co</b>', meta)                 # the folder is still true
         self.assertNotIn('<b>master</b>', meta)
         self.assertNotIn('<b>main</b>', meta)
+
+    def test_the_header_names_no_branch_when_no_head_was_recorded(self):
+        """No proof, no claim — the other half of the rule above.
+
+        A patch from elsewhere has no .head, so the checkout's branch is unverifiable
+        and must not be printed. This used to print it unconditionally, which is the
+        same wrong fact the test above prevents, reached by the other route.
+        """
+        d = self._checkout()
+        if os.path.exists(self.patch + '.head'):
+            os.unlink(self.patch + '.head')
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b')
+        r = self.build('--root', d)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(self.out) as f:
+            html = f.read()
+        meta = html[html.index('<p class="meta">'):html.index('</p>')]
+        self.assertIn('<b>co</b>', meta)                 # the folder is knowable
+        branch = subprocess.run(['git', '-C', d, 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                capture_output=True, text=True).stdout.strip()
+        self.assertNotIn('<b>%s</b>' % branch, meta)
 
     def test_the_header_claims_nothing_when_root_is_not_a_repository(self):
         d = os.path.join(self.dir, 'plain')

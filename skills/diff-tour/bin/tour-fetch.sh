@@ -56,6 +56,7 @@ if [ $# -gt 2 ]; then
   PATHS=("$@")
 fi
 REPO="${TOUR_REPO:-$PWD}"
+PR_KIND=       # how a bare-number target resolved: gh, glab or git
 mkdir -p "$(dirname "$OUT")"
 
 default_branch() {
@@ -94,7 +95,9 @@ case "$TARGET" in
     untracked=$(git -C "$REPO" ls-files --others --exclude-standard | head -20)
     if [ -n "$untracked" ]; then
       echo "tour-fetch: these files are untracked, so they are NOT in the diff:" >&2
-      printf '  %s\n' $untracked >&2
+      # Indent each line without splitting on spaces — an untracked "my notes.md"
+      # is exactly the kind of file a reviewer needs to hear about.
+      printf '%s\n' "$untracked" | sed 's/^/  /' >&2
       echo "tour-fetch: git add them to include them, or say so in the overview." >&2
     fi
     echo "base $base" >&2
@@ -124,9 +127,12 @@ case "$TARGET" in
       if git -C "$REPO" rev-parse --verify --quiet "$TARGET^{commit}" >/dev/null; then
         echo "tour-fetch: $TARGET is also a git object here; using the PR/MR. Pass ${TARGET}^{commit} for the commit." >&2
       fi
-      if command -v gh >/dev/null && gh pr diff "$TARGET" > "$OUT" 2>/dev/null && [ -s "$OUT" ]; then :
-      elif command -v glab >/dev/null && glab mr diff "$TARGET" --raw > "$OUT" 2>/dev/null && [ -s "$OUT" ]; then :
-      elif git_ref "$TARGET"; then echo "tour-fetch: no PR/MR $TARGET; treated it as a git object" >&2
+      # gh and glab find the repository from the working directory, so they run in
+      # $REPO like every git call here. PR_KIND records which one answered, because
+      # the .head below has to ask the same forge and cannot re-derive that.
+      if command -v gh >/dev/null && (cd "$REPO" && gh pr diff "$TARGET") > "$OUT" 2>/dev/null && [ -s "$OUT" ]; then PR_KIND=gh
+      elif command -v glab >/dev/null && (cd "$REPO" && glab mr diff "$TARGET" --raw) > "$OUT" 2>/dev/null && [ -s "$OUT" ]; then PR_KIND=glab
+      elif git_ref "$TARGET"; then PR_KIND=git; echo "tour-fetch: no PR/MR $TARGET; treated it as a git object" >&2
       else echo "tour-fetch: $TARGET is neither a PR/MR here nor a git object (tried gh, glab and git)" >&2; exit 3; fi
     fi ;;
   *)
@@ -150,6 +156,15 @@ case "$TARGET" in
       || rm -f "$OUT.head"
     [ -s "$OUT.head" ] || rm -f "$OUT.head" ;;
   *..*) git -C "$REPO" rev-parse --verify --quiet "${TARGET##*..}^{commit}" > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
+  [0-9]*)
+    case "$PR_KIND" in
+      gh)   (cd "$REPO" && gh pr view "$TARGET" --json headRefOid -q .headRefOid) > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
+      glab) (cd "$REPO" && glab mr view "$TARGET" -F json) 2>/dev/null \
+              | sed -n 's/.*\"sha\":[[:space:]]*\"\([0-9a-f]*\)\".*/\1/p' | head -1 > "$OUT.head" \
+              || rm -f "$OUT.head" ;;
+      *)    git -C "$REPO" rev-parse --verify --quiet "$TARGET^{commit}" > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
+    esac
+    [ -s "$OUT.head" ] || rm -f "$OUT.head" ;;
   "") git -C "$REPO" rev-parse --verify --quiet 'HEAD^{commit}' > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
   *) git -C "$REPO" rev-parse --verify --quiet "$TARGET^{commit}" > "$OUT.head" 2>/dev/null || rm -f "$OUT.head" ;;
 esac

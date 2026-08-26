@@ -72,10 +72,13 @@ def _repo_and_branch(root, want_head=None):
     branch = git('rev-parse', '--abbrev-ref', 'HEAD')
     if branch == 'HEAD':
         branch = None                           # detached: there is no branch name
-    if branch and want_head:
-        here = git('rev-parse', 'HEAD')
-        if here != want_head:
-            branch = None                       # this checkout is not this diff
+    if not want_head:
+        # Nothing to check the checkout against, so there is nothing to claim. This
+        # is the case for a patch file from elsewhere; tour-fetch.sh records a head
+        # for everything it resolves itself, PR numbers included.
+        branch = None
+    elif branch and git('rev-parse', 'HEAD') != want_head:
+        branch = None                           # this checkout is not this diff
     return folder, branch
 
 
