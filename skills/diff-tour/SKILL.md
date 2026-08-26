@@ -554,6 +554,12 @@ file you will hand over a path to at the end, and **that this will take a few mi
 then tour all of them. Don't ask which they want. They cannot answer yet; they have not seen
 the diff, and you have only just seen it yourself.
 
+If the reader *volunteers* that they only want part of a range, don't tour the rest as
+leftovers — **narrow the patch**: `bin/tour-fetch.sh <out> <target> -- <paths>`. Then the
+diff itself is the smaller thing, coverage still means all of it, and the overview says
+plainly what was excluded. Never narrow to make a tour cheaper; that hides work behind a
+guarantee that no longer reaches it.
+
 **Ask nothing once you have started.** This takes minutes, so the reader is somewhere else
 by the second one. A question waiting in a terminal nobody is watching is not a checkpoint,
 it is a stall that costs them the whole run — they come back to a prompt and no report.
@@ -721,6 +727,9 @@ hunks carry two ideas, and which lines go where.
 **Write the whole report's structure before any of its prose.** Every chapter, every beat
 subtitle, every block with its caption — and not one sentence of narration.
 
+Include each cluster chapter's `%blast <level>` line — the level is a Step E judgement and
+the skeleton is where structure lives. Its evidence is prose and comes in Step G.
+
 **No `[[label]]` references either**, because the labels do not exist yet: this is the
 command that mints them. Writing one here is harmless — the skeleton defers the check and
 tells you — but you cannot know the right name until the table is printed. References are
@@ -810,9 +819,11 @@ are worth writing properly.
 
 **Leftovers is a small chapter for small things.** Exactly two kinds of change belong here:
 
-1. **Changes too slight to be worth a chapter** — a `.gitignore` line, an editor config, a
-   version bump, a lint rule. Each is real and each is shown, but a chapter apiece would
-   bury the report's structure under its own furniture.
+1. **Changes too slight, or purely mechanical, to be worth a chapter** — a `.gitignore`
+   line, an editor config, a version bump, a lint rule; and a lockfile refresh, generated
+   output, a vendored directory or formatting churn **however many lines it runs to**. Each
+   is real and each is shown, but a chapter apiece would bury the report's structure under
+   its own furniture, and nobody reviews a regenerated lockfile line by line.
 2. **Changes you genuinely cannot assign** — you read them, and they belong to no idea you
    can name. Say that plainly; it is a finding, not an embarrassment.
 
@@ -824,6 +835,10 @@ you were asked about.
 
 If this chapter is long, or if it holds anything you would describe as *a body of work*,
 that is the signal that pass 1 missed a topic. Go back rather than writing a bigger caption.
+
+**When you cannot tell** — an unrelated sixty-line cleanup across five files — give it a
+chapter. A small chapter costs the reader one line in the sidebar; a mis-filed leftover
+costs them the chance to review it at all.
 
 Each group needs prose saying **what it is and which of the two kinds it is** — that is what
 makes a scroll-past an informed decision. `%fold` them; nobody reads a dependency bump line
