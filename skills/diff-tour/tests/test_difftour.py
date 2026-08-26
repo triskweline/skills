@@ -22,6 +22,7 @@ import unittest
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
 from difftour import code, narration, patch, prose, render   # noqa: E402
+from difftour.prose import esc   # noqa: E402
 
 
 def tour(*lines):
@@ -1424,6 +1425,13 @@ class _CommandCase(unittest.TestCase):
         self.doc = os.path.join(self.dir, 'n.tour')
         self.out = os.path.join(self.dir, 'r.html')
         self.sub = subprocess
+        # Every command runs from here: an empty directory that is not a git
+        # repository and holds none of the fixtures. A command that reads the current
+        # directory instead of the --root it was given then fails loudly in the test
+        # rather than silently in a tour, which is the shape of most of the regressions
+        # this suite has had.
+        self.neutral = os.path.join(self.dir, 'neutral')
+        os.makedirs(self.neutral, exist_ok=True)
 
     def tearDown(self):
         import shutil
@@ -1448,7 +1456,7 @@ class _CommandCase(unittest.TestCase):
         return self.sub.run(
             [sys.executable, os.path.join(self.root, 'bin', name),
              self.patch, self.doc] + list(extra),
-            capture_output=True, text=True)
+            capture_output=True, text=True, cwd=self.neutral)
 
 
 class TestRestCommand(_CommandCase):
@@ -1482,6 +1490,21 @@ class TestRestCommand(_CommandCase):
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertNotIn('does not parse', r.stderr)
         self.assertIn('%hunk src/deep/b.js:1 = ', r.stdout)
+
+    def test_it_ignores_quotes_it_cannot_read(self):
+        """Coverage is a function of the patch and the %hunk/%file directives alone.
+
+        It must not depend on which checkout it is standing in: on the ordinary PR tour
+        the quotes belong to a worktree, and this command is the one Step G mandates
+        right after the splice. Resolving quotes here made it answer "the narration does
+        not parse" about a narration that parses and quotes that are correct.
+        """
+        self.write('%beat A', 'P.', '%hunk src/deep/a.js:10 = a',
+                   '%hunk src/deep/b.js:1 = b',
+                   '%quote not/on/this/machine.js:1-2 = worktree-only context')
+        r = self.run_cmd('tour-rest.py')
+        self.assertEqual(r.returncode, 0, r.stderr)      # a coverage answer, not exit 6
+        self.assertNotIn('does not parse', r.stderr)
 
     def test_it_still_refuses_a_narration_that_does_not_parse(self):
         self.write('%beat A', 'P.', '%hunk src/deep/a.js:999 = nope')
@@ -1544,13 +1567,14 @@ class TestSpliceCommand(_CommandCase):
     def splice(self, *parts):
         return self.sub.run(
             [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
-             self.patch, self.doc] + list(parts), capture_output=True, text=True)
+             self.patch, self.doc] + list(parts), capture_output=True, text=True,
+            cwd=self.neutral)
 
     def check(self, *parts):
         return self.sub.run(
             [sys.executable, os.path.join(self.root, 'bin', 'tour-splice.py'),
              '--check', self.patch, self.doc] + list(parts),
-            capture_output=True, text=True)
+            capture_output=True, text=True, cwd=self.neutral)
 
     def test_order_of_arguments_does_not_matter(self):
         self.skeleton()
@@ -2061,6 +2085,532 @@ class TestCheckoutCommand(unittest.TestCase):
         self.assertEqual(r.returncode, 4)
         self.assertEqual('', r.stdout.strip())
         self.assertIn('needs a human', r.stderr)
+
+
+def git_repo(path, commits, config=()):
+    """Build a throwaway git repository. `commits` is [(message, {file: text})].
+
+    Returns the commit shas, oldest first. Real git, because the whole point of the
+    tests that use this is what git does with a commit that is not HEAD, and a fake
+    cannot be wrong in the way that matters.
+    """
+    os.makedirs(path, exist_ok=True)
+
+    def g(*args, **kw):
+        r = subprocess.run(['git', '-C', path] + list(args),
+                           capture_output=True, text=True, **kw)
+        return r.stdout.strip()
+
+    g('init', '-q', '-b', 'main')
+    g('config', 'user.email', 't@t')
+    g('config', 'user.name', 'T')
+    g('config', 'commit.gpgsign', 'false')
+    for k, v in config:
+        g('config', k, v)
+    shas = []
+    for message, files in commits:
+        for name, text in files.items():
+            full = os.path.join(path, name)
+            os.makedirs(os.path.dirname(full), exist_ok=True) if os.path.dirname(name) \
+                else None
+            with open(full, 'w') as f:
+                f.write(text)
+        g('add', '-A')
+        g('commit', '-q', '-m', message)
+        shas.append(g('rev-parse', 'HEAD'))
+    return shas
+
+
+def lines(**changed):
+    """f.js as ten numbered lines, with the given ones replaced."""
+    out = []
+    for i in range(1, 11):
+        out.append(changed.get('l%d' % i, 'line %d' % i))
+    return '\n'.join(out) + '\n'
+
+
+class _Pipeline(unittest.TestCase):
+    """Runs bin/ commands from a neutral directory, everything passed explicitly."""
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def cmd(self, name, *args, **kw):
+        exe = [sys.executable] if name.endswith('.py') else ['bash']
+        return subprocess.run(
+            exe + [os.path.join(self.root, 'bin', name)] + [str(a) for a in args],
+            capture_output=True, text=True,
+            cwd=kw.get('cwd', self.neutral), env=kw.get('env'))
+
+
+class TestPipelineWorktree(_Pipeline):
+    """The whole prescribed sequence on a range that does not end at HEAD.
+
+    That is the shape of every pull-request tour, and the shape several regressions
+    hid in: the checkout is a worktree, so any command that reads the current
+    directory instead of the --root it was given reads a different version of the
+    code — silently, because a symbol the branch introduces simply is not there.
+
+    Every command here runs from an empty directory that is not a repository. That
+    single choice is what makes the whole class of cwd regressions fail loudly.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls.repo = os.path.join(cls.tmp, 'myproject')
+        cls.neutral = os.path.join(cls.tmp, 'neutral')
+        os.makedirs(cls.neutral)
+        cls.shas = git_repo(cls.repo, [
+            ('one', {'f.js': lines()}),
+            ('two', {'f.js': lines(l5='five-at-two', l9='nine-at-two')}),
+            ('three', {'f.js': lines(l5='five-at-three', l9='nine-at-two')}),
+        ])
+        cls.worktrees = []
+
+    @classmethod
+    def tearDownClass(cls):
+        for wt in cls.worktrees:
+            subprocess.run(['git', '-C', cls.repo, 'worktree', 'remove', '--force', wt],
+                           capture_output=True)
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def setUp(self):
+        self.patch = os.path.join(self.tmp, 'range.patch')
+        self.doc = os.path.join(self.tmp, 'range.tour')
+        self.out = os.path.join(self.tmp, 'range.html')
+
+    # -- the steps, in the order SKILL.md prescribes ------------------------------
+
+    def fetch(self):
+        r = self.cmd('tour-fetch.sh', self.patch, 'HEAD~2..HEAD~1',
+                     env=dict(os.environ, TOUR_REPO=self.repo))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r
+
+    def checkout(self):
+        r = self.cmd('tour-checkout.sh', self.patch,
+                     env=dict(os.environ, TOUR_REPO=self.repo, TMPDIR=self.tmp))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        wt = r.stdout.strip()
+        if wt != self.repo:
+            self.worktrees.append(wt)
+        return wt
+
+    def narrate(self, root, quote=True):
+        """A complete narration covering every changed line, from the real patch."""
+        sys.path.insert(0, os.path.join(self.root, 'lib'))
+        from difftour import patch as patchmod
+        p = patchmod.load(self.patch)
+        body = ['%report Thread the change', '%intro Overview', '%beat What it does',
+                'Two lines changed.', '%chapter The changes', 'Premise.',
+                '%blast narrow', 'Only this file.', '%beat Both of them', 'Prose.']
+        for fc in p.files:
+            for h in fc.hunks:
+                body.append('%%hunk %s:%s = the change at %s' % (fc.path, h.key, h.key))
+        if quote:
+            # Line 5 reads differently at the diff's head than at the repo's HEAD, so
+            # this quote proves which checkout was read.
+            body.append('%quote f.js:5-5 = the line as this diff leaves it')
+        body += ['%closing Wrap-up', '%beat What to check', 'Nothing verified.']
+        with open(self.doc, 'w') as f:
+            f.write('\n'.join(body) + '\n')
+
+    # -- assertions ---------------------------------------------------------------
+
+    def test_fetch_records_the_commit_the_diff_ends_at(self):
+        self.fetch()
+        with open(self.patch + '.head') as f:
+            self.assertEqual(self.shas[1], f.read().strip())
+
+    def test_checkout_gives_a_worktree_and_leaves_the_repository_alone(self):
+        self.fetch()
+        wt = self.checkout()
+        self.assertNotEqual(os.path.realpath(self.repo), os.path.realpath(wt))
+        at = subprocess.run(['git', '-C', wt, 'rev-parse', 'HEAD'],
+                            capture_output=True, text=True).stdout.strip()
+        self.assertEqual(self.shas[1], at)
+        # The human's working tree is untouched: same commit, same branch, clean.
+        head = subprocess.run(['git', '-C', self.repo, 'rev-parse', 'HEAD'],
+                              capture_output=True, text=True).stdout.strip()
+        self.assertEqual(self.shas[2], head)
+        st = subprocess.run(['git', '-C', self.repo, 'status', '--porcelain'],
+                            capture_output=True, text=True).stdout.strip()
+        self.assertEqual('', st)
+
+    def test_skeleton_and_rest_and_build_all_pass_with_the_worktree_root(self):
+        self.fetch()
+        wt = self.checkout()
+        self.narrate(wt)
+        sk = self.cmd('tour-skeleton.py', self.patch, self.doc, '--root', wt)
+        self.assertEqual(sk.returncode, 0, sk.stderr)
+        # Coverage takes no --root and must not need one.
+        rest = self.cmd('tour-rest.py', self.patch, self.doc)
+        self.assertEqual(rest.returncode, 0, rest.stderr)
+        self.assertNotIn('does not parse', rest.stderr)
+        b = self.cmd('tour-build.py', self.patch, self.doc, self.out,
+                     '--root', wt, '--source', 'HEAD~2..HEAD~1', '--final')
+        self.assertEqual(b.returncode, 0, b.stderr)
+        self.assertIn(self.out, b.stdout)
+
+    def test_the_quote_comes_from_the_diffs_head_not_the_repositorys(self):
+        self.fetch()
+        wt = self.checkout()
+        self.narrate(wt)
+        b = self.cmd('tour-build.py', self.patch, self.doc, self.out,
+                     '--root', wt, '--final')
+        self.assertEqual(b.returncode, 0, b.stderr)
+        with open(self.out) as f:
+            html = f.read()
+        self.assertIn('five-at-two', html)          # the version this diff ends at
+        self.assertNotIn('five-at-three', html)     # the version on the reader's HEAD
+
+    def test_the_header_names_the_project_not_the_worktree_directory(self):
+        self.fetch()
+        wt = self.checkout()
+        self.narrate(wt)
+        self.cmd('tour-build.py', self.patch, self.doc, self.out, '--root', wt)
+        with open(self.out) as f:
+            html = f.read()
+        meta = html[html.index('<p class="meta">'):html.index('</p>')]
+        self.assertIn('<b>myproject</b>', meta)
+        self.assertNotIn('difftour', meta)
+        self.assertNotIn(os.path.basename(wt), meta)
+
+    def test_a_fork_file_round_trips_through_check_and_splice(self):
+        self.fetch()
+        wt = self.checkout()
+        self.narrate(wt)
+        self.cmd('tour-skeleton.py', self.patch, self.doc, '--root', wt)
+        with open(self.doc) as f:
+            body = f.read().split('\n')
+        start = next(i for i, l in enumerate(body) if l.startswith('%chapter'))
+        end = next(i for i, l in enumerate(body) if l.startswith('%closing'))
+        part = os.path.join(self.tmp, 'range.tour.ch2')
+        chapter = []
+        for l in body[start:end]:
+            chapter.append(l)
+            if l.startswith('%hunk'):
+                chapter.append('  What this one does, in its own words.')
+        with open(part, 'w') as f:
+            f.write('\n'.join(chapter))
+        chk = self.cmd('tour-splice.py', '--check', '--root', wt,
+                       self.patch, self.doc, part)
+        self.assertEqual(chk.returncode, 0, chk.stderr)
+        sp = self.cmd('tour-splice.py', '--root', wt, self.patch, self.doc, part)
+        self.assertEqual(sp.returncode, 0, sp.stderr)
+        # Coverage survives the splice, and the labels came back with it.
+        rest = self.cmd('tour-rest.py', self.patch, self.doc)
+        self.assertEqual(rest.returncode, 0, rest.stderr)
+        with open(self.doc) as f:
+            spliced = f.read()
+        self.assertIn('@h1', spliced)
+        self.assertIn('in its own words', spliced)
+        b = self.cmd('tour-build.py', self.patch, self.doc, self.out, '--root', wt,
+                     '--final')
+        self.assertEqual(b.returncode, 0, b.stderr)
+
+
+class TestFetchDefaultTarget(_Pipeline):
+    """The most common target: no argument at all, meaning "my working diff".
+
+    Untested until now, and the branchiest code in the script — it guesses a base,
+    folds in uncommitted work, and reports untracked files. A regression here omits
+    real changes from the patch, which is the one failure coverage cannot see, because
+    the patch is coverage's whole universe.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls.neutral = os.path.join(cls.tmp, 'neutral')
+        os.makedirs(cls.neutral)
+        cls.repo = os.path.join(cls.tmp, 'proj')
+        # A hostile gitconfig: every one of these would change what downstream parses.
+        git_repo(cls.repo, [
+            ('base', {'a.js': 'one\ntwo\nthree\n'}),
+        ], config=(('diff.noprefix', 'true'),
+                   ('diff.context', '8'),
+                   ('diff.mnemonicPrefix', 'true')))
+
+        def g(*args):
+            return subprocess.run(['git', '-C', cls.repo] + list(args),
+                                  capture_output=True, text=True).stdout.strip()
+
+        g('checkout', '-q', '-b', 'feature')
+        with open(os.path.join(cls.repo, 'a.js'), 'w') as f:
+            f.write('one\nTWO\nthree\n')
+        g('add', '-A')
+        g('commit', '-q', '-m', 'committed on the branch')
+        # Uncommitted work, which belongs in a working-diff tour.
+        with open(os.path.join(cls.repo, 'a.js'), 'w') as f:
+            f.write('one\nTWO\nTHREE-uncommitted\n')
+        # And an untracked file, which cannot be in the diff at all.
+        with open(os.path.join(cls.repo, 'untracked notes.md'), 'w') as f:
+            f.write('not in the diff\n')
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def setUp(self):
+        self.patch = os.path.join(self.tmp, 'wd.patch')
+        self.r = self.cmd('tour-fetch.sh', self.patch,
+                          env=dict(os.environ, TOUR_REPO=self.repo))
+        self.assertEqual(self.r.returncode, 0, self.r.stderr)
+        with open(self.patch) as f:
+            self.text = f.read()
+
+    def test_it_folds_in_uncommitted_work(self):
+        # The default target is "everything since the branch point, including what is
+        # not committed" — omitting it would silently drop real changes.
+        self.assertIn('THREE-uncommitted', self.text)
+        self.assertIn('uncommitted', self.r.stderr)
+
+    def test_it_names_untracked_files_which_are_not_in_the_diff(self):
+        self.assertIn('untracked notes.md', self.r.stderr)      # spaces survive
+        self.assertNotIn('not in the diff', self.text)
+
+    def test_it_pins_the_diff_shape_against_a_hostile_gitconfig(self):
+        # noprefix, mnemonicPrefix and context are all overridden in the fixture repo.
+        self.assertIn('diff --git a/a.js b/a.js', self.text)
+        self.assertIn('--- a/a.js', self.text)
+        body = [l for l in self.text.split('\n') if l.startswith(' ')]
+        self.assertLessEqual(len(body), 6, 'context should be 3, not 8')
+
+    def test_it_records_head_and_says_which_base_it_chose(self):
+        with open(self.patch + '.head') as f:
+            head = f.read().strip()
+        real = subprocess.run(['git', '-C', self.repo, 'rev-parse', 'HEAD'],
+                              capture_output=True, text=True).stdout.strip()
+        self.assertEqual(real, head)
+        self.assertIn('base', self.r.stderr.lower())
+
+    def test_the_patch_parses_and_covers_the_uncommitted_change(self):
+        sys.path.insert(0, os.path.join(self.root, 'lib'))
+        from difftour import patch as patchmod
+        p = patchmod.load(self.patch)
+        self.assertEqual([], p.miscounted())
+        added = [l.text for f in p.files for h in f.hunks
+                 for l in h.lines if l.kind == '+']
+        self.assertIn('THREE-uncommitted', added)
+
+
+class TestFetchForge(_Pipeline):
+    """The PR paths, with a fake `gh` on PATH — no network, no credentials.
+
+    `tour-fetch.sh 807` and `tour-checkout.sh` after it are the flagship flow, and
+    every part of it was untested because it needs a forge. A ten-line shim removes
+    that excuse.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls.neutral = os.path.join(cls.tmp, 'neutral')
+        os.makedirs(cls.neutral)
+        cls.repo = os.path.join(cls.tmp, 'proj')
+        cls.shas = git_repo(cls.repo, [
+            ('one', {'a.js': 'one\ntwo\n'}),
+            ('two', {'a.js': 'one\nTWO\n'}),
+        ])
+        # The shim answers exactly the two questions tour-fetch.sh asks gh.
+        cls.bin = os.path.join(cls.tmp, 'fakebin')
+        os.makedirs(cls.bin)
+        gh = os.path.join(cls.bin, 'gh')
+        with open(gh, 'w') as f:
+            f.write('#!/usr/bin/env bash\n'
+                    'case "$1 $2" in\n'
+                    '  "pr diff") git -C %s diff %s..%s ;;\n'
+                    '  "pr view") echo %s ;;\n'
+                    '  *) exit 1 ;;\n'
+                    'esac\n' % (cls.repo, cls.shas[0], cls.shas[1], cls.shas[1]))
+        os.chmod(gh, 0o755)
+        cls.env = dict(os.environ, TOUR_REPO=cls.repo, TMPDIR=cls.tmp,
+                       PATH=cls.bin + os.pathsep + os.environ['PATH'])
+
+    @classmethod
+    def tearDownClass(cls):
+        for wt in subprocess.run(['git', '-C', cls.repo, 'worktree', 'list',
+                                  '--porcelain'], capture_output=True,
+                                 text=True).stdout.split('\n'):
+            if wt.startswith('worktree ') and cls.repo not in wt[9:]:
+                subprocess.run(['git', '-C', cls.repo, 'worktree', 'remove',
+                                '--force', wt[9:]], capture_output=True)
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_a_bare_pr_number_fetches_the_diff_and_records_its_head(self):
+        patch = os.path.join(self.tmp, 'pr.patch')
+        r = self.cmd('tour-fetch.sh', patch, '807', env=self.env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(patch) as f:
+            self.assertIn('+TWO', f.read())
+        # The .head is what lets the header name a branch and the checkout be matched;
+        # the bare-number path used to record none, so the header named the wrong one.
+        with open(patch + '.head') as f:
+            self.assertEqual(self.shas[1], f.read().strip())
+
+    def test_checkout_after_a_pr_fetch_lands_on_the_prs_head(self):
+        patch = os.path.join(self.tmp, 'pr2.patch')
+        self.cmd('tour-fetch.sh', patch, '807', env=self.env)
+        subprocess.run(['git', '-C', self.repo, 'checkout', '-q', self.shas[0]],
+                       capture_output=True)
+        self.addCleanup(subprocess.run,
+                        ['git', '-C', self.repo, 'checkout', '-q', 'main'],
+                        capture_output=True)
+        r = self.cmd('tour-checkout.sh', patch, env=self.env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        at = subprocess.run(['git', '-C', r.stdout.strip(), 'rev-parse', 'HEAD'],
+                            capture_output=True, text=True).stdout.strip()
+        self.assertEqual(self.shas[1], at)
+
+
+DISTINCT = ('diff --git a/z.js b/z.js\nindex 1..2 100644\n--- a/z.js\n+++ b/z.js\n'
+            '@@ -1,3 +1,4 @@ scope\n'
+            ' zz_context_one\n'
+            '-zz_removed_alpha\n'
+            '+zz_added_alpha\n'
+            '+zz_added_beta\n'
+            ' zz_context_two\n'
+            '@@ -40,3 +41,3 @@ scope\n'
+            ' zz_context_three\n'
+            '-zz_removed_gamma\n'
+            '+zz_added_gamma\n'
+            ' zz_context_four\n')
+
+
+class TestByteFidelity(unittest.TestCase):
+    """The guarantee, asserted at the artifact rather than at a unit.
+
+    "Real hunks, verbatim" and "nothing is hidden" are the two claims the whole skill
+    rests on. Every other test checks a step; this checks the property, on the HTML a
+    reader would actually open — so a change anywhere between the parser and the
+    renderer that drops or retypes a line fails here even if every step still passes
+    its own test.
+    """
+
+    P = patch.parse(DISTINCT)
+
+    def build(self, *body):
+        rep, problems = narration.parse('\n'.join(
+            ['%report T', '%intro O', '%beat W', 'Prose.',
+             '%chapter C', 'Premise.', '%blast narrow', 'E.', '%beat A', 'Prose.']
+            + list(body) + ['%closing W', '%beat C', 'Prose.']))
+        problems += narration.resolve(rep, self.P, '.')
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+        html, _ = render.page(rep, self.P.stats(), 'src', '2026-01-01', 'uid')
+        return rep, html
+
+    def test_every_changed_line_reaches_the_page_verbatim(self):
+        rep, html = self.build('%hunk z.js:1 = the first', '%hunk z.js:41 = the second')
+        for f in self.P.files:
+            for h in f.hunks:
+                for line in h.lines:
+                    if not line.changed:
+                        continue
+                    self.assertIn(esc(line.raw()), html,
+                                  '%r is in the patch but not in the report'
+                                  % line.raw())
+
+    def test_a_line_appears_exactly_as_often_as_the_narration_shows_it(self):
+        # Once when one block selects it...
+        rep, html = self.build('%hunk z.js:1 = the first', '%hunk z.js:41 = the second')
+        self.assertEqual(1, html.count(esc('+zz_added_alpha')))
+        # ...twice when two blocks do, and not three times.
+        rep, html = self.build('%hunk z.js:1 = the first',
+                               '%hunk z.js:1 = deliberately again',
+                               '%hunk z.js:41 = the second')
+        self.assertEqual(2, html.count(esc('+zz_added_alpha')))
+
+    def test_a_fragment_shows_its_own_lines_and_no_others(self):
+        rep, html = self.build('%hunk z.js:1 #2-3 = only the alpha change',
+                               '%hunk z.js:1 #4-4 = only the beta line',
+                               '%hunk z.js:41 = the second')
+        # Each shown once, and the context outside both fragments is not smuggled in.
+        self.assertEqual(1, html.count(esc('-zz_removed_alpha')))
+        self.assertEqual(1, html.count(esc('+zz_added_beta')))
+        self.assertNotIn(esc(' zz_context_two'), html)
+
+    def test_nothing_the_narration_does_not_select_appears(self):
+        rep, html = self.build('%hunk z.js:1 = only the first hunk')
+        self.assertNotIn(esc('-zz_removed_gamma'), html)
+        # ...and coverage says so, rather than the report quietly being short.
+        shown, total, gaps = narration.coverage(rep, self.P)
+        self.assertTrue(gaps)
+        self.assertLess(shown, total)
+
+
+class TestPatchSelfCheck(unittest.TestCase):
+    """A patch that does not hold what its @@ header declares.
+
+    Coverage is computed over the lines that parsed, so a truncated or mangled patch
+    would let the report claim "everything shown" about a hunk missing lines. This is
+    the only place the parse can be checked against what the patch says about itself.
+    """
+
+    def test_a_consistent_patch_reports_nothing(self):
+        self.assertEqual([], patch.parse(DISTINCT).miscounted())
+
+    def test_a_truncated_hunk_is_detected(self):
+        cut = DISTINCT[:DISTINCT.index(' zz_context_two')]
+        bad = patch.parse(cut).miscounted()
+        self.assertTrue(bad)
+        (path_, key, ((do, ao), (dn, an))) = bad[0]
+        self.assertEqual('z.js', path_)
+        self.assertGreater(dn, an)          # declares more new lines than it holds
+
+    def test_a_mangled_empty_context_line_is_detected(self):
+        # An empty context line that lost its leading space, as mail transit does it.
+        mangled = ('diff --git a/m.js b/m.js\n--- a/m.js\n+++ b/m.js\n'
+                   '@@ -1,4 +1,4 @@\n a\n\n-b\n+B\n')
+        self.assertTrue(patch.parse(mangled).miscounted())
+
+    def test_the_commands_refuse_such_a_patch(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        src = os.path.join(d, 'p.patch')
+        with open(src, 'w') as f:
+            f.write(DISTINCT[:DISTINCT.index(' zz_context_two')])
+        doc = os.path.join(d, 'n.tour')
+        with open(doc, 'w') as f:
+            f.write(tour('%beat A', 'P.', '%hunk z.js:1 = x'))
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for name in ('tour-hunks.py', 'tour-skeleton.py', 'tour-rest.py'):
+            args = [sys.executable, os.path.join(root, 'bin', name), src]
+            if name != 'tour-hunks.py':
+                args.append(doc)
+            r = subprocess.run(args, capture_output=True, text=True, cwd=d)
+            self.assertEqual(2, r.returncode, '%s: %s' % (name, r.stderr))
+            self.assertIn('@@ header declares', r.stderr, name)
+
+
+class TestIndentedDirectives(unittest.TestCase):
+    """Indentation is how prose attaches to a block, so an indented directive is a
+    one-keystroke slip — and it used to render the directive's own text as prose."""
+
+    def test_an_indented_directive_is_refused(self):
+        for line in ('  %quote a.js:1-2 = context', '  %code sh = how to check',
+                     '  %hunk src/deep/a.js:10 = another', '  %beat Another'):
+            rep, problems = narration.parse(
+                tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x', line))
+            fatal = [x.text for x in problems if x.fatal]
+            self.assertTrue(any('indented' in t for t in fatal), (line, fatal))
+
+    def test_the_directive_text_never_becomes_prose(self):
+        rep, problems = narration.parse(
+            tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x',
+                 '  %quote a.js:1-2 = context'))
+        for ch in rep.chapters:
+            for b in ch.beats:
+                for item in b.items:
+                    self.assertNotIn('%quote', ' '.join(getattr(item, 'lead', []) or []))
+
+    def test_prose_may_still_start_with_a_literal_percent(self):
+        rep, problems = narration.parse(
+            tour('%beat A', 'P.', '%hunk src/deep/a.js:10 = x',
+                 '  %%blast is what this sets, deliberately.'))
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+        item = rep.chapters[1].beats[0].items[0]
+        self.assertIn('%blast is what this sets, deliberately.', item.lead)
 
 
 class TestTheDocsAgreeWithTheCode(unittest.TestCase):
