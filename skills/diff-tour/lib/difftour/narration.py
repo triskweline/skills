@@ -43,27 +43,15 @@ class Problem:
     line: int
     text: str
     fatal: bool = True
+    # Two kinds of "not yet", carried as flags rather than guessed from the wording.
+    # Substring matching for this was a bug: it silently reclassified real errors in a
+    # finished report as things nobody needed to look at.
+    premature: bool = False       # prose that a later stage is meant to supply
+    needs_labels: bool = False    # unjudgeable until bin/tour-skeleton.py mints labels
 
     def __str__(self):
-        return '%s line %d: %s' % ('error' if self.fatal else 'warning', self.line, self.text)
-
-    @property
-    def premature(self):
-        """True when this cannot be judged until the narration is finished.
-
-        Two commands run before the prose exists — tour-skeleton and tour-rest —
-        and both have to agree about which complaints are early rather than wrong.
-        Two kinds qualify:
-
-        - missing prose, which the next stage is for;
-        - a reference to a label, because tour-skeleton is what mints the labels.
-          Without this, writing [[h1]] into a skeleton deadlocks: the command that
-          would create the label refuses to run because the label is missing.
-        """
-        return ('no prose' in self.text
-                or 'introductory paragraph' in self.text
-                or 'no %blast judgement' in self.text
-                or 'names nothing' in self.text)
+        kind = 'pending' if self.premature else ('error' if self.fatal else 'warning')
+        return '%s line %d: %s' % (kind, self.line, self.text)
 
 
 @dataclass
@@ -185,8 +173,8 @@ def parse(text):
     in_code = None              # an open %code component
     seen_report = False
 
-    def err(n, msg, fatal=True):
-        problems.append(Problem(n, msg, fatal))
+    def err(n, msg, fatal=True, **kw):
+        problems.append(Problem(n, msg, fatal, **kw))
 
     # Where prose goes right now, and whether that place is a block's own prose.
     # A block's prose is written indented under it — the paragraph version of its
@@ -386,7 +374,7 @@ def parse(text):
     if in_code is not None:
         err(in_code.line, '%code was never closed by a %end line')
     if not seen_report:
-        err(1, 'no %report line — the report has no title', fatal=False)
+        err(1, 'no %report line — the report has no title', fatal=False, premature=True)
 
     problems.extend(_check_shape(rep))
     return rep, problems
@@ -423,10 +411,12 @@ def _check_shape(rep):
         if ch.kind != 'chapter':
             continue
         if not ch.blast_level:
-            warn(ch.line, 'this cluster chapter has no %blast judgement')
+            out.append(Problem(ch.line, 'this cluster chapter has no %blast judgement',
+                               fatal=False, premature=True))
         if not ''.join(ch.intro).strip():
-            warn(ch.line, 'a cluster chapter opens with an introductory paragraph, '
-                          'before its beats')
+            out.append(Problem(ch.line, 'a cluster chapter opens with an introductory '
+                                        'paragraph, before its beats',
+                               fatal=False, premature=True))
     for ch in rep.chapters:
         for b in ch.beats:
             # Fatal: a beat with no prose is the one defect the two-column layout
@@ -435,7 +425,8 @@ def _check_shape(rep):
             # failing at its whole purpose.
             if not ''.join(b.prose).strip():
                 out.append(Problem(b.line, 'this beat has no prose. The prose is the only '
-                                           'thing the reader cannot get from the diff'))
+                                           'thing the reader cannot get from the diff',
+                                   premature=True))
     return out
 
 
@@ -460,8 +451,8 @@ def resolve(rep, patch, root='.'):
     """
     problems = []
 
-    def err(n, msg, fatal=True):
-        problems.append(Problem(n, msg, fatal))
+    def err(n, msg, fatal=True, **kw):
+        problems.append(Problem(n, msg, fatal, **kw))
 
     # `path:all` is one directive standing for every hunk of a file, so expand it
     # before anything counts or numbers components.
@@ -577,7 +568,8 @@ def resolve(rep, patch, root='.'):
                           'illustrates, so nothing can point at it' % name)
             else:
                 err(line, '[[%s]] names nothing. Labels come from bin/tour-skeleton.py; '
-                          'run it and use the names it prints' % name)
+                          'run it and use the names it prints' % name,
+                    needs_labels=True)
     return problems
 
 

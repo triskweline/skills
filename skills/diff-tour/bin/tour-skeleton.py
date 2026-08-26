@@ -180,9 +180,9 @@ def main(argv):
     # A skeleton has no prose and no references yet. Both absences are premature
     # complaints here, not problems — and the reference one has to be deferred or
     # this command deadlocks against itself.
-    fatal = [x for x in problems if x.fatal and not x.premature]
+    fatal = [x for x in problems if x.fatal and not (x.premature or x.needs_labels)]
     for x in sorted(problems, key=lambda x: (not x.fatal, x.line)):
-        if not x.premature:
+        if not (x.premature or x.needs_labels):
             print(x, file=sys.stderr)
     if fatal:
         print('\ntour-skeleton: %d problem%s in %s. Nothing written; fix these '
@@ -200,7 +200,7 @@ def main(argv):
         rep, problems = check()
         # Labelling is additive, so this cannot fail — but printing a table built
         # from a report we just broke would be worse than saying so.
-        broke = [x for x in problems if x.fatal and not x.premature]
+        broke = [x for x in problems if x.fatal and not (x.premature or x.needs_labels)]
         if broke:
             for x in broke:
                 print(x, file=sys.stderr)
@@ -208,8 +208,8 @@ def main(argv):
                   'is a bug in this script. The labels are written; the report is not '
                   'buildable until they are fixed.' % doc, file=sys.stderr)
             return 6
-    pending = [x for x in problems if x.premature]
-    dangling = [x for x in pending if 'names nothing' in x.text]
+    pending = [x for x in problems if (x.premature or x.needs_labels)]
+    dangling = [x for x in pending if x.needs_labels]
 
     if added:
         print('tour-skeleton: labelled %d block%s in %s'

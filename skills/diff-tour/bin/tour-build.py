@@ -143,15 +143,16 @@ def main(argv):
                   % (want[:9], os.path.abspath(root), have[:9], want[:9]), file=sys.stderr)
 
     # A document is meant to be built after every chapter is appended, so most builds
-    # happen while later chapters are still bare skeletons. Missing prose is therefore
-    # premature rather than wrong here too — it just has to be gone by Step J, which
-    # refuses to hand over a report with any warning at all.
+    # happen while later chapters are still bare skeletons: missing prose does not stop
+    # the build. But it is printed, with its line, because Step J's gate is "no
+    # warnings and nothing pending" and a gate cannot be held against something
+    # invisible. A dangling [[label]] is *not* deferred here — the labels exist by the
+    # time anything is built, so a reference that does not resolve is simply wrong.
     fatal = [x for x in problems if x.fatal and not x.premature]
-    warn = [x for x in problems if not x.fatal]
+    warn = [x for x in problems if not x.fatal and not x.premature]
     pending = [x for x in problems if x.premature]
-    for x in sorted(problems, key=lambda x: (not x.fatal, x.line)):
-        if not x.premature:
-            print(x, file=sys.stderr)
+    for x in sorted(problems, key=lambda x: (x.premature, not x.fatal, x.line)):
+        print(x, file=sys.stderr)
     if fatal:
         print('\ntour-build: %d problem%s in %s. Nothing written.'
               % (len(fatal), '' if len(fatal) == 1 else 's', doc), file=sys.stderr)
@@ -184,8 +185,8 @@ def main(argv):
     else:
         print('tour-build: all %d changed lines shown.' % total, file=sys.stderr)
     if pending:
-        print('tour-build: %d place%s still without prose — expected while chapters are '
-              'still skeletons, but not in the report you hand over.'
+        print('tour-build: %d thing%s still pending above — expected while chapters are '
+              'still skeletons, and not allowed in the report you hand over.'
               % (len(pending), '' if len(pending) == 1 else 's'), file=sys.stderr)
     if warn:
         print('tour-build: %d warning%s above.'
