@@ -107,8 +107,9 @@ shown.
 tour exists to catch: the seventh call site that differs.
 
 Length is managed by structure, never by hiding: chapters divide the report, the sidebar
-lets the reader skip, a dull chapter is cheap to scroll past, and `%fold` starts a block
-collapsed with its size still on screen. What you may compress is the *narration* — one
+lets the reader skip, and a dull chapter is cheap to scroll past. Nothing in the report
+starts hidden; the reader collapses what they have read. What you may compress is the
+*narration* — one
 caption for twenty similar hunks is fine, because the reader can see the twenty hunks it
 describes. A topic's own hunks stay in that topic's chapter however dull they are, and
 substantial work gets a chapter however unrelated it is — see
@@ -157,8 +158,7 @@ Other shaping:
   one caption each. There is no reason left to glue them together.
 - **Repetitive hunks** — the identical mechanical change in eight call sites — all get
   shown, in the same chapter as the one you explained, never deferred to Leftovers. Explain
-  the pattern once in the beat's prose, give each block a one-line caption, and `%fold` the
-  beat so the reader can open the ones they want.
+  the pattern once in the beat's prose and give each block a one-line caption.
 - **Order follows the explanation, not the filesystem.** Blocks appear and are numbered in
   the order you write them, so narration order, screen order and codes are the same thing.
   Only `:all` falls back to file order, since it states none.
@@ -179,7 +179,7 @@ it is code the reader has not reviewed — but one sentence saying "identical to
 removed above, except the two lines called out" saves them from reading it twice.
 
 **Whitespace-only or reformatting churn** — compare against `git diff -w`. Set
-formatting-only hunks aside as one folded leftover group, note the line count, and tour the
+formatting-only hunks aside as one leftover group, note the line count, and tour the
 substantive diff.
 
 **New files** — show the whole file. It is all new code, and none of it has been reviewed
@@ -187,17 +187,17 @@ before. Say how long it is, and lead the narration with its shape — exported n
 points — so the reader knows what they are scrolling through. `%hunk <path>:all` takes the
 whole thing in one directive.
 
-**Deleted files** — show the whole file, in a `%fold`ed beat. Every line of a deleted file
+**Deleted files** — show the whole file. Every line of a deleted file
 is a changed line, so showing only the signatures would leave the body uncovered and the
-completeness check would be right to complain. Folded means the reader is not marched
-through a corpse while the guarantee stays absolute. The narration still answers the only
-question that matters: what capability disappeared, and who used it.
+completeness check would be right to complain. The reader can collapse it in one click; what
+the narration owes them is the only question that matters — what capability disappeared, and
+who used it.
 
 **Binary files** — never show a diff. `%file` renders one line naming the file and what
 happened to it, deriving the kind from the diff so it cannot be stated wrongly. A binary
 needs no explanation of its own, so one beat can hold a list of them.
 
-**Lockfiles and generated code** — one `%hunk <path>:all` each in a folded leftover group.
+**Lockfiles and generated code** — one `%hunk <path>:all` each in a leftover group.
 
 **Very large single hunks** (a rewritten file) — fragment it by function or logical
 section, each fragment its own block with its own caption, in as many beats as the ideas
@@ -428,10 +428,11 @@ Three cases, and they read very differently:
   code around it. Say that plainly. **Never narrate a broken diff into coherence**; making
   it sound sensible is the worst outcome this skill can produce.
 
-Distinguish **"I looked and could not find"** from **"I did not look"** — Step D scales
-effort to the size of the diff, so both are honest, but they send the reader to different
-work. And if admissions pile up, the problem is upstream: go back to Step D rather than
-narrating on through hedged mush.
+Distinguish **"I looked and could not find"** from **"I did not look"** — a chapter's
+gathering in Step G scales to what the chapter turns on, so both are honest, but they send
+the reader to different work. And if admissions pile up in one chapter, look again before
+narrating on through hedged mush; if they pile up across all of them, the clustering is the
+problem, not the prose.
 
 Carry these forward to the wrap-up chapter, which is the only place they are collected.
 Give each one its block's label, so the reader can go back to it.
@@ -494,7 +495,8 @@ what a hunk *says*, you have read it.
 Every cluster chapter states one, above its beats: `%blast narrow`, `moderate`, or `wide`.
 
 - **narrow** — effects confined to files this diff already changes.
-- **moderate** — reaches other modules, through call sites the Step D index found. Name them.
+- **moderate** — reaches other modules, through call sites this chapter's index found.
+  Name them.
 - **wide** — public API, or behavior observable outside the codebase. **A new error or
   refusal on a path that previously succeeded is always wide**, however few lines it took
   and however local its call sites: the people it reaches are users of the library, not
@@ -504,7 +506,7 @@ The levels are the cheap half of this. The evidence under them is the product, s
 level is arguable, write the evidence and pick the higher one.
 
 It is **inferred scope, not a verdict** — which is what keeps it clear of "never certify".
-It is also the one place the caller index pays off visibly, so a `moderate` or `wide`
+It is also the one place a chapter's caller index pays off visibly, so a `moderate` or `wide`
 judgement names its evidence: which callers, in which files, and how many this diff does not
 touch. A level with no evidence beside it is the same boilerplate as a forced contingency,
 and it will be read as one.
@@ -642,9 +644,17 @@ excluded and how many lines.
 
 If the diff is empty, report exactly what was compared and stop. Don't invent a tour.
 
-## Step D: Understand before writing
+## Step D: Understand what changed
 
-The tour is only as good as this step, and it happens before any output.
+**This step establishes what each hunk changes — not whether it is right.** That distinction
+is what keeps the serial part of a tour short. Clustering needs to know what a hunk *does*,
+because that is what decides which idea it serves. It does not need to know what the code did
+before, who else calls it, or whether anything tests it: those are things you say *about* a
+cluster once you have one, and they are Step G's work, inside the chapter that needs them.
+
+Getting this wrong in either direction is expensive. Skimp here and the chapter boundaries
+are guesses. Go deep here and you do, serially, for all 131 hunks, work that only twelve
+chapters will ever consume — and Step G could have done it in parallel.
 
 1. **Read the patch in stages, cheapest first.**
 
@@ -703,35 +713,30 @@ The tour is only as good as this step, and it happens before any output.
    moved. Step E's three passes are the second half of this, not a stage that begins after
    it.
 
-2. **Read the enclosing function or class for each hunk.** Behavior usually lives in the
-   unchanged lines around a change — a two-line diff inside a retry loop means something
-   different than the same two lines in a constructor.
-3. **Read stated intent**: commit messages, PR description, linked issues if cheap. Keep
-   stated intent separate from inferred intent when writing.
-4. **Trace outward**: grep callers of changed symbols, find the tests covering this area,
-   check config or schema the change depends on. **When a change replaces an idiom, also
-   grep for surviving uses of the old one** — grepping the new symbol finds adopters, not
-   stragglers, and a missed call site is the likeliest bug class in a migration. Report the
-   count in the cluster that introduced the replacement; the reader cannot get it from the
-   diff.
-5. **Establish before-and-after behavior.** For each meaningful change, know what the code
-   did before and what it does now. That contrast is the substance of every cluster
-   explanation.
+2. **Take the enclosing scope from the `@@` header**, which `tour-hunks.py` prints for every
+   hunk, free. A two-line diff inside a retry loop means something different than the same
+   two lines in a constructor, and the header usually tells you which. Open the file only
+   when it genuinely does not.
+3. **Read stated intent**: the commit log over the range, the PR description, linked issues
+   if cheap. This is where candidate topics come from. Keep stated intent separate from
+   inferred intent when writing.
 
-**Build one caller index, and share it across every chapter.** Grep the symbols this change
-adds or alters *at a module boundary* — exports, public API, anything another file can name
-— whole-word, and keep the `file:line` hits. It is small, it is reusable, and it is what
-lets a chapter say "three callers, all in `billing/`, and this diff changes two of them"
-instead of describing lines. It is also the evidence a `%blast` judgement needs.
+**That is the whole of it.** Three things: what changed, roughly where it sits, and what the
+author says they were doing.
 
-**Scope it to the boundary.** Indexing every identifier the diff declares, locals included,
-returns more text than reading the whole repository — measured on one 52-file change:
-13 boundary symbols gave 30 call sites; all 118 declarations gave 20,515 hits. A local
-`const` has no callers to find, and grepping it drowns the index.
+**What does *not* belong here**, however tempting, because a single chapter is the only thing
+that consumes it and Step G can do it in parallel:
 
-**Don't read whole files for context.** The enclosing function or class of a hunk is already
-in git's `@@` header, once per hunk, free — `tour-hunks.py` prints it. Reading the file to
-rediscover what the diff told you is where unbounded cost comes from.
+- who calls a changed symbol, and how many call sites this diff did not touch;
+- what the code did before, in any detail beyond what the hunk shows;
+- whether anything tests a change;
+- any question of the form "does X actually do Y" — *does this controller build a plain
+  `Card`*, *does that partial guard a nil*, *is this opt-out covered*. Every one of those
+  feeds a sentence in one chapter. Ask it there.
+
+**Don't read whole files for context**, and don't build a caller index yet. Reading a file to
+rediscover what the diff already told you is where unbounded cost comes from, and an index
+built now is built for chapters that do not exist yet.
 
 **Read at depth everything that will get a chapter — including a body of work you did not
 come for.** Under [Step H](#step-h-narrate-the-leftovers), substantial work gets chapters
@@ -770,8 +775,10 @@ hunks carry two ideas, and which lines go where.
 **Write the whole report's structure before any of its prose.** Every chapter, every beat
 subtitle, every block with its caption — and not one sentence of narration.
 
-Include each cluster chapter's `%blast <level>` line — the level is a Step E judgement and
-the skeleton is where structure lives. Its evidence is prose and comes in Step G.
+A skeleton carries **no `%blast` line**. A blast level is a claim about reach, and reach is
+what the caller index tells you — which Step G gathers, per chapter. Judging it here would
+mean gathering that index serially for every chapter, which is the work this split exists to
+move.
 
 **No `[[label]]` references either**, because the labels do not exist yet: this is the
 command that mints them. Writing one here is harmless — the skeleton defers the check and
@@ -815,21 +822,51 @@ Write the skeleton for every chapter, in order — `%intro`, the clusters, `%lef
 
 ## Step G: Narrate the cluster chapters
 
-Fill in the prose: the chapter's introductory paragraph, its `%blast` evidence, each beat's
-narration, and each block's own indented prose. How much to say, where to say nothing, what
-to admit, when to name an alternative — all of that is [Narration](#narration) and
-[Beats](#beats).
+**This is where the deep work happens, and it is the part that parallelises.** A chapter's
+narration needs things Step D deliberately did not gather: what the code did before, who
+calls the symbols this chapter changes, whether anything tests them, and the answer to
+whatever specific question the chapter turns on. Each chapter needs those for *its own*
+hunks, which is why they belong here rather than in a serial pass over the whole diff.
 
-**This is where references get written**, using the labels Step F printed. That ordering is
-not a preference: a label is minted by the skeleton, so prose is the first stage that can
-name one.
+So each chapter's work is: gather its own facts, then write its prose — the chapter's
+introductory paragraph, its `%blast` level and the evidence for it, each beat's narration, and
+each block's own indented prose. How much to say, where to say nothing, what to admit, when
+to name an alternative — all of that is [Narration](#narration) and [Beats](#beats).
 
-**Narrate the chapters in parallel when there is enough prose to divide and you have an
-agent tool that can fork.** A fork inherits your context, so it already holds the patch
-reads, the caller index and the skeleton — there is nothing to brief it on. Tell each fork:
+**Gathering a chapter's facts**, and none of it for hunks outside the chapter:
 
-- **which chapter** it owns, and that the skeleton table is how it names a block in any
-  other chapter;
+- **Its caller index.** Grep the symbols this chapter changes *at a module boundary* —
+  exports, public API, anything another file can name — whole-word, and keep the `file:line`
+  hits. That is what lets the chapter say "three callers, all in `billing/`, and this diff
+  changes two of them" instead of describing lines, and it is the evidence `%blast` needs.
+  **Scope it to the boundary**: indexing every identifier a diff declares, locals included,
+  returns more text than reading the repository — measured on one 52-file change, 13 boundary
+  symbols gave 30 call sites while all 118 declarations gave 20,515 hits. A local `const` has
+  no callers to find and grepping it drowns the index.
+- **The stragglers.** When the chapter replaces an idiom, grep for surviving uses of the *old*
+  one. Grepping the new symbol finds adopters, not stragglers, and a missed call site is the
+  likeliest bug class in a migration. `bin/tour-hunks.py --renames` names the swap for you.
+- **Before-and-after behavior**, for the changes this chapter explains. That contrast is the
+  substance of the explanation.
+- **Whatever the chapter specifically turns on.** One or two questions with checkable
+  answers, asked at the point the sentence needs them.
+
+**A lookup is never worth its own round trip.** Whenever you are about to run a grep, put it
+in the same message as the next read you were going to make anyway.
+
+### Do this in parallel
+
+**Fork by default. Serial is the exception and needs a reason.** The deep work above is now
+the bulk of a tour's cost, it is per-chapter, and chapters do not depend on each other — so
+running them one at a time is leaving the largest available saving on the floor. On anything
+beyond a handful of blocks, spawn a fork per cluster chapter and let them work at once.
+
+A fork inherits your context, so it already holds the patch reads and the skeleton — there is
+nothing to brief it on. Tell each fork:
+
+- **which chapter** it owns, and that the skeleton table is how it names a block in any other
+  chapter;
+- that its fact-gathering is its own, for its own hunks;
 - that it may reorder beats and blocks inside its chapter and may not move one out;
 - to write **only its own chapter** — its `%chapter` line, its `%blast`, its beats — into
   `<narration>.ch<n>`, beside the narration file. One file each, so nothing races. No
@@ -840,33 +877,29 @@ reads, the caller index and the skeleton — there is nothing to brief it on. Te
   forks wrote — which is the cost forking just paid to avoid.
 
 Then **splice each chapter file over its counterpart in the skeleton** — replacing that
-chapter's block, keeping `%report`, `%intro`, `%leftovers` and `%closing` where they are.
-Do not concatenate the chapter files: they are the middle of a document, not the whole of
-one, and a missing `%report` or `%intro` is only a warning, so a botched merge would build.
+chapter's block, keeping `%report`, `%intro`, `%leftovers` and `%closing` where they are. Do
+not concatenate the chapter files: they are the middle of a document, not the whole of one,
+and a missing `%report` or `%intro` is only a warning, so a botched merge would build.
 
-**Fork the chapters that are worth forking, not the report.** This is not one decision for
-the whole run: the skeleton shows you how many blocks each chapter holds, and chapter sizes
-are usually lopsided. Fork the three or four fat ones and write the thin ones yourself.
-Forking a two-block chapter buys nothing and pays a full context re-prefill for it.
+**When serial is the right answer:** a report small enough that the whole thing is a few
+blocks, or a host that does not allow subagents. Some sessions carry a standing instruction
+against spawning them, and that outranks this recommendation — write it serially, don't stop
+to ask, and say in the handover that the report was narrated serially and that allowing
+subagents would have divided the largest phase. A fact for next time, not a question now.
 
-Wall clock is the *longest* chapter, not the sum — so a report with one twenty-block chapter
-and eight small ones barely improves however many forks you spawn, and the honest answer
-there is to write it serially and spend the effort on Step D instead, which is the larger
-half of the clock anyway.
+**What forking costs:** each fork re-prefills your context, so N forks buy one pass of the
+deep work in exchange for roughly N times the input. Now that the deep work is the expensive
+half, that trade is worth making almost whenever it is available.
 
-**What it costs:** each fork re-prefills your context, so N forks buy one pass of the output
-in exchange for roughly N times the input.
+**What it gives up:** no chapter can see what another chapter *wrote*, only what the skeleton
+says it contains. Two chapters can explain the same thing twice and nothing will catch it.
+The captions in the skeleton are what keep that rare, which is another reason they are worth
+writing properly.
 
-**What it gives up:** no chapter can see what another chapter *wrote*, only what the
-skeleton says it contains. Two chapters can explain the same thing twice and nothing will
-catch it. The captions in the skeleton are what keep that rare, which is another reason they
-are worth writing properly.
+A cluster spanning many files leads with the blocks that carry the idea.
 
-**If the host does not allow subagents, write it serially and don't stop to ask.** Some
-sessions carry a standing instruction against spawning them, and that outranks this
-recommendation. Say in the handover that the report was narrated serially and that allowing
-subagents would have divided the narration phase — a fact for next time, not a question
-now.
+Where a hunk deserves a specific thing for the reader to check, say it as a question they can
+answer by looking, at a named location — not "this may have implications".
 
 ## Step H: Narrate the leftovers
 
@@ -894,8 +927,7 @@ chapter. A small chapter costs the reader one line in the sidebar; a mis-filed l
 costs them the chance to review it at all.
 
 Each group needs prose saying **what it is and which of the two kinds it is** — that is what
-makes a scroll-past an informed decision. `%fold` them; nobody reads a dependency bump line
-by line, and the size stays on screen.
+makes a scroll-past an informed decision.
 
 ## Step I: The overview and the wrap-up
 
@@ -965,8 +997,8 @@ then say three things and stop:
 
 **Diff is mostly formatting** — Detect with `git diff -w`, but tour the *full* patch:
 coverage counts what it was given, so touring the `-w` diff would leave the formatting
-changes unaccounted for. Cluster the substantive hunks and give the churn one folded
-leftover group.
+changes unaccounted for. Cluster the substantive hunks and give the churn one leftover
+group.
 
 **`gh` fails** — Say so, suggest `gh auth login`, and offer to tour a local range instead.
 

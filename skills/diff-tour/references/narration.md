@@ -42,7 +42,6 @@ which is what `tour-rest.py` uses so its output can be pasted whole.
     %leftovers Leftovers
     %beat Dependency bumps
     Nothing in the change would lose these if it were reverted.
-    %fold
     %hunk package-lock.json:all = a lockfile refresh, 812 lines
     %file assets/logo@2x.png = the retina asset, replaced
 
@@ -62,7 +61,6 @@ which is what `tour-rest.py` uses so its output can be pasted whole.
 | `%closing <title>` | the wrap-up chapter. Exactly one, last. |
 | `%blast narrow\|moderate\|wide` | the blast-radius judgement. Required in a `%chapter`, not allowed in the other three. Prose under it is its evidence. |
 | `%beat <subtitle>` | a beat: one idea, its prose, and its blocks. |
-| `%fold` | inside a beat: its blocks start collapsed, with their size still on screen. |
 | `%hunk <spec> [@<label>] = <caption>` | one diff block. |
 | `%file <path> [@<label>] = <caption>` | a change with no diff body: binary, pure rename, mode change. |
 | `%quote <path>:<from>-<to> = <caption>` | those lines of that file, read from the checkout. |
@@ -183,9 +181,10 @@ files — no ledger, nothing to go stale.
 
 - Chapters in a fixed sidebar, with a per-chapter viewed count and the current chapter
   marked.
-- A viewed mark per block — a green edge on the block, kept in `localStorage` under a key
-  derived from the output path, so it survives a rebuild of the same file. It marks a block
-  without hiding it; collapsing is the separate act of clicking a caption.
+- A viewed mark per block: it collapses the block and gives it a green edge, the way a
+  reviewed file behaves on a pull request. Kept in `localStorage` under a key derived from
+  the output path, so it survives a rebuild of the same file. Clicking a caption collapses
+  without marking. **Nothing starts collapsed** — the reader decides what to put away.
 - Light and dark, following the system and overridable.
 - Diffs highlighted twice: the file's own language on the text, green and red on the added
   and removed runs.

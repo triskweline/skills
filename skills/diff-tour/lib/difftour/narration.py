@@ -33,7 +33,7 @@ import re
 from dataclasses import dataclass, field
 
 DIRECTIVES = {'report', 'intro', 'chapter', 'leftovers', 'closing', 'blast',
-              'beat', 'fold', 'hunk', 'file', 'quote', 'code', 'end', '#'}
+              'beat', 'hunk', 'file', 'quote', 'code', 'end', '#'}
 BLAST_LEVELS = ('narrow', 'moderate', 'wide')
 CHAPTER_KINDS = {'intro', 'chapter', 'leftovers', 'closing'}
 
@@ -62,6 +62,7 @@ class Problem:
         """
         return ('no prose' in self.text
                 or 'introductory paragraph' in self.text
+                or 'no %blast judgement' in self.text
                 or 'names nothing' in self.text)
 
 
@@ -96,7 +97,6 @@ class Beat:
     subtitle: str
     line: int
     prose: list = field(default_factory=list)      # markdown lines, left column
-    fold: bool = False
     items: list = field(default_factory=list)      # Component
 
 
@@ -210,7 +210,7 @@ def parse(text):
             # Say so where the reader can act on it, and carry on parsing structure,
             # rather than swallowing the rest of the report and reporting the damage
             # somewhere else.
-            if re.match(r'^%(report|intro|chapter|leftovers|closing|beat|blast|fold|hunk|file|quote|code)\b', line):
+            if re.match(r'^%(report|intro|chapter|leftovers|closing|beat|blast|hunk|file|quote|code)\b', line):
                 err(i, 'this looks like a forgotten %%end — the snippet opened on line %d '
                        'would otherwise swallow the rest of the report' % in_code.line)
                 in_code = None
@@ -293,12 +293,6 @@ def parse(text):
                 aim(beat.prose)
                 continue
 
-            if name == 'fold':
-                if beat is None:
-                    err(i, '%fold belongs inside a beat')
-                else:
-                    beat.fold = True
-                continue
 
             if name == 'end':
                 err(i, '%end without an open %code')
