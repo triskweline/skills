@@ -605,6 +605,12 @@ MR number or URL, a patch file, or nothing at all for your working diff.
 patch's filename unless `--source` overrides it, and "main..feature" in the most trusted line
 of the page is worth more than a temp name.
 
+**Put the patch, the narration and the report in one directory, and not a scratch one that
+a session cleans up.** Those three files are the tour: the report is what the reader opens,
+and the other two are the only way anyone can later see what it was built from, re-run a
+stage, or turn a real narration into a test fixture. A tour whose narration was thrown away
+cannot be diagnosed at all — only re-run from scratch.
+
 It prints the hunk and file count, the base it chose when there was no target, and any
 **untracked files**, which are *not* in the diff. Say all three to the reader. The untracked
 list matters more than it looks: coverage guarantees every line of the patch is shown, and an
@@ -1194,6 +1200,9 @@ three things and stop:
   carries a number like `3.2`** they can quote to point at one. The report is a file and
   cannot contain this invitation; it is the only interactive surface the conversation has,
   and a reader holding a path has no other signal that you are still here.
+- **Where the patch and the narration are**, in one clause before the path. They are the
+  tour's source; without them a report that looks wrong can only be regenerated, not
+  examined.
 - **The path**, on its own line, last, with nothing after it.
 
 If Step B created a worktree, say so in one clause and give the `git worktree remove` line

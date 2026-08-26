@@ -2942,6 +2942,92 @@ class TestIndentedDirectives(unittest.TestCase):
         self.assertIn('%blast is what this sets, deliberately.', item.lead)
 
 
+class TestScrub(unittest.TestCase):
+    """tests/scrub.py gates what leaves a private repository.
+
+    A patch is real source, so a tour artifact kept as a fixture has to be read first.
+    These plant fake secrets of each shape and assert they are caught — a scanner that
+    silently stops matching is worse than none, because it is trusted.
+    """
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    HDR = 'diff --git a/x b/x\n+++ b/x\n@@ -1 +1 @@\n'
+
+    # Assembled at runtime, never written as a literal. A credential-shaped string in
+    # the repository trips GitHub's push protection — it caught these on the first
+    # attempt, correctly — and no fixture is worth teaching anyone to click through
+    # that warning. The scanner receives a well-formed token either way.
+    def fakes(self):
+        return [
+            ('credentials in a URL',
+             'url: postgres://u:%s@db.internal/prod' % ('sekrit' + '99')),
+            ('AWS access key id', 'K = "%s%s"' % ('AKIA', 'IOSFODNN7EXAMPLE')),
+            ('private key', '-----BEGIN RSA PRIVATE ' + 'KEY-----'),
+            ('JWT', 'tok = %s.%s.%s' % ('eyJhbGciOiJIUzI1NiJ9',
+                                        'eyJzdWIiOiIxMjM0NTY3ODkwIn0', 'abcdefghij')),
+            ('Stripe live key', 'k = %s%s%s' % ('sk', '_live_', 'A' * 24)),
+            ('GitHub token', 'k = %s%s%s' % ('gh', 'p_', 'A' * 36)),
+            ('Anthropic-style key', 'k = %s%s%s' % ('sk', '-ant-', 'B' * 24)),
+        ]
+
+    def scan(self, text):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        path = os.path.join(d, 'x.patch')
+        with open(path, 'w') as f:
+            f.write(text)
+        return subprocess.run(
+            [sys.executable, os.path.join(self.root, 'tests', 'scrub.py'), path],
+            capture_output=True, text=True, cwd=d)
+
+    def test_it_catches_each_kind_of_secret(self):
+        for label, line in self.fakes():
+            r = self.scan(self.HDR + '+' + line + '\n')
+            self.assertEqual(1, r.returncode, (label, r.stdout))
+            self.assertIn(label, r.stdout, label)
+
+    def test_it_never_prints_a_whole_secret(self):
+        """Running the scanner must not itself copy the secret somewhere new."""
+        for label, line in self.fakes():
+            token = line.split()[-1].strip('"')
+            r = self.scan(self.HDR + '+' + line + '\n')
+            self.assertNotIn(token, r.stdout, label)
+
+    def test_it_catches_a_secret_named_by_its_path_alone(self):
+        for line in ('diff --git a/.env.production b/.env.production',
+                     'diff --git a/config/master.key b/config/master.key',
+                     'diff --git a/certs/server.pem b/certs/server.pem'):
+            r = self.scan(line + '\n')
+            self.assertEqual(1, r.returncode, r.stdout)
+
+    def test_code_is_not_a_finding(self):
+        """Class and method names, and a password *field*, are not secrets."""
+        r = self.scan(
+            'diff --git a/app/models/card.rb b/app/models/card.rb\n'
+            '--- a/app/models/card.rb\n+++ b/app/models/card.rb\n@@ -1,4 +1,4 @@\n'
+            '-  def links_to_content\n+  def external_link_enabled\n'
+            '   validates :password, presence: true\n'
+            '   has_secure_password\n')
+        self.assertEqual(0, r.returncode, r.stdout)
+
+    def test_a_filename_with_an_at_sign_is_not_an_email_address(self):
+        r = self.scan(
+            'diff --git a/assets/logo@2x.png b/assets/logo@2x.png\n'
+            '--- a/x\n+++ b/x\n@@ -1 +1 @@\n'
+            '+import babel from "@babel/core"\n'
+            '+import t from "src/@types/index.d.ts"\n')
+        self.assertEqual(0, r.returncode, r.stdout)
+
+    def test_the_scanner_finds_nothing_in_the_skill_itself(self):
+        """Except its own pattern list, which is why that is excluded here."""
+        r = subprocess.run(
+            [sys.executable, os.path.join(self.root, 'tests', 'scrub.py'),
+             os.path.join(self.root, 'lib'), os.path.join(self.root, 'bin'),
+             os.path.join(self.root, 'assets')],
+            capture_output=True, text=True)
+        self.assertEqual(0, r.returncode, r.stdout)
+
+
 class TestTheDocsAgreeWithTheCode(unittest.TestCase):
     """The documentation is read by every fork, so drift in it is drift in the tour.
 
