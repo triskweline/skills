@@ -1,0 +1,37 @@
+name: Tests
+
+# Exactly one run per push, whether it lands on main or on a branch with an
+# open pull request:
+#
+#   push to main               -> the `push` event, once
+#   push to a PR branch        -> the `pull_request` synchronize event, once
+#   opening a PR from a branch -> the `pull_request` opened event, once
+#
+# Listing main under `push` is what keeps a PR branch from firing both events
+# and running twice. The trade: a branch with no pull request yet gets no CI at
+# all, so open the PR (draft is enough) to start getting runs.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # No setup-python and no pip install: the runner image already provides
+      # python3 (3.12 at the time of writing) and git, which is everything the
+      # suites need. That keeps CI and a laptop running the same code with no
+      # per-machine setup on either side. Note this deliberately tests a newer
+      # Python than the repository is developed on, which is the direction that
+      # gives advance warning rather than false confidence.
+      - name: Run every test suite
+        run: bin/test-all.sh
+
+      # The suites cover the checking logic; this covers the command itself,
+      # since AGENTS.md tells a contributor to run exactly this.
+      - name: Check every skill's frontmatter
+        run: bin/check_frontmatter.py
