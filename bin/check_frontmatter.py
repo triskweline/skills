@@ -38,9 +38,11 @@ HAZARDS = [
 LEADING = '[]{},&*!|>\'"%@`'
 
 # Values that are already safe: quoted, or a block scalar (`|`, `>`, with any
-# chomping or indentation indicator). These skip the lint entirely.
+# chomping or indentation indicator). These skip the lint entirely. YAML allows
+# the two indicators in either order (`>2-` and `>-2` are both legal), and the
+# indentation indicator is a single digit 1-9.
 QUOTED = re.compile(r'''^(".*"|'.*')$''')
-BLOCK = re.compile(r'^[|>][+-]?[0-9]*$')
+BLOCK = re.compile(r'^[|>](?:[+-][1-9]?|[1-9][+-]?)?$')
 
 KEY = re.compile(r'^(\s*)([A-Za-z0-9_-]+):(?:\s+(.*))?$')
 
@@ -68,12 +70,12 @@ def check(path):
 
     block = frontmatter_lines(text)
     if block is None:
-        return ['no frontmatter: the file must open with --- and close with ---']
+        return ['%s: no frontmatter: the file must open with --- and close with ---' % path]
 
     # Indentation of the key whose block scalar we are inside, if any. Its
     # more-indented continuation lines are free text and are not linted.
     block_indent = None
-    keys = set()
+    keys = {}
 
     for lineno, line in block:
         indent = len(line) - len(line.lstrip())
@@ -86,10 +88,9 @@ def check(path):
         if not match:
             continue
         leading, key, value = match.group(1), match.group(2), match.group(3) or ''
-        if not leading:
-            keys.add(key)
-
         value = value.strip()
+        if not leading:
+            keys[key] = value.strip('\'"')
         if BLOCK.match(value):
             block_indent = len(leading)
             continue
@@ -103,13 +104,20 @@ def check(path):
         for pattern, wording in HAZARDS:
             hit = pattern.search(value)
             if hit:
-                problems.append('%s:%d: unquoted %s %s'
-                                % (path, lineno, key, wording)
-                                + ' (column %d)' % (len(line) - len(value) + hit.start() + 1))
+                # Report the column in the file, not in the value, so the number
+                # matches what an editor's cursor shows.
+                column = len(line) - len(value) + hit.start() + 1
+                problems.append('%s: unquoted %s %s (column %d)'
+                                % (where, key, wording, column))
 
     for required in ('name', 'description'):
         if required not in keys:
             problems.append('%s: frontmatter has no top-level %s' % (path, required))
+
+    expected = os.path.basename(os.path.dirname(os.path.abspath(path)))
+    if 'name' in keys and keys['name'] != expected:
+        problems.append('%s: name is %r but the directory is %r'
+                        % (path, keys['name'], expected))
 
     return problems
 
@@ -130,10 +138,6 @@ def strict_parse(path):
         return ['%s: %s' % (path, str(e).replace('\n', ' '))]
     if not isinstance(data, dict):
         return ['%s: frontmatter is not a mapping' % path]
-    expected = os.path.basename(os.path.dirname(path))
-    if data.get('name') != expected:
-        return ['%s: name is %r but the directory is %r'
-                % (path, data.get('name'), expected)]
     return []
 
 

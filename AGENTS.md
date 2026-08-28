@@ -34,7 +34,7 @@ instance, has `skills/diff-tour/tests/test_difftour.py`.
 
 ## Frontmatter has to parse for someone else's parser
 
-`bin/check-frontmatter.py` checks every `skills/*/SKILL.md` frontmatter. Run it after
+`bin/check_frontmatter.py` checks every `skills/*/SKILL.md` frontmatter. Run it after
 touching any frontmatter.
 
 Claude Code reads frontmatter leniently, so a description that is not valid YAML loads
