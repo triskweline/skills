@@ -1,6 +1,18 @@
 ---
 name: diff-tour
-description: Helps a human review a code change they did not write. Produces one HTML report where the real diff hunks sit beside narration explaining what each change is for, what the code did before it, and where to look closely — and clusters a sprawling diff into a handful of themed chapters, so a reviewer can approve or reject it with understanding rather than by skimming. Use this when someone wants to be walked through, toured, guided through or led through a diff, PR, branch, or commit: "walk me through these changes", "explain this PR hunk by hunk", "review this change with me", "tour this branch", "help me understand what this branch does", "show me the diff with explanations" — and whenever someone asking to "explain a diff" wants to see the code itself rather than a prose summary. It earns its cost on changes too large to hold in your head; a one-line fix needs no tour. This is the reading half of a review, not an automated bug hunt: it explains the change and points at risk, but never rules on it, so pair it with a correctness pass such as /code-review.
+description: >-
+  Helps a human review a code change they did not write. Produces one HTML report where the real
+  diff hunks sit beside narration explaining what each change is for, what the code did before
+  it, and where to look closely — and clusters a sprawling diff into a handful of themed
+  chapters, so a reviewer can approve or reject it with understanding rather than by skimming.
+  Use this when someone wants to be walked through, toured, guided through or led through a
+  diff, PR, branch, or commit: "walk me through these changes", "explain this PR hunk by hunk",
+  "review this change with me", "tour this branch", "help me understand what this branch does",
+  "show me the diff with explanations" — and whenever someone asking to "explain a diff" wants
+  to see the code itself rather than a prose summary. It earns its cost on changes too large to
+  hold in your head; a one-line fix needs no tour. This is the reading half of a review, not an
+  automated bug hunt: it explains the change and points at risk, but never rules on it, so pair
+  it with a correctness pass such as /code-review.
 metadata:
   version: 2.0.0
 ---
