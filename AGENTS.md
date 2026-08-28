@@ -32,6 +32,18 @@ file only covers what is true across the repository.
 Where a skill has tests, run them before committing a change to it. `diff-tour`, for
 instance, has `skills/diff-tour/tests/test_difftour.py`.
 
+`bin/test-all.sh` runs everything: the repo-wide suites under `tests/`, then each
+skill's own suite. It discovers suites rather than listing them, so a new skill's tests
+are picked up with no wiring. GitHub Actions runs that same script
+(`.github/workflows/tests.yml`) on every push to main and on every pull request, so
+"passes locally" and "passes on CI" are the same command. A branch with no pull request
+open gets no CI run, which is the price of never running twice for one push. It needs only `python3`, `git` and `bash` — never add a pip install or a
+version manager to either side.
+
+CI deliberately runs a newer Python than this machine, which is the direction that warns
+you early instead of flattering you. Keep the Python here compatible with both: standard
+library only, no syntax newer than the oldest interpreter in use.
+
 ## Frontmatter has to parse for someone else's parser
 
 `bin/check_frontmatter.py` checks every `skills/*/SKILL.md` frontmatter. Run it after
