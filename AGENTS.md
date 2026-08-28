@@ -32,6 +32,18 @@ file only covers what is true across the repository.
 Where a skill has tests, run them before committing a change to it. `diff-tour`, for
 instance, has `skills/diff-tour/tests/test_difftour.py`.
 
+## Frontmatter has to parse for someone else's parser
+
+`bin/check-frontmatter.py` checks every `skills/*/SKILL.md` frontmatter. Run it after
+touching any frontmatter.
+
+Claude Code reads frontmatter leniently, so a description that is not valid YAML loads
+fine here and fails for whoever installs the skill with a stricter tool. The trap is that
+a description is a long paragraph of prose: write `or commit: "walk me through this"` in
+an unquoted value and YAML reads the colon-space as a key/value separator. Quote the
+value or make it a block scalar (`description: >-`) when the prose needs punctuation that
+YAML wants for itself.
+
 ## Never commit a corpus from a private repository
 
 `skills/diff-tour/_examples/` is gitignored on purpose: it holds patches and narrations
