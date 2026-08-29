@@ -700,8 +700,23 @@ def resolve(rep, patch, root='.', quotes=True):
                           'mailto render — this one will ship as plain text. Quote the '
                           'path in backticks instead, or link the change with [[label]].'
                     % (text_, href), fatal=False, advisory=True)
-        for a, b in REF.findall(text):
-            name = a or b
+        # A reference inside backticks renders as literal text: prose.py's alternation
+        # lets the code span win, so `[[h33]]` ships as the characters [[h33]] with no
+        # link. The name resolves, so nothing here used to object — the report simply
+        # carried a dead reference that only a reader would notice. The validator has to
+        # honour backticks the same way the renderer does.
+        code_spans = [m.span() for m in re.finditer(r'`[^`]+`', text)]
+
+        def in_code(span):
+            return any(c0 <= span[0] and span[1] <= c1 for c0, c1 in code_spans)
+
+        for m in REF.finditer(text):
+            name = m.group(1) or m.group(2)
+            if in_code(m.span()):
+                err(line, 'the reference [[%s]] is inside backticks, so it will render '
+                          'as the literal text and not as a link. A reference already '
+                          'renders as code — drop the backticks.' % name, fatal=False)
+                continue
             if name in rep.refs or name in chapters:
                 continue
             if name in seen:

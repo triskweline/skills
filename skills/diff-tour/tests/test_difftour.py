@@ -478,6 +478,37 @@ class TestProseShapesRealNarrationsUse(unittest.TestCase):
             'anchor in the guide.')
         self.assertEqual([], fatal)
 
+    def test_a_reference_in_backticks_is_reported_not_shipped(self):
+        """The mirror of the anchor bug: the validator ignored backticks, the renderer
+        honoured them, so `[[h1]]` resolved fine and rendered as literal text. A real
+        report shipped two dead references that a reader found — every gate was green."""
+        html, fatal = self.render('`[[h1]]` and `[[h2]]` reach the same control.')
+        self.assertEqual([], fatal)              # it resolves; it is not an error
+        rep, problems = narration.parse('\n'.join(
+            ['%report T', '%intro O', '%beat W', 'Prose.',
+             '%chapter First', 'Premise.', '%blast narrow', 'E.', '%beat A',
+             'See `[[h1]]` here.',
+             '%hunk z.js:1 @h1 = one', '%hunk z.js:41 @h2 = two',
+             '%closing W', '%beat C', 'Prose.']))
+        problems += narration.resolve(rep, self.P, '.')
+        warned = [x for x in problems if 'inside backticks' in x.text]
+        self.assertEqual(1, len(warned), [str(x) for x in problems])
+        self.assertEqual(10, warned[0].line)
+        self.assertFalse(warned[0].fatal)        # a warning, so --final refuses it
+
+    def test_a_bare_reference_beside_a_backticked_one_still_links(self):
+        rep, problems = narration.parse('\n'.join(
+            ['%report T', '%intro O', '%beat W', 'Prose.',
+             '%chapter First', 'Premise.', '%blast narrow', 'E.', '%beat A',
+             '`[[h1]]` is dead but [[h2]] is a link.',
+             '%hunk z.js:1 @h1 = one', '%hunk z.js:41 @h2 = two',
+             '%closing W', '%beat C', 'Prose.']))
+        problems += narration.resolve(rep, self.P, '.')
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+        self.assertEqual(1, len([x for x in problems if 'inside backticks' in x.text]))
+        html, _ = render.page(rep, self.P.stats(), 's', '2026-01-01', 'u')
+        self.assertIn('href="#2.2"', html)       # the bare one is still a link
+
     def test_this_reports_own_anchors_are_still_references(self):
         html, fatal = self.render('See [the chapter](#ch2) for the rest.')
         self.assertEqual([], fatal)

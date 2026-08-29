@@ -103,6 +103,11 @@ references in it cannot know the right names, so `tour-skeleton.py` defers them,
 `tour-rest.py`, whose answer prose has no bearing on. **The build is what refuses a reference
 that still does not resolve** — by then the labels exist, so a dangling one is a typo.
 
+**Never put a reference in backticks.** `` `[[h4]]` `` renders as the literal characters
+`[[h4]]`, not as a link — a reference already renders as code, so the backticks only take the
+link away. The build warns, because the name resolves and nothing else would notice: one real
+report shipped two dead `[[h33]]` strings that a reader found.
+
 **Never write a code.** A link to `#2.9` is refused, because it breaks the moment anything
 is reordered. Only `path:all` cannot be labelled — one directive standing for many blocks
 cannot have one name.

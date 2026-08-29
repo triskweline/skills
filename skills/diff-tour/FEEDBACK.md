@@ -95,7 +95,45 @@ read — the worst place for it.
 3. At minimum, document it in `narration.md` beside the asterisk-escaping section, and give
    the error message an escape to suggest.
 
----
+### 1.4 …and the mirror image: a backticked `` `[[h33]]` `` silently stops being a link
+
+The same run shipped a report containing two literal `[[h33]]` / `[[h34]]` strings, which a
+reader spotted. Cause: the chapter-5 fork wrote
+
+```
+`[[h33]]` and `[[h34]]` reach these controls through `up.Params.fromContainer()`
+```
+
+`INLINE` in `lib/difftour/prose.py:56` is one left-to-right alternation, so at that position
+the `code` group wins and the reference is emitted as `<code>[[h33]]</code>` — literal text,
+no link. Bare `[[h33]]` two paragraphs down rendered correctly.
+
+**Nothing caught it.** The validator only asks whether a name resolves; `h33` is a real
+label, so there was no error, no warning, and no note. `--final` passed. The defect is
+invisible until someone reads the rendered page.
+
+**Why this is worse than 1.3, and why they belong together.** The two are the same root
+cause pointed in opposite directions: **the validator ignores backticks and the renderer
+honours them.**
+
+| | validator | renderer |
+|---|---|---|
+| `` `[text](#real-anchor)` `` | scans it, refuses the build (1.3) | would have rendered fine |
+| `` `[[h33]]` `` | scans it, resolves, says nothing | drops the link silently (1.4) |
+
+So backticks are simultaneously not an escape (1.3) and an accidental one (1.4). A model
+following `narration.md`'s advice — "Put code in backticks", which is the documented way out
+of every other ambiguity — gets the wrong outcome in both directions.
+
+**Fix.** Make both sides agree, and the cheapest way is to strip inline-code spans before
+the reference scan in `narration.py`, matching what `prose.py` already does. That fixes 1.3
+outright. Then add the check 1.4 needs, which does not exist today: **warn on a reference
+inside a code span** — it resolves, so it is not an error, but it will not render as a link
+and the author almost certainly meant it to. One line of prose in `narration.md` under
+"Labels and references" would help too:
+
+> Never put a reference in backticks. `[[h4]]` already renders as code; wrapping it makes it
+> literal text and no check will tell you.
 
 ## 2. Rules that misfired
 

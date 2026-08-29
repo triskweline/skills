@@ -527,23 +527,50 @@ what a hunk *says*, you have read it.
 
 Every cluster chapter states one, above its beats: `%blast narrow`, `moderate`, or `wide`.
 
-- **narrow** — effects confined to files this diff already changes.
-- **moderate** — reaches other modules, through call sites found by grepping for them
-  ([Step G](#step-g-narrate-the-cluster-chapters) calls this the chapter's caller index).
-  Name them.
-- **wide** — public API, or behavior observable outside the codebase. **A new error or
-  refusal on a path that previously succeeded is always wide**, however few lines it took
-  and however local its call sites: the people it reaches are users of the library, not
-  callers of the function.
+**The level answers one question: how far does a reviewer have to look to satisfy themselves
+about this chapter?**
 
-The levels are the cheap half of this. The evidence under them is the product, so if the
-level is arguable, write the evidence and pick the higher one.
+- **narrow** — everything needed to judge it is on this page. The effects stay inside what
+  the diff already shows you.
+- **moderate** — you have to look at code this diff does not change. The chapter names it:
+  which callers, in which files, and how many of them this diff leaves alone.
+- **wide** — looking at code is not enough, because **someone outside this codebase may be
+  relying on the old behaviour, and a person has to decide whether that is acceptable.**
 
-It is **inferred scope, not a verdict** — which is what keeps it clear of "never certify".
-It is also the one place a chapter's caller index pays off visibly, so a `moderate` or `wide`
-judgement names its evidence: which callers, in which files, and how many this diff does not
-touch. A level with no evidence beside it is the same boilerplate as a forced contingency,
-and it will be read as one.
+That last one is the distinction that matters, and it is not "is this observable from
+outside". Almost everything in a library is observable from outside. It is **could someone
+reasonably be depending on what changed, such that this is their decision and not yours.**
+
+**So name them.** Before writing `wide`, say who notices — "anyone who calls `up.render()`
+with a string target", "any deployment with two workers". If you cannot name a plausible
+party in a plausible situation, it is not wide, however technically visible the change is.
+Renaming an internal error message is observable from outside. Nobody is depending on it.
+
+**A new error on a path that previously succeeded is the strongest single signal — and still
+a judgement.** Ask who can reach that path. If it is anyone using the API in the ordinary
+way, that is wide, however few lines it took. If reaching it needs a combination nobody
+plausibly has — two deprecated options together, an entry point the project does not
+document — say so and go lower. The old rule here said such a change was *always* wide, and
+the result was a scale that stopped discriminating.
+
+**Do not round up.** If the level is arguable, pick the one that describes what a reviewer
+must actually do, and let the evidence carry the nuance. Rounding up looks careful and is
+not: a report where everything is `wide` tells the reader nothing about where to spend their
+attention, which is the entire job of the field.
+
+**Check the distribution before you hand over.** Across a whole tour, `moderate` should be
+the commonest level — most changes reach past their own file without anyone outside caring —
+and `wide` should be the minority you would defend one by one. One real tour of a library
+came out nine `wide`, one `moderate`, six `narrow`: that is a scale measuring the diff's
+*subject* rather than its risk. If most of your chapters are wide, re-judge them.
+
+**It is inferred reach, never a verdict on correctness.** Judging how far a change travels
+and who would care is exactly what this field is for, and you are expected to do it. Judging
+whether the change is *right* remains out of scope — that is the pass this report pairs with.
+
+A `moderate` or `wide` level names its evidence: which callers, in which files, how many this
+diff does not touch. A level with no evidence beside it is the same boilerplate as a forced
+contingency, and it will be read as one.
 
 ## The narration file
 
