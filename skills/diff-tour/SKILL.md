@@ -527,50 +527,62 @@ what a hunk *says*, you have read it.
 
 Every cluster chapter states one, above its beats: `%blast narrow`, `moderate`, or `wide`.
 
-**The level answers one question: how far does a reviewer have to look to satisfy themselves
-about this chapter?**
+**The level answers the question a reviewer is actually asking: if this change is wrong,
+how much gets hurt, and how likely is that?** Not how far the code reaches — reach is
+evidence, not the answer. A change can touch six modules and be obviously harmless, or touch
+one line and corrupt data quietly for a year.
 
-- **narrow** — everything needed to judge it is on this page. The effects stay inside what
-  the diff already shows you.
-- **moderate** — you have to look at code this diff does not change. The chapter names it:
-  which callers, in which files, and how many of them this diff leaves alone.
-- **wide** — looking at code is not enough, because **someone outside this codebase may be
-  relying on the old behaviour, and a person has to decide whether that is acceptable.**
+Three things decide it, and a chapter's evidence should say something about each:
 
-That last one is the distinction that matters, and it is not "is this observable from
-outside". Almost everything in a library is observable from outside. It is **could someone
-reasonably be depending on what changed, such that this is their decision and not yours.**
+1. **Exposure — how much real use flows through this path?** The main render path and a
+   flag two people pass are both "public API", and they are not the same risk. If you can
+   tell from the diff or the checkout — a default value, a deprecated option, a code path
+   behind a feature check — say so.
+2. **Likelihood — what is the chance something depends on the exact detail that changed?**
+   Order of results, whitespace in a message, an exception's class, a key's format. Some
+   details are load-bearing for callers and some are not, and the difference is usually
+   guessable.
+3. **Consequence — if it is wrong, how bad, and how loudly?** A crash on startup is
+   self-reporting. A wrong cache key that leaks one user's content to another is not, and
+   that asymmetry matters more than either of the first two. **Silent and wrong beats loud
+   and wrong for badness, every time.**
 
-**So name them.** Before writing `wide`, say who notices — "anyone who calls `up.render()`
-with a string target", "any deployment with two workers". If you cannot name a plausible
-party in a plausible situation, it is not wide, however technically visible the change is.
-Renaming an internal error message is observable from outside. Nobody is depending on it.
+- **narrow** — little use flows through it, or nothing plausibly depends on what changed, or
+  a mistake would be obvious immediately. Cheap to be wrong about.
+- **moderate** — a real slice of use reaches it, or something could reasonably depend on the
+  detail that changed. Worth a reviewer's deliberate attention.
+- **wide** — heavily used, *or* wrong in a way nobody would notice, *or* expensive to undo:
+  data written, a migration run, content shown to the wrong person. Any one of those alone
+  is enough.
 
-**A new error on a path that previously succeeded is the strongest single signal — and still
-a judgement.** Ask who can reach that path. If it is anyone using the API in the ordinary
-way, that is wide, however few lines it took. If reaching it needs a combination nobody
-plausibly has — two deprecated options together, an entry point the project does not
-document — say so and go lower. The old rule here said such a change was *always* wide, and
-the result was a scale that stopped discriminating.
+**Name who and how many.** "Anyone calling `up.render()` with a string target" is a level
+with evidence; "public API" is not. If you cannot name a plausible party in a plausible
+situation, you have not judged the exposure yet — and if the honest answer is "almost nobody
+reaches this", say that and go lower, however public the surface.
 
-**Do not round up.** If the level is arguable, pick the one that describes what a reviewer
-must actually do, and let the evidence carry the nuance. Rounding up looks careful and is
-not: a report where everything is `wide` tells the reader nothing about where to spend their
-attention, which is the entire job of the field.
+**A new error on a path that previously succeeded is a strong signal, not a verdict.** Ask
+who can reach the path. Anyone using the API in the ordinary way is wide. A combination
+requiring two deprecated options and an undocumented entry point is not, however technically
+breaking it is.
 
-**Check the distribution before you hand over.** Across a whole tour, `moderate` should be
-the commonest level — most changes reach past their own file without anyone outside caring —
-and `wide` should be the minority you would defend one by one. One real tour of a library
-came out nine `wide`, one `moderate`, six `narrow`: that is a scale measuring the diff's
-*subject* rather than its risk. If most of your chapters are wide, re-judge them.
+**Do not round up.** If it is arguable, pick the level that describes the risk and let the
+evidence carry the nuance. Rounding up looks careful and is not: a report where everything
+is `wide` tells the reader nothing about where to spend their attention, which is the whole
+job of this field.
 
-**It is inferred reach, never a verdict on correctness.** Judging how far a change travels
-and who would care is exactly what this field is for, and you are expected to do it. Judging
-whether the change is *right* remains out of scope — that is the pass this report pairs with.
+**Check the distribution before you hand over.** `moderate` should be the commonest level,
+and `wide` the minority you would defend one at a time. One real tour of a library came out
+nine `wide`, one `moderate`, six `narrow` — that scale was measuring the diff's *subject*
+rather than its risk. If most of your chapters are wide, re-judge them.
+
+**This is triage, not a verdict.** Saying "if this is wrong, it leaks content across users"
+is not saying it is wrong — it is what makes the report worth reading in priority order, and
+you are expected to do it. Judging whether the change is actually correct stays out of scope;
+that is the pass this report pairs with.
 
 A `moderate` or `wide` level names its evidence: which callers, in which files, how many this
-diff does not touch. A level with no evidence beside it is the same boilerplate as a forced
-contingency, and it will be read as one.
+diff does not touch, and what the failure would look like. A level with no evidence beside it
+is the same boilerplate as a forced contingency, and it will be read as one.
 
 ## The narration file
 
@@ -1279,14 +1291,12 @@ overview is still chapter 1 in the document.
     One half-line per chapter, saying what it is about. The sidebar gives their
     names; this gives their purpose, which is how a reader decides what to read.
 
-**Rank those pointers by `%blast`, then by reach — and expect reach to do the real sorting.**
-On a diff to a library, "a new error on a path that previously succeeded is always wide" plus
-"public API" catches nearly everything: one real tour came out nine `wide`, one `moderate`,
-six `narrow`, so the level separated almost nothing at the top. That is the rule working, not
-failing. What breaks the tie is the evidence underneath it: how many call sites the chapter
-reaches, how many of them this diff does *not* touch, and whether the effect is observable
-outside the process — on the wire, in the database, on a rendered page — rather than only to
-callers. Rank on that. Each came from a fork that saw
+**Rank those pointers by `%blast`, and break ties on how quietly a mistake would fail.**
+The level already carries exposure and likelihood; what separates two `wide` chapters is
+consequence, and the sharpest edge there is whether anyone would find out. A chapter whose
+failure mode is a crash on the next deploy ranks below one whose failure mode is the wrong
+user's content served from cache, or a migration that has already dropped the column. Put
+irreversible above silent, silent above loud. Each came from a fork that saw
 one chapter; you have seen none of them at depth, so you cannot compare their severity by
 reading them. What you do hold is every chapter's blast level — the one judgement made on
 comparable terms across the whole tour — so a `wide` chapter's pointer outranks a `narrow`
