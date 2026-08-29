@@ -155,9 +155,21 @@ def _suggest_forks(rep):
 
 
 def main(argv):
-    args, root = [], '.'
+    args, root, only = [], '.', None
     i = 0
     while i < len(argv):
+        if argv[i] == '--labels':
+            # Step I says to read a label's caption before citing it. With 124 labels the
+            # table is long enough that the honest move — checking — loses to citing from
+            # memory, which is the failure that step exists to prevent. Make checking one
+            # command: --labels h39,h70,h115.
+            if i + 1 >= len(argv):
+                print('tour-skeleton: --labels needs a comma-separated list',
+                      file=sys.stderr)
+                return 2
+            only = {x.strip().lstrip('@') for x in argv[i + 1].split(',') if x.strip()}
+            i += 2
+            continue
         if argv[i] == '--root':
             if i + 1 >= len(argv):
                 print('tour-skeleton: --root needs a value', file=sys.stderr)
@@ -227,6 +239,28 @@ def main(argv):
     if added:
         print('tour-skeleton: labelled %d block%s in %s'
               % (added, '' if added == 1 else 's', doc), file=sys.stderr)
+
+    if only is not None:
+        width = max([len(c.caption) for c in rep.components] + [7])
+        found = set()
+        for ch in rep.chapters:
+            for b in ch.beats:
+                for c in b.items:
+                    if not isinstance(c, narration.Component) or c.label not in only:
+                        continue
+                    found.add(c.label)
+                    where = c.path
+                    if c.kind == 'hunk' and c.hunk is not None:
+                        where += ':%d' % c.hunk.start_line(c.lo, c.hi)
+                    print('%-6s %-6s %-*s  %s   (%d · %s)'
+                          % ('[[%s]]' % c.label, c.code or c.kind, width, c.caption,
+                             where, ch.number, ch.title))
+        missing = sorted(only - found)
+        if missing:
+            print('tour-skeleton: no such label%s: %s'
+                  % ('' if len(missing) == 1 else 's', ', '.join(missing)),
+                  file=sys.stderr)
+        return 1 if missing else 0
 
     # The table. This is what a chapter narrated on its own needs to see.
     width = max([len(c.caption) for c in rep.components] + [7])

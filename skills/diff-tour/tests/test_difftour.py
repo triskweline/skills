@@ -3104,6 +3104,52 @@ class TestIndentedDirectives(unittest.TestCase):
         self.assertIn('%blast is what this sets, deliberately.', item.lead)
 
 
+class TestCssDoesNotReachIntoDiffs(unittest.TestCase):
+    """The report's own classes share a namespace with Prism's token classes.
+
+    Prism emits `<span class="token tag">`, `token string`, `token comment` and so on
+    inside every highlighted diff. A bare `.tag` rule in the report's stylesheet
+    therefore also styles every HTML tag in every hunk — which is exactly what happened:
+    the file-status badge's `text-transform: uppercase` rewrote a markdown page's HTML
+    example as `<DIV CLASS="PILLS">`, so the report showed code the diff did not contain.
+
+    Byte-exactness is not only about the bytes reaching the page; it is about what the
+    reader sees. A stylesheet can break it without touching the markup.
+    """
+
+    # Prism's common token classes. A bare rule for any of these leaks into diffs.
+    TOKENS = {
+        'tag', 'string', 'comment', 'keyword', 'function', 'number', 'operator',
+        'punctuation', 'property', 'selector', 'important', 'bold', 'italic', 'url',
+        'title', 'inserted', 'deleted', 'variable', 'constant', 'symbol', 'builtin',
+        'boolean', 'regex', 'entity', 'atrule', 'attr-name', 'attr-value', 'class-name',
+        'namespace', 'prolog', 'doctype', 'cdata', 'char', 'parameter', 'method',
+    }
+
+    def test_no_bare_rule_shares_a_name_with_a_prism_token(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'assets', 'report.css'), encoding='utf-8') as f:
+            css = f.read()
+        css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)          # comments hold examples
+        offenders = []
+        for block in re.findall(r'([^{}]+)\{', css):
+            for sel in block.split(','):
+                sel = sel.strip().split('\n')[-1].strip()
+                if not sel:
+                    continue
+                # The last simple selector is what actually matches the element.
+                last = re.split(r'[\s>+~]+', sel)[-1]
+                m = re.match(r'^\.([a-z-]+)', last)
+                if not m or m.group(1) not in self.TOKENS:
+                    continue
+                # Fine if it is a Prism rule, or if something scopes it out of diffs.
+                if '.token' in sel or len(re.split(r'[\s>+~]+', sel)) > 1:
+                    continue
+                offenders.append(sel)
+        self.assertEqual([], offenders,
+                         'these rules also match Prism tokens inside every diff')
+
+
 class TestScrub(unittest.TestCase):
     """tests/scrub.py gates what leaves a private repository.
 

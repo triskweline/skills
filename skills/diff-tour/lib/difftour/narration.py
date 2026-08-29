@@ -132,7 +132,14 @@ RANGE = re.compile(r'^\s*(\d+)\s*-\s*(\d+)\s*$')
 # from being mistaken for one.
 LABEL = re.compile(r'(?:(?<=\s)|^)@([A-Za-z][A-Za-z0-9_-]*)(?=\s|$)')
 # A reference in prose: [[h17]] on its own, or [prose label](#h17).
-REF = re.compile(r'\[\[([A-Za-z][A-Za-z0-9_-]*)\]\]|\]\(#([A-Za-z][A-Za-z0-9_-]*)\)')
+# `[[name]]` is unambiguous — nothing else in prose looks like it. `](#anchor)` is not:
+# a report that quotes a real markdown anchor, which any tour of documentation will,
+# writes `[Leave it to the minifier](#leave-it-to-the-minifier)` and meant an anchor in
+# someone's file, not a block in this report. So the link form is claimed only for the
+# two shapes this skill actually mints — `#h12` and `#ch3`. Everything else falls through
+# to the "link the report cannot follow" note, which is the correct diagnosis and does
+# not block the build.
+REF = re.compile(r'\[\[([A-Za-z][A-Za-z0-9_-]*)\]\]|\]\(#((?:h|ch)\d+)\)')
 
 
 def _take_label(spec):

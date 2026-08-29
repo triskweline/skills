@@ -620,9 +620,12 @@ it accepts, and what each resolves to, is in
 [references/commands.md](references/commands.md) — a git range, one commit, a branch, a PR or
 MR number or URL, a patch file, or nothing at all for your working diff.
 
-**Give the tour its own directory, and not a scratch one a session cleans up.** Name the
-directory after the target — `difftour-<something-identifying>` — and put three files in it,
-named exactly this:
+**Give the tour its own directory, and not a scratch one a session cleans up.** Prefer a
+gitignored directory inside the repository — `tmp/` if it has one — so the files sit beside
+the code they describe and no working tree is polluted; failing that, somewhere under the
+reader's home. Never the session scratchpad: it is cleaned up, and a tour whose narration was
+cleaned up cannot be diagnosed at all. Name the directory after the target —
+`difftour-<something-identifying>` — and put three files in it, named exactly this:
 
     <dir>/tour.patch      the diff, plus tour.patch.head beside it
     <dir>/tour.tour       the narration
@@ -780,6 +783,10 @@ chapters will ever consume — and Step G could have done it in parallel.
      narrower, which costs a whole round trip. `--body` tells you afterwards how much it
      printed, so a miss is at least visible.
 
+   `--renames` earns its place only when you intend *not* to read something in full — if you
+   are going to read every hunk anyway, the sweep names itself as you go. On a diff small
+   enough to read whole, skip it.
+
    Then `bin/tour-hunks.py --renames <patch>` names every swap that repeats across
    hunks — `links_to_content` → `external_link_enabled` in fifteen places. Those hunks
    are the mechanical tier: one caption naming the swap, no individual reading. What the
@@ -845,9 +852,11 @@ built now is built for chapters that do not exist yet.
 
 **Read at depth everything that will get a chapter — including a body of work you did not
 come for.** Under [Step H](#step-h-narrate-the-leftovers), substantial work gets chapters
-however unrelated it is, and a chapter cannot be written from a file listing. This read is bounded by
-the size of the diff — you read each hunk once — which is what keeps it affordable even on a
-range with three bodies of work, and it is the cost of the report being worth reading. If the
+however unrelated it is, and a chapter cannot be written from a file listing. **On a hundred-hunk diff this is the second-largest cost in the tour, after narration, and
+it is not the place to economise** — the clustering depends on all of it, and it cannot be
+parallelised because the whole point is one mind seeing the whole diff. This read is bounded
+by the size of the diff — you read each hunk once — which is what keeps it affordable even on
+a range with three bodies of work, and it is the cost of the report being worth reading. If the
 reader only wants one body they have to have *volunteered* that back in Step C, while they
 were still there, and the patch was narrowed then — nobody was asked, and by here nobody is
 listening. So this is not a decision you can still make; skimping on it just makes a worse
@@ -1055,9 +1064,12 @@ on. Take it, or adjust it for something it cannot see.
 
 Three things it cannot see:
 
-- **Whole chapters only.** A fork may own several chapters but never part of one, so the
-  no-moving-blocks-between-chapters rule and the splice both stay simple. It writes one file
-  per chapter it owns, whichever fork wrote it.
+- **Whole chapters only, and one file per chapter — not one file per fork.** A fork may own
+  several chapters but never part of one, so the no-moving-blocks-between-chapters rule and
+  the splice both stay simple. A fork owning chapters 4, 6 and 7 writes **three** files:
+  `<narration>.ch4`, `<narration>.ch6`, `<narration>.ch7`, where the number is the
+  *chapter's*, not the fork's. A file holding two chapters is refused by the splice. This is
+  the instruction most often misread — say it to each fork in these words.
 - **Past five or six forks, ask what the sixth is buying.** There is no hard limit, but if the
   packing wants ten, the chapters are probably cut too finely — that is a Step E problem, not
   a spending one.
@@ -1078,9 +1090,10 @@ applies either way. Tell each fork:
   in any other chapter;
 - that its fact-gathering is its own, for its own hunks;
 - that it may reorder beats and blocks inside its chapter and may not move one out;
-- to write **only its own chapter** — its `%chapter` line, its `%blast`, its beats — into
-  `<narration>.ch<n>`, beside the narration file. One file each, so nothing races. No
-  `%report`, no other chapter;
+- to write **one file per chapter it owns** — each holding that chapter's `%chapter` line,
+  its `%blast` and its beats, and nothing else — as `<narration>.ch<N>` beside the narration
+  file, where `N` is the chapter's number. Three chapters means three files. No `%report`, no
+  second chapter in a file, nothing of another fork's;
 - to **start from the chapter's directives as they already stand in the narration file and
   keep every `@label` exactly**, along with the `%chapter` title, which is the key the
   splice matches on. A fork that retypes a directive from the skeleton table drops its
@@ -1186,7 +1199,12 @@ answer by looking, at a named location — not "this may have implications".
 
 ## Step H: Narrate the leftovers
 
-**Leftovers is a small chapter for small things.** Exactly two kinds of change belong here:
+**An empty Leftovers chapter is a success — omit the directive.** If every change belonged to
+a named topic, the clustering did its job; there is nothing to put here and nothing downstream
+minds its absence. Do not manufacture a chapter to have one.
+
+**Otherwise it is a small chapter for small things.** Exactly two kinds of change belong
+here:
 
 1. **Changes too slight, or purely mechanical, to be worth a chapter** — a `.gitignore`
    line, an editor config, a version bump, a lint rule; and a lockfile refresh, generated
@@ -1234,7 +1252,14 @@ overview is still chapter 1 in the document.
     One half-line per chapter, saying what it is about. The sidebar gives their
     names; this gives their purpose, which is how a reader decides what to read.
 
-**Rank those pointers by `%blast` and then by evidence.** Each came from a fork that saw
+**Rank those pointers by `%blast`, then by reach — and expect reach to do the real sorting.**
+On a diff to a library, "a new error on a path that previously succeeded is always wide" plus
+"public API" catches nearly everything: one real tour came out nine `wide`, one `moderate`,
+six `narrow`, so the level separated almost nothing at the top. That is the rule working, not
+failing. What breaks the tie is the evidence underneath it: how many call sites the chapter
+reaches, how many of them this diff does *not* touch, and whether the effect is observable
+outside the process — on the wire, in the database, on a rendered page — rather than only to
+callers. Rank on that. Each came from a fork that saw
 one chapter; you have seen none of them at depth, so you cannot compare their severity by
 reading them. What you do hold is every chapter's blast level — the one judgement made on
 comparable terms across the whole tour — so a `wide` chapter's pointer outranks a `narrow`
@@ -1294,9 +1319,18 @@ warning**: a note is a check that cannot tell right from wrong (a deliberate re-
 exactly like an off-by-one), so it is printed and never refuses. Read the notes; they are
 not a gate. It writes the
 file, says on stderr what is wrong, prints **nothing on stdout**, and exits 1. Exit 0 with a
-path on stdout is the only signal that the report is whole; the path in a refusal message is
-there so you can open the file, not so you can hand it over. Fix, rebuild, and only then say
-three things and stop:
+path on stdout is the only signal that the report is whole.
+
+**There are two refusals, and they leave you in different places:**
+
+- **Exit 6 — the narration is wrong.** A spec that does not resolve, a reference that names
+  nothing. Validation runs before rendering, so **nothing is written**: there is no file at
+  the out-path, and telling the reader there is one would be a lie. Fix and rebuild.
+- **Exit 1 — `--final` refused a report it did build.** Unshown lines, pending prose, a
+  warning. The file exists and the message names it, so you can open it and look; the path
+  is there for you, not to hand over.
+
+Fix, rebuild, and only then say three things and stop:
 
 - **What the page has**, in a clause: chapters in the sidebar, a viewed mark on every change.
 - **Invite questions.** They can ask about anything they have just read, and **every change

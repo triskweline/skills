@@ -27,6 +27,7 @@ Selectors, ready to paste:
 """
 
 import os
+import re
 import sys
 
 # stdout is block-buffered when piped while stderr never is, so a summary
@@ -76,6 +77,27 @@ def _renames(files):
     return 0
 
 
+# A path argument may also name one hunk, or one slice of one, in exactly the syntax a
+# narration uses: `src/a.js:687` and `src/a.js:687#1-120`. Without it the only way to read
+# part of a 28 KB hunk is to print all of it and pipe through sed — twice, once per half,
+# with no header the second time.
+SELECTOR = re.compile(r'^(?P<path>.+?):(?P<key>\d+)(?:#(?P<lo>\d+)-(?P<hi>\d+))?$')
+
+
+def _split_targets(args):
+    """(plain path prefixes, [(path, key, lo, hi)])."""
+    paths, sels = [], []
+    for a in args:
+        m = SELECTOR.match(a)
+        if m:
+            sels.append((m.group('path'), m.group('key'),
+                         int(m.group('lo')) if m.group('lo') else None,
+                         int(m.group('hi')) if m.group('hi') else None))
+        else:
+            paths.append(a)
+    return paths, sels
+
+
 def main(argv):
     body = renames = False
     rest, skip = [], []
@@ -99,6 +121,7 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
     src, prefixes = rest[0], rest[1:]
+    prefixes, selectors = _split_targets(prefixes)
     if not os.path.isfile(src):
         print('tour-hunks: no such patch file: %s' % src, file=sys.stderr)
         return 2
@@ -106,13 +129,26 @@ def main(argv):
     if bad:
         return bad
 
+    named = {path for path, _, _, _ in selectors}
     files = [f for f in p.files
-             if (not prefixes or any(f.path.startswith(x) for x in prefixes))
+             if (not prefixes and not selectors
+                 or any(f.path.startswith(x) for x in prefixes)
+                 or f.path in named)
              and not any(f.path.startswith(x) for x in skip)]
     if not files:
         print('tour-hunks: nothing in the patch matches %s'
-              % (' '.join(prefixes) or '(the whole patch)'), file=sys.stderr)
+              % (' '.join(prefixes + [p_ for p_, _, _, _ in selectors])
+                 or '(the whole patch)'), file=sys.stderr)
         return 3
+    for path, key, _, _ in selectors:
+        fc = p.file(path)
+        if fc is None:
+            print('tour-hunks: no file %r in the patch' % path, file=sys.stderr)
+            return 3
+        if p.hunk(path, key) is None:
+            print('tour-hunks: no hunk at +%s in %s. Its hunks start at %s'
+                  % (key, path, ', '.join(fc.keys)), file=sys.stderr)
+            return 3
 
     if renames:
         return _renames(files)
@@ -135,7 +171,14 @@ def main(argv):
         if fc.old_path:
             note += ' · was %s' % fc.old_path
         print('\n■ %s · %s' % (fc.path, note))
+        want = [(k, lo, hi) for path, k, lo, hi in selectors if path == fc.path]
         for h in fc.hunks:
+            slice_ = None
+            if want:
+                hit = [(lo, hi) for k, lo, hi in want if k == h.key]
+                if not hit:
+                    continue
+                slice_ = hit[0]
             runs = h.runs
             shape = '%d body line%s' % (len(h.lines), '' if len(h.lines) == 1 else 's')
             if len(runs) > 1:
@@ -146,7 +189,10 @@ def main(argv):
                     '%d-%d' % r if r[0] != r[1] else str(r[0]) for r in runs))
             print('  @%s · %s · %s' % (h.key, shape, h.heading))
             if body:
+                lo, hi = (slice_ or (None, None))
                 for i, line in enumerate(h.lines, 1):
+                    if lo is not None and not lo <= i <= hi:
+                        continue
                     print('%5d %s%s' % (i, line.kind, line.text))
 
     if body:

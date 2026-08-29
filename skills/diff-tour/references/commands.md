@@ -106,9 +106,15 @@ created is the tour's own leftover — the removal command is on stderr, and Ste
 
 ## `bin/tour-hunks.py` — a patch → what it holds
 
-    bin/tour-hunks.py [--body|--renames] <patch> [<path-prefix> …] [--not <path-prefix> …]
+    bin/tour-hunks.py [--body|--renames] <patch> [<path-prefix>|<selector> …] [--not <path-prefix> …]
 
 A bare path argument is a **prefix**, so `src/` selects a subtree and `src/a.js` one file.
+
+**A path argument may also be a selector**, in exactly the syntax a narration uses:
+`src/a.js:687` is one hunk, `src/a.js:687#1-120` is a slice of it. That is how you read half
+of a 28 KB hunk without printing all of it twice, and it is the only way to give `--body` a
+sub-file target — a prefix cannot. An unknown path or hunk exits 3 rather than printing
+nothing.
 
 | Flag | Effect |
 |---|---|
@@ -175,7 +181,7 @@ Those hunks are the mechanical tier — one caption naming the swap, no individu
 
 ## `bin/tour-skeleton.py` — check a skeleton, label it, print the table
 
-    bin/tour-skeleton.py <patch> <narration> [--root DIR]
+    bin/tour-skeleton.py <patch> <narration> [--root DIR] [--labels h1,h2,…]
 
 `--root` is the checkout `%quote` reads from; default is the current directory.
 
@@ -199,6 +205,11 @@ After the table, when there is more than one cluster chapter holding blocks, it 
 the biggest single chapter, or a sixth of all the blocks, whichever is larger. The first is
 the floor on wall clock however many forks you spawn; the second stops a dozen small chapters
 from suggesting a dozen forks, each paying a context re-prefill to save almost nothing.
+
+**`--labels h39,h70,h115` prints just those rows** — label, code, caption, location and the
+chapter each sits in — instead of the whole table. Step I says to read a label's caption
+before citing it; on a report with a hundred labels that check has to be one command, or it
+loses to citing from memory. Exit 1 if any label does not exist.
 
 **To stderr:** how many blocks were labelled, whether every changed line is placed, how many
 places still need prose, and whether any `[[label]]` does not resolve yet.

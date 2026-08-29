@@ -50,7 +50,6 @@ git() {
 OUT="$1"; TARGET="${2:-}"
 # Everything after -- is a pathspec, passed to git and reported in the summary.
 PATHS=()
-NARROWED=          # set only where the pathspec was actually applied
 
 # Four target forms cannot take a pathspec: a patch file is copied through, and the
 # forge CLIs hand back a whole diff. Narrowing has to happen *in the patch*, because
@@ -112,9 +111,9 @@ git_ref() {
   && { git -C "$REPO" show-ref --verify --quiet "refs/heads/$1" \
     || git -C "$REPO" show-ref --verify --quiet "refs/remotes/origin/$1"; }; then
     require_default_branch
-    git -C "$REPO" diff "$DB...$1" -- "${PATHS[@]}" > "$OUT"; NARROWED=1                      # a branch: three dots
+    git -C "$REPO" diff "$DB...$1" -- "${PATHS[@]}" > "$OUT"                      # a branch: three dots
   else
-    git -C "$REPO" diff "$1^..$1" -- "${PATHS[@]}" > "$OUT"; NARROWED=1                      # one commit
+    git -C "$REPO" diff "$1^..$1" -- "${PATHS[@]}" > "$OUT"                      # one commit
   fi
 }
 
@@ -123,10 +122,10 @@ case "$TARGET" in
     require_default_branch
     base=$(git -C "$REPO" merge-base --fork-point "$DB" HEAD 2>/dev/null \
         || git -C "$REPO" merge-base "$DB" HEAD)
-    git -C "$REPO" diff "$base..HEAD" -- "${PATHS[@]}" > "$OUT"; NARROWED=1
+    git -C "$REPO" diff "$base..HEAD" -- "${PATHS[@]}" > "$OUT"
     # Uncommitted work is part of "what I am looking at", so fold it in.
     if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no)" ]; then
-      git -C "$REPO" diff "$base" -- "${PATHS[@]}" > "$OUT"; NARROWED=1       # one coherent diff, base -> working tree
+      git -C "$REPO" diff "$base" -- "${PATHS[@]}" > "$OUT"       # one coherent diff, base -> working tree
       echo "tour-fetch: included uncommitted changes" >&2
     fi
     # A brand-new file is invisible to `git diff`, so it would be missing from the
@@ -161,7 +160,7 @@ case "$TARGET" in
     num=$(printf '%s' "$TARGET" | sed -E 's|.*/merge_requests/([0-9]+).*|\1|')
     glab mr diff "$num" --repo "$slug" --raw > "$OUT" ;;
   *..*)
-    git -C "$REPO" diff "$TARGET" -- "${PATHS[@]}" > "$OUT"; NARROWED=1 ;;
+    git -C "$REPO" diff "$TARGET" -- "${PATHS[@]}" > "$OUT" ;;
   [0-9]*)
     if [ -n "${TARGET//[0-9]/}" ]; then
       # Digits plus something else — a sha like 9290f61a, not a PR number.
@@ -217,4 +216,9 @@ esac
 
 echo "$OUT"
 echo "tour-fetch: $(grep -c '^@@' "$OUT") hunks, $(grep -c '^diff --git' "$OUT") files -> $OUT" >&2
-[ -z "$NARROWED" ] || echo "tour-fetch: narrowed to ${PATHS[*]} — say so in the overview" >&2
+# Every target form that cannot apply a pathspec exits 2 above, so reaching here with a
+# non-empty PATHS means it was applied. A flag saying "this branch accepts a pathspec" is
+# not the same claim, and setting one unconditionally announced a narrowing on every
+# plain range: "narrowed to  — say so in the overview", with nothing between "to" and the
+# dash.
+[ ${#PATHS[@]} -eq 0 ] || echo "tour-fetch: narrowed to ${PATHS[*]} — say so in the overview" >&2

@@ -375,14 +375,20 @@ figcaption .tools {
   display: flex; align-items: center; gap: .4rem;
 }
 
-.tag {
+/* Scoped to .tools, and it must stay scoped: Prism's markup grammar emits
+   <span class="token tag"> for every HTML tag it highlights, so a bare `.tag` rule here
+   reaches inside every diff. It did — `text-transform: uppercase` rewrote every tag in
+   an HTML or markdown hunk as <DIV CLASS="PILLS">, which reads as though the diff
+   contained code nobody wrote. */
+.tools .tag {
   font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
   padding: .3rem .42rem; border-radius: 4px;
   color: var(--muted); background: var(--bg); border: 1px solid var(--line);
 }
-.tag.added { color: var(--blast-narrow); border-color: var(--add-edge); }
-.tag.deleted { color: var(--blast-wide); border-color: var(--del-edge); }
-.tag.moved, .tag.copied { color: var(--accent); border-color: var(--accent); }
+.tools .tag.added { color: var(--blast-narrow); border-color: var(--add-edge); }
+.tools .tag.deleted { color: var(--blast-wide); border-color: var(--del-edge); }
+.tools .tag.moved,
+.tools .tag.copied { color: var(--accent); border-color: var(--accent); }
 
 button.seen {
   font: 11.5px/1 var(--sans); color: var(--muted);

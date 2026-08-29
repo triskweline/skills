@@ -112,7 +112,10 @@ cannot have one name.
 - Under `%chapter`: the chapter's introductory paragraph.
 - Under `%blast`: the evidence for that level.
 - **Unindented under `%beat`**: the beat's narration. Renders in the left column, beside
-  the code, and stays there as the reader scrolls.
+  the code, and stays there as the reader scrolls. **A beat may carry no blocks at all** —
+  one whose prose signposts a consequence whose evidence sits in another chapter is
+  legitimate, renders as prose with nothing beside it, and should point at that evidence
+  with `[[label]]`.
 - **Indented under a block**: that block's own prose — the paragraph version of its
   caption. Renders above that block's diff, in the code column. It is part of the block,
   so moving the block moves it.
@@ -146,6 +149,12 @@ first is the one to reach for:
   block 2.1 is caught and every version number is left alone.
 - **Or escape the marker:** `\*`, `` \` ``, `\[`, `\]`, `\\` are those characters
   literally. Use this only where backticks would be wrong — quoting markdown itself, say.
+
+**A `](#…)` link is read as a block reference only when it names one of this report's own
+anchors** — `#h12` or `#ch3`. Any other anchor is someone else's: a report quoting a real
+markdown anchor writes `[Leave it to the minifier](#leave-it-to-the-minifier)` and means a
+heading in the file being toured. Those are left alone and get the "link the report cannot
+follow" note, not a refusal.
 
 **Links reach the reader only as `#label`, `http(s)://…` or `mailto:`.** The report is one
 file, opened anywhere, so a repo-relative path like `docs/testing.md` cannot be followed
