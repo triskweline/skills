@@ -36,6 +36,11 @@
   --blast-narrow: #2da44e;
   --blast-moderate: #bf8700;
   --blast-wide: #cf222e;
+  /* Backgrounds for white text, which the lighter tones above cannot carry: white on
+     #bf8700 is about 2.6:1. These are the same hues, darkened to clear 4.5:1. */
+  --badge-narrow: #1a7f37;
+  --badge-moderate: #9a6700;
+  --badge-wide: #cf222e;
 
   --seen: #2c2;
   --badge: #6a737d;
@@ -173,15 +178,16 @@ body {
    cannot use the colour. */
 #nav li a .b {
   font: 600 9.5px/1 var(--sans); letter-spacing: .04em;
-  width: 1.25em; height: 1.25em; flex: 0 0 auto;
+  width: 1.35em; height: 1.35em; flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 3px; border: 1px solid currentColor; opacity: .85;
+  border-radius: 3px; color: #fff;
 }
-#nav li a .b:empty { display: none; }
-#nav li a .b.narrow { color: var(--blast-narrow); }
-#nav li a .b.moderate { color: var(--blast-moderate); }
-#nav li a .b.wide { color: var(--blast-wide); }
-#nav li a:hover .b, #nav li a.here .b { opacity: 1; }
+/* A badge that is empty still holds its column, so the badges of the chapters that do
+   have a level stay in one line down the sidebar. */
+#nav li a .b:empty { background: none; }
+#nav li a .b.narrow { background: var(--badge-narrow); }
+#nav li a .b.moderate { background: var(--badge-moderate); }
+#nav li a .b.wide { background: var(--badge-wide); }
 #nav li a[aria-current] {
   color: var(--accent); background: var(--accent-soft);
   border-left-color: var(--accent); font-weight: 550;

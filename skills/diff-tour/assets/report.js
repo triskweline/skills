@@ -187,8 +187,12 @@
       var li = document.createElement('li');
       var a = document.createElement('a');
       a.href = '#' + ch.id;
+      /* The badge goes last so it pins to the right edge. Between the title and the
+         count it would shift left and right as the count's digit width changed —
+         "3/7" against "12/159" — and a column of badges is only scannable if it is
+         actually a column. */
       a.innerHTML = '<span class="n"></span><span class="t"></span>'
-                  + '<span class="b"></span><span class="c"></span>';
+                  + '<span class="c"></span><span class="b"></span>';
       a.querySelector('.n').textContent = num ? num.textContent : String(i + 1);
       a.querySelector('.t').textContent = title.textContent.trim();
       /* The blast level, so a reviewer choosing what to read can see the risk without
