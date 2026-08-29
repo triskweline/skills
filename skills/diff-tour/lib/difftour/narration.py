@@ -96,6 +96,12 @@ class Beat:
     line: int
     prose: list = field(default_factory=list)      # markdown lines, left column
     items: list = field(default_factory=list)      # Component
+    # A chapter's level is a level for the whole chapter, and risk is rarely spread
+    # evenly across one: five beats of plumbing and one where the key is built. A beat
+    # may carry the level too, meaning "this is where the chapter's level comes from",
+    # so a reader inside a wide chapter can tell which part earned it.
+    blast_level: str = ''
+    blast: list = field(default_factory=list)
 
 
 @dataclass
@@ -139,7 +145,7 @@ LABEL = re.compile(r'(?:(?<=\s)|^)@([A-Za-z][A-Za-z0-9_-]*)(?=\s|$)')
 # two shapes this skill actually mints — `#h12` and `#ch3`. Everything else falls through
 # to the "link the report cannot follow" note, which is the correct diagnosis and does
 # not block the build.
-REF = re.compile(r'\[\[([A-Za-z][A-Za-z0-9_-]*)\]\]|\]\(#((?:h|ch)\d+)\)')
+REF = re.compile(r'\[\[([A-Za-z][A-Za-z0-9_-]*)\]\]|\]\(#((?:h|ch)\d+|b\d+-\d+)\)')
 
 
 def _take_label(spec):
@@ -289,15 +295,26 @@ def parse(text):
             if name == 'blast':
                 if chapter.kind != 'chapter':
                     err(i, '%%blast belongs to a cluster chapter, not to %s' % chapter.kind)
-                if beat is not None:
-                    err(i, '%blast belongs above the beats, right after the chapter intro')
                 if rest not in BLAST_LEVELS:
                     err(i, '%%blast wants one of %s, not %r'
                         % (' | '.join(BLAST_LEVELS), rest))
-                if chapter.blast_level:
-                    err(i, 'this chapter already has a %blast')
-                chapter.blast_level = rest if rest in BLAST_LEVELS else 'moderate'
-                aim(chapter.blast)
+                level = rest if rest in BLAST_LEVELS else 'moderate'
+                if beat is None:
+                    if chapter.blast_level:
+                        err(i, 'this chapter already has a %blast')
+                    chapter.blast_level = level
+                    aim(chapter.blast)
+                else:
+                    # Under a beat it says where the chapter's level comes from. One per
+                    # chapter: marking every beat says the same as marking none.
+                    if beat.blast_level:
+                        err(i, 'this beat already has a %blast')
+                    elif any(b.blast_level for b in chapter.beats if b is not beat):
+                        err(i, 'another beat in this chapter already carries a %blast. '
+                               'One beat may say where the chapter\'s level comes from; '
+                               'marking several says the same as marking none')
+                    beat.blast_level = level
+                    aim(beat.blast)
                 continue
 
             if name == 'beat':
@@ -496,6 +513,24 @@ def _check_shape(rep):
             out.append(Problem(ch.line, 'a cluster chapter opens with an introductory '
                                         'paragraph, before its beats',
                                fatal=False, premature=True))
+        for b in ch.beats:
+            if not b.blast_level:
+                continue
+            # A beat says where the chapter's level comes from, so it cannot exceed it —
+            # that would be a chapter understating its own worst part.
+            if BLAST_LEVELS.index(b.blast_level) > BLAST_LEVELS.index(
+                    ch.blast_level or 'narrow'):
+                out.append(Problem(
+                    b.line,
+                    'this beat is %%blast %s but its chapter is %s. A beat marks where '
+                    'the chapter\'s level comes from, so the chapter has to be at least '
+                    'as high.' % (b.blast_level, ch.blast_level or 'unset')))
+            if not ''.join(b.blast).strip():
+                out.append(Problem(
+                    b.line,
+                    'this beat\'s %%blast %s has no evidence under it. Marking the beat '
+                    'says "the risk is here"; the prose says why.' % b.blast_level,
+                    fatal=False, premature=True))
         if ch.blast_level and not ''.join(ch.blast).strip():
             # A level with no evidence is the boilerplate this section exists to
             # prevent: it renders as a coloured box saying WIDE BLAST RADIUS and
@@ -652,6 +687,11 @@ def resolve(rep, patch, root='.', quotes=True):
             rep.refs[comp.label] = comp.code
 
     chapters = {'ch%d' % ch.number for ch in rep.chapters}
+    # Beats are rendered with an id, so they are linkable — which is what lets the
+    # overview's "where to be careful" point at the beat that earned the level rather
+    # than name its chapter and leave the reader to hunt.
+    beats = {'b%d-%d' % (ch.number, i)
+             for ch in rep.chapters for i, _ in enumerate(ch.beats, 1)}
     # A block code that actually resolves. `3.2` in prose is a real mistake only when
     # there *is* a block 3.2 — otherwise it is a version number, which is the most
     # common N.N token there is and exactly what a reader expects in backticks. On a
@@ -717,7 +757,11 @@ def resolve(rep, patch, root='.', quotes=True):
                           'as the literal text and not as a link. A reference already '
                           'renders as code — drop the backticks.' % name, fatal=False)
                 continue
-            if name in rep.refs or name in chapters:
+            if name in rep.refs or name in chapters or name in beats:
+                continue
+            if re.match(r'^b\d+-\d+$', name):
+                err(line, 'there is no beat %s. Beats are numbered b<chapter>-<n> in '
+                          'the order they appear.' % name)
                 continue
             if name in seen:
                 err(line, '[[%s]] names a block that has no code — a %%quote or %%code '

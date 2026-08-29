@@ -565,6 +565,21 @@ who can reach the path. Anyone using the API in the ordinary way is wide. A comb
 requiring two deprecated options and an undocumented entry point is not, however technically
 breaking it is.
 
+**Mark the beat the level came from.** A chapter is a topic, and risk is rarely spread
+evenly across a topic: five beats of plumbing and one where the key is built. Put a second
+`%blast` under that beat, with its own evidence, and the reader inside a `wide` chapter can
+see which part earned it instead of re-reading six beats to find out.
+
+    %beat The key itself
+    Prose.
+    %blast wide
+    A wrong key serves one user's content to another, and nothing would report it.
+
+**At most one beat per chapter**, and never higher than the chapter's own level — marking
+every beat says exactly what marking none says. Skip it when a chapter's beats really do
+carry the same risk. This is not an extra judgement: it is the one you already make when you
+report your risk pointers, written where it survives.
+
 **Do not round up.** If it is arguable, pick the level that describes the risk and let the
 evidence carry the nuance. Rounding up looks careful and is not: a report where everything
 is `wide` tells the reader nothing about where to spend their attention, which is the whole
@@ -1168,7 +1183,9 @@ applies either way. Tell each fork:
     finished sentences, because you will **paste them, not restate them** — you did not read
     the chapter, so rewording an admission can only make it less true;
   - **its risk pointers**: the one or two places in its chapter where a reviewer should look
-    hardest, which is what the overview's "where to be careful" is assembled from;
+    hardest, which is what the overview's "where to be careful" is assembled from. **Mark
+    that place in the narration too** — a `%blast` under the beat it names — so the pointer
+    survives past the three that reach the overview, and so it can be linked at;
   - **two or three sentences on what its chapter established**, which is what the wrap-up's
     causal chain is assembled from;
   - **any block it believes belongs in another chapter**, with the label. It must not move
@@ -1284,8 +1301,10 @@ overview is still chapter 1 in the document.
     or the data. "None — internal refactor" is a valid and useful answer.
 
     %beat Where to be careful
-    Up to 3 ranked pointers at where risk concentrates, each naming the chapter
-    it lives in. These are attention pointers, not verified bugs.
+    Up to 3 ranked pointers at where risk concentrates. Link each at the beat that
+    carries it — [the key builder](#b4-2) — not at the chapter around it, so a
+    reader with ten minutes lands on the code rather than on a heading. These are
+    attention pointers, not verified bugs.
 
     %beat The chapters
     One half-line per chapter, saying what it is about. The sidebar gives their
@@ -1296,7 +1315,18 @@ The level already carries exposure and likelihood; what separates two `wide` cha
 consequence, and the sharpest edge there is whether anyone would find out. A chapter whose
 failure mode is a crash on the next deploy ranks below one whose failure mode is the wrong
 user's content served from cache, or a migration that has already dropped the column. Put
-irreversible above silent, silent above loud. Each came from a fork that saw
+irreversible above silent, silent above loud.
+
+**Then check the two judgements against each other.** `%blast` and these pointers come from
+the same reading at different sizes, so they should not disagree:
+
+- **A pointer from a `narrow` chapter means one of them is wrong.** Either the chapter is
+  riskier than its level says, or the pointer is not among the three worst places in the
+  diff. Decide which, and fix that one.
+- **If no `wide` chapter contributed a pointer, they are measuring different things.** Find
+  out which is right before either goes in the report.
+
+Each pointer came from a fork that saw
 one chapter; you have seen none of them at depth, so you cannot compare their severity by
 reading them. What you do hold is every chapter's blast level — the one judgement made on
 comparable terms across the whole tour — so a `wide` chapter's pointer outranks a `narrow`

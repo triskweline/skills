@@ -170,9 +170,20 @@ def component(comp, seq=0, refs=None):
 
 def beat(b, ch, refs=None, seq=None):
     ident = 'b%d-%d' % (ch.number, ch.beats.index(b) + 1)
-    say = ['<h3 id="%s">%s</h3>' % (ident, inline(b.subtitle, refs))]
+    say = ['<h3 id="%s">%s%s</h3>'
+           % (ident,
+              ('<span class="beatblast %s" title="%s blast radius: this is where the '
+               'chapter\'s level comes from">%s</span>'
+               % (b.blast_level, b.blast_level, b.blast_level[0].upper()))
+              if b.blast_level else '',
+              inline(b.subtitle, refs))]
     if b.prose:
         say.append(prose(b.prose, refs))
+    if b.blast_level:
+        # Marking the beat says "the risk is here"; this says why, in the same voice the
+        # chapter's own blast box uses.
+        say.append('<aside class="blast beat %s" data-level="%s">%s</aside>'
+                   % (b.blast_level, b.blast_level, prose(b.blast, refs)))
     # A block's own prose is part of the block, so it is emitted with it — above the
     # diff, the way its caption is. There is nothing to guess about which block a
     # paragraph belongs to.

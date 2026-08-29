@@ -49,6 +49,10 @@ def _target(name, refs):
         return '#' + refs[name], refs[name]
     if re.match(r'^ch\d+$', name):
         return '#' + name, 'chapter ' + name[2:]
+    if re.match(r'^b\d+-\d+$', name):
+        # A beat, so the overview can point at the part that earned a level rather than
+        # at the chapter around it.
+        return '#' + name, 'chapter ' + name[1:].split('-')[0]
     return None, None
 
 

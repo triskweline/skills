@@ -59,7 +59,7 @@ which is what `tour-rest.py` uses so its output can be pasted whole.
 | `%chapter <title>` | a cluster chapter. One per cluster. |
 | `%leftovers <title>` | the leftovers chapter. At most one, immediately before `%closing`. |
 | `%closing <title>` | the wrap-up chapter. Exactly one, last. |
-| `%blast narrow\|moderate\|wide` | the blast-radius judgement. Required in a `%chapter`, not allowed in the other three. Prose under it is its evidence, and a level without it does not pass the final build. |
+| `%blast narrow\|moderate\|wide` | the blast-radius judgement. Required in a `%chapter`, not allowed in the other three. May also appear **under one `%beat`**, meaning "this is where the chapter's level comes from" — at most one beat per chapter, never above the chapter's own level. Prose under it is its evidence, and a level without it does not pass the final build. |
 | `%beat <subtitle>` | a beat: one idea, its prose, and its blocks. |
 | `%hunk <spec> [@<label>] = <caption>` | one diff block. |
 | `%file <path> [@<label>] = <caption>` | a change with no diff body: binary, pure rename, mode change. |
@@ -95,7 +95,11 @@ from position at build time.
     The guard is in [[h4]], and [so is its one caller](#h4).
 
 `[[h4]]` renders as a link showing whatever code `h4` resolves to; `[label](#h4)` is the
-same link with your own prose as its text. `[[ch5]]` and `[label](#ch5)` point at a chapter.
+same link with your own prose as its text. `[[ch5]]` and `[label](#ch5)` point at a chapter,
+and `[label](#b5-2)` points at a **beat** — the second beat of chapter 5, numbered in the
+order they appear. That is how the overview's "where to be careful" lands a reader on the
+part that carries the risk rather than on the chapter heading above it. A beat that does not
+exist is an error, like any other reference.
 
 **The order matters and only goes one way:** structure and captions → `tour-skeleton.py`
 mints the labels and prints them → prose that references them. A skeleton written with

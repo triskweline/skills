@@ -672,6 +672,98 @@ class TestNarrationStructure(unittest.TestCase):
         self.assertEqual(rep.components[0].caption, 'why a = b now')
 
 
+class TestBeatLevelBlast(unittest.TestCase):
+    """A beat may say where its chapter's level comes from.
+
+    A chapter is a topic and risk is not spread evenly across one: five beats of
+    plumbing and one where the key is built. The fork already makes this judgement when
+    it reports its risk pointers — this is where it survives.
+    """
+
+    P = patch.parse(DISTINCT)
+
+    def doc(self, *chapter_body):
+        return '\n'.join(
+            ['%report T', '%intro O', '%beat W', 'Prose.', '%chapter C', 'Premise.']
+            + list(chapter_body)
+            + ['%closing W', '%beat Check', 'Prose.'])
+
+    def check(self, *chapter_body):
+        rep, problems = narration.parse(self.doc(*chapter_body))
+        problems += narration.resolve(rep, self.P, '.')
+        return rep, problems
+
+    def test_a_beat_may_carry_the_level(self):
+        rep, problems = self.check(
+            '%blast wide', 'Serves content across users.',
+            '%beat Plumbing', 'Nothing depends on the name.', '%hunk z.js:1 = a',
+            '%beat The key', 'This is the one.', '%blast wide',
+            'A wrong key serves one user content belonging to another.',
+            '%hunk z.js:41 = b')
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+        beats = rep.chapters[1].beats
+        self.assertEqual('', beats[0].blast_level)
+        self.assertEqual('wide', beats[1].blast_level)
+
+    def test_a_beat_may_not_outrank_its_chapter(self):
+        rep, problems = self.check(
+            '%blast narrow', 'Only this file.',
+            '%beat The key', 'Prose.', '%blast wide', 'Evidence.',
+            '%hunk z.js:1 = a', '%hunk z.js:41 = b')
+        fatal = [x.text for x in problems if x.fatal]
+        self.assertTrue(any('has to be at least as high' in t for t in fatal), fatal)
+
+    def test_only_one_beat_per_chapter_may_carry_it(self):
+        """Marking every beat says exactly what marking none says."""
+        rep, problems = self.check(
+            '%blast wide', 'Evidence.',
+            '%beat One', 'Prose.', '%blast wide', 'Evidence.', '%hunk z.js:1 = a',
+            '%beat Two', 'Prose.', '%blast wide', 'Evidence.', '%hunk z.js:41 = b')
+        fatal = [x.text for x in problems if x.fatal]
+        self.assertTrue(any('already carries a %blast' in t for t in fatal), fatal)
+
+    def test_a_marked_beat_needs_evidence(self):
+        rep, problems = self.check(
+            '%blast wide', 'Evidence.',
+            '%beat The key', 'Prose.', '%blast wide',
+            '%hunk z.js:1 = a', '%hunk z.js:41 = b')
+        pending = [x.text for x in problems if x.premature]
+        self.assertTrue(any('no evidence under it' in t for t in pending), pending)
+
+    def test_it_reaches_the_page_as_a_marker_and_a_box(self):
+        rep, problems = self.check(
+            '%blast wide', 'Evidence.',
+            '%beat Plumbing', 'Prose.', '%hunk z.js:1 = a',
+            '%beat The key', 'Prose.', '%blast wide', 'A silent cross-user leak.',
+            '%hunk z.js:41 = b')
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+        html, _ = render.page(rep, self.P.stats(), 's', '2026-01-01', 'u')
+        # The report body only: the page also inlines the stylesheet, which names the
+        # same classes.
+        body = html[html.index('<!--REPORT-->'):html.index('<!--/REPORT-->')]
+        self.assertIn('<span class="beatblast wide"', body)
+        self.assertIn('class="blast beat wide"', body)
+        self.assertEqual(1, body.count('beatblast'))     # only the marked beat
+
+    def test_a_pointer_can_link_at_a_beat(self):
+        rep, problems = self.check(
+            '%blast wide', 'Evidence.',
+            '%beat Plumbing', 'See [the key](#b2-2).', '%hunk z.js:1 = a',
+            '%beat The key', 'Prose.', '%hunk z.js:41 = b')
+        self.assertEqual([], [str(x) for x in problems if x.fatal])
+        html, _ = render.page(rep, self.P.stats(), 's', '2026-01-01', 'u')
+        self.assertIn('href="#b2-2"', html)
+        self.assertIn('id="b2-2"', html)
+
+    def test_a_link_to_a_beat_that_does_not_exist_is_refused(self):
+        rep, problems = self.check(
+            '%blast wide', 'Evidence.',
+            '%beat Plumbing', 'See [nothing](#b9-9).', '%hunk z.js:1 = a',
+            '%hunk z.js:41 = b')
+        fatal = [x.text for x in problems if x.fatal]
+        self.assertTrue(any('no beat b9-9' in t for t in fatal), fatal)
+
+
 class TestNarrationRejects(unittest.TestCase):
     def setUp(self):
         self.p = patch.parse(SIMPLE)
