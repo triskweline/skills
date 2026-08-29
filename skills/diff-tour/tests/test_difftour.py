@@ -464,6 +464,27 @@ class TestProseShapesRealNarrationsUse(unittest.TestCase):
         self.assertIn('href="#ch2"', html)
         self.assertIn('chapter 2', html)
 
+    def test_someone_elses_markdown_anchor_is_not_a_block_reference(self):
+        """A tour of documentation quotes real anchors, and one refused a whole build.
+
+        `](#anchor)` was claimed for any anchor starting with a letter, so a chapter
+        *about* markdown anchors wrote `[Leave it to the minifier](#leave-it-to-the-
+        minifier)` — inside backticks, which did not help, because the check runs over
+        raw prose — and the final build died on "names nothing", in prose a fork wrote
+        and the orchestrator never read.
+        """
+        html, fatal = self.render(
+            'The link it gains, `[Leave it](#leave-it-to-the-minifier)`, is a same-file '
+            'anchor in the guide.')
+        self.assertEqual([], fatal)
+
+    def test_this_reports_own_anchors_are_still_references(self):
+        html, fatal = self.render('See [the chapter](#ch2) for the rest.')
+        self.assertEqual([], fatal)
+        self.assertIn('href="#ch2"', html)
+        _, bad = self.render('See [nothing](#h99) for the rest.')
+        self.assertTrue(any('h99' in f for f in bad), bad)
+
     def test_a_reference_to_a_chapter_that_does_not_exist_is_refused(self):
         html, fatal = self.render('See [[ch99]] for the rest.')
         self.assertTrue(any('ch99' in f for f in fatal), fatal)
@@ -1376,6 +1397,21 @@ class TestHunksCommand(unittest.TestCase):
         out = self.run('src/many.js').stdout
         self.assertIn('2 runs: 2-3, 6-7', out)
 
+    def test_a_selector_reads_one_hunk_and_a_slice_of_one(self):
+        """`--body` had no sub-file target: a prefix cannot name a hunk, so reading half
+        of a 28 KB hunk meant printing all of it twice through sed."""
+        out = self.run('--body', 'src/deep/a.js:10').stdout
+        self.assertIn('keep one', out)
+        self.assertNotIn('src/deep/b.js', out)
+        sliced = self.run('--body', 'src/deep/a.js:10#3-4').stdout
+        self.assertIn('gone', sliced)            # body line 3
+        self.assertNotIn('keep one', sliced)     # body line 1, outside the slice
+
+    def test_a_selector_naming_no_such_hunk_is_refused(self):
+        r = self.run('--body', 'src/deep/a.js:999')
+        self.assertEqual(3, r.returncode)
+        self.assertIn('no hunk at', r.stderr)
+
     def test_the_list_says_what_a_full_read_would_cost(self):
         self.assertRegex(self.run('src/deep/a.js').stdout, r'\d+\.\d KB to read')
 
@@ -1521,6 +1557,17 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(2, r2.returncode, r2.stderr)
         self.assertIn('cannot be narrowed', r2.stderr)
         self.assertNotIn('narrowed to', r2.stderr)       # and it does not claim it did
+
+    def test_no_pathspec_means_no_claim_of_narrowing(self):
+        """The plain range is the most common target, and it said "narrowed to  —".
+
+        The flag it gated on meant "this branch accepts a pathspec", not "one was given",
+        so it was set on every range. Step C relays this output to the reader, so the
+        tour opened by announcing a restriction that did not exist.
+        """
+        r, _, _ = self.fetch('main..feature')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn('narrowed', r.stderr)
 
     def test_a_patch_file_without_a_pathspec_still_copies(self):
         r, out, _ = self.fetch('main..feature')
@@ -3148,6 +3195,59 @@ class TestCssDoesNotReachIntoDiffs(unittest.TestCase):
                 offenders.append(sel)
         self.assertEqual([], offenders,
                          'these rules also match Prism tokens inside every diff')
+
+
+class TestLabelLookup(unittest.TestCase):
+    """`--labels` prints the rows you asked for instead of the whole table.
+
+    Step I says to read a label's caption before citing it. On a report with a hundred
+    labels that check has to be one command, or it loses to citing from memory — which
+    is the failure Step I exists to prevent.
+    """
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def run_it(self, *args):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        src, doc = os.path.join(d, 'p.patch'), os.path.join(d, 'n.tour')
+        with open(src, 'w') as f:
+            f.write(DISTINCT)
+        with open(doc, 'w') as f:
+            f.write('\n'.join(
+                ['%report T', '%intro O', '%beat W', 'Prose.',
+                 '%chapter Only chapter', 'Premise.', '%blast narrow', 'E.',
+                 '%beat A', 'Prose.',
+                 '%hunk z.js:1 @h1 = the first change',
+                 '%hunk z.js:41 @h2 = the second change',
+                 '%closing W', '%beat C', 'Prose.']))
+        return subprocess.run(
+            [sys.executable, os.path.join(self.root, 'bin', 'tour-skeleton.py'),
+             src, doc] + list(args), capture_output=True, text=True, cwd=d)
+
+    def test_it_prints_only_the_labels_asked_for(self):
+        r = self.run_it('--labels', 'h2')
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertIn('the second change', r.stdout)
+        self.assertNotIn('the first change', r.stdout)
+        self.assertIn('Only chapter', r.stdout)      # and where it lives
+
+    def test_it_accepts_an_at_sign_and_a_list(self):
+        r = self.run_it('--labels', '@h1,@h2')
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertIn('the first change', r.stdout)
+        self.assertIn('the second change', r.stdout)
+
+    def test_a_label_that_does_not_exist_is_reported(self):
+        r = self.run_it('--labels', 'h1,h99')
+        self.assertEqual(1, r.returncode)
+        self.assertIn('no such label', r.stderr)
+        self.assertIn('h99', r.stderr)
+
+    def test_it_does_not_print_the_whole_table(self):
+        full = self.run_it().stdout
+        few = self.run_it('--labels', 'h1').stdout
+        self.assertLess(len(few), len(full))
 
 
 class TestScrub(unittest.TestCase):
