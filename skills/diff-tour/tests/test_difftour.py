@@ -3204,6 +3204,22 @@ class TestCssDoesNotReachIntoDiffs(unittest.TestCase):
         'namespace', 'prolog', 'doctype', 'cdata', 'char', 'parameter', 'method',
     }
 
+    def test_the_script_reads_the_attributes_the_builder_writes(self):
+        """The sidebar is built in JS from the report's own markup, so the two agree only
+        by convention. A renamed attribute breaks the nav silently — the badge simply
+        stops appearing, and no test that looks at the HTML alone would notice."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'assets', 'report.js'), encoding='utf-8') as f:
+            js = f.read()
+        with open(os.path.join(root, 'lib', 'difftour', 'render.py'), encoding='utf-8') as f:
+            py = f.read()
+        for attr in ('data-level', 'data-code', 'data-key'):
+            self.assertIn(attr, js, 'report.js no longer reads %s' % attr)
+            self.assertIn(attr, py, 'render.py no longer writes %s' % attr)
+        # And the badge reads the blast aside, which the builder emits per chapter.
+        self.assertIn('.blast[data-level]', js)
+        self.assertIn('class="blast %s"', py)
+
     def test_no_bare_rule_shares_a_name_with_a_prism_token(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, 'assets', 'report.css'), encoding='utf-8') as f:

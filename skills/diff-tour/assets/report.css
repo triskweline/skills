@@ -166,6 +166,22 @@ body {
 #nav li a .n { color: var(--faint); font: 500 11.5px/1.5 var(--mono); min-width: 1.1em; }
 #nav li a .t { flex: 1; }
 #nav li a .c { color: var(--faint); font: 11px/1.5 var(--mono); white-space: nowrap; }
+
+/* The chapter's blast level, as one letter. A reviewer scanning the sidebar for where to
+   spend a short review sees the risk without opening anything. Colour carries the same
+   meaning as the blast box in the chapter, and the letter carries it again for anyone who
+   cannot use the colour. */
+#nav li a .b {
+  font: 600 9.5px/1 var(--sans); letter-spacing: .04em;
+  width: 1.25em; height: 1.25em; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px; border: 1px solid currentColor; opacity: .85;
+}
+#nav li a .b:empty { display: none; }
+#nav li a .b.narrow { color: var(--blast-narrow); }
+#nav li a .b.moderate { color: var(--blast-moderate); }
+#nav li a .b.wide { color: var(--blast-wide); }
+#nav li a:hover .b, #nav li a.here .b { opacity: 1; }
 #nav li a[aria-current] {
   color: var(--accent); background: var(--accent-soft);
   border-left-color: var(--accent); font-weight: 550;

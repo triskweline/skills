@@ -187,9 +187,23 @@
       var li = document.createElement('li');
       var a = document.createElement('a');
       a.href = '#' + ch.id;
-      a.innerHTML = '<span class="n"></span><span class="t"></span><span class="c"></span>';
+      a.innerHTML = '<span class="n"></span><span class="t"></span>'
+                  + '<span class="b"></span><span class="c"></span>';
       a.querySelector('.n').textContent = num ? num.textContent : String(i + 1);
       a.querySelector('.t').textContent = title.textContent.trim();
+      /* The blast level, so a reviewer choosing what to read can see the risk without
+         opening the chapter. Read from the chapter's own %blast aside rather than
+         emitted twice, so the two can never disagree. */
+      var blast = ch.querySelector('.blast[data-level]');
+      var b = a.querySelector('.b');
+      if (blast) {
+        var level = blast.getAttribute('data-level');
+        b.textContent = level.charAt(0).toUpperCase();
+        b.className = 'b ' + level;
+        b.title = level + ' blast radius';
+        b.setAttribute('aria-label', level + ' blast radius');
+        li.dataset.level = level;
+      }
       li.appendChild(a);
       list.appendChild(li);
       links[ch.id] = a;
