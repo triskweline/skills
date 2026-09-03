@@ -13,19 +13,22 @@
   THE COMPONENTS, and where each comes from:
 
     h1 + p.meta + p.standfirst     the orchestrator's <h1>, the script's stats, fixed text
+    div.legend                     the five attention levels, fixed text
     div.summary                    the orchestrator's prose after its <h1>
     section.chapter > h2           a worker's <h2>; numbered by the script
     div.intro                      prose between the <h2> and the first <h3>
     section.beat                   a worker's <h3>: .say left (h3 + prose), .show right
       div.note                     the prose a worker wrote after a placeholder
       figure.hunk                  the placeholder, replaced with the real diff
-      figure.hunk.fishy            a placeholder written as `hunk h17 fishy: why`
-        aside.fishy                that "why", above the diff
+      figure.hunk.lvl-*            the placeholder's level: skip, note, fishy, hot
+        figcaption .lvl            the level, first thing in the header bar
+        aside.flag.*               the level's "why", above the diff
+    ol.heat                        one square per hunk under each chapter heading (report.js)
       figure.hunk.file             a hunk with no text body (binary, mode, rename)
     section.beat.solo              a beat with no hunks — full width
 
-  Every control — the chapter nav with its fishiness heat, the viewed toggles, the
-  theme switch — is injected by report.js, so the markup stays minimal.
+  Every control — the chapter nav with its heat strips, the scrutiny dial, the viewed
+  toggles, the theme switch — is injected by report.js, so the markup stays minimal.
 -->
 <html lang="en" data-uid="fixture">
 <head>
@@ -57,6 +60,13 @@
     <span class="bar"><i></i></span>
     <button class="plain reset" type="button" title="clear every viewed mark">reset</button>
     <button class="plain theme" type="button" title="light or dark">◐</button>
+    <div class="dial" role="group" aria-label="scrutiny">
+      <span class="lbl">open</span>
+      <button type="button" data-dial="skim" title="only hot and fishy hunks open">skim</button>
+      <button type="button" data-dial="review" title="also notes">review</button>
+      <button type="button" data-dial="thorough" title="everything but skips">thorough</button>
+      <button type="button" data-dial="everything" title="every hunk open">all</button>
+    </div>
   </div>
 </nav>
 
@@ -65,8 +75,15 @@
 <h1>Thread the tenant id through the cache key</h1>
 <p class="meta"><b>billing-api</b> · <b>12</b> files · <b class="added">+204</b> <b class="removed">−58</b> · <b>31</b> hunks · <code>main..HEAD</code> · 2026-08-25</p>
 <p class="standfirst">A fast, narrated tour through one change, for a human reviewing code they did not
-write. It groups the diff into topics and shows every hunk. A hunk marked <b>fishy</b> felt off on a
-first read; nothing was verified, and the judgement is yours.</p>
+write. It groups the diff into topics and shows every hunk, each with a first-read attention level.
+Nothing was verified, and the judgement is yours.</p>
+<div class="legend">
+  <div class="row"><span class="sq skip"></span><b>skip</b><span>A tool could have written it, or it is fallout of another hunk. Trust the description.</span></div>
+  <div class="row"><span class="sq"></span><b>read</b><span>Ordinary hand-written code. Read it once.</span></div>
+  <div class="row"><span class="sq note"></span><b>note</b><span>A choice or a nit to accept knowingly. The phrase says what to decide.</span></div>
+  <div class="row"><span class="sq fishy"></span><b>fishy</b><span>It may be wrong. Verify before approving.</span></div>
+  <div class="row"><span class="sq hot"></span><b>hot</b><span>A mistake here would be silent or irreversible. Read every line, however it looks.</span></div>
+</div>
 <div class="summary"><p>Cache entries were keyed by resource id alone, so two tenants asking for
 resource <code>7</code> shared one entry. This threads the tenant through every key and adds a
 backfill for the entries already written.</p></div>
@@ -86,8 +103,9 @@ backfill for the entries already written.</p></div>
     </div>
     <div class="show">
       <div class="note"><p>The four readers and writers, swapped for the accessor.</p></div>
-      <figure class="hunk" id="h1" data-key="deadbeef">
-        <figcaption><span class="where">src/unpoly/form.js:233 · <span class="sz">+4 −2</span></span><span class="tools"></span></figcaption>
+      <figure class="hunk lvl-hot" id="h1" data-key="deadbeef" data-level="4" data-reason="runs on every request">
+        <figcaption><span class="lvl">hot</span><span class="where">src/unpoly/form.js:233 · <span class="sz">+4 −2</span></span><span class="tools"></span></figcaption>
+        <aside class="flag hot"><p>Runs on every request; a wrong reader here lets every form through.</p></aside>
         <pre class="diff"><code class="language-diff-javascript diff-highlight">@@ -233,4 +233,6 @@ function fields
  function fields(root) {
 -  let fields = up.form.fields(root)
@@ -100,17 +118,29 @@ backfill for the entries already written.</p></div>
 </code></pre>
       </figure>
       <div class="note"><p>The disable path, same swap.</p></div>
-      <figure class="hunk fishy" id="h2" data-key="cafebabe">
-        <figcaption><span class="where">src/unpoly/form.js:410 · <span class="sz">+1 −1</span></span><span class="tools"><span class="tag fishy">fishy</span></span></figcaption>
-        <aside class="fishy"><p>readDisabled is called with a submitter that can be null two lines up.</p></aside>
+      <figure class="hunk lvl-fishy" id="h2" data-key="cafebabe" data-level="3" data-reason="submitter can be null">
+        <figcaption><span class="lvl">fishy</span><span class="where">src/unpoly/form.js:410 · <span class="sz">+1 −1</span></span><span class="tools"></span></figcaption>
+        <aside class="flag fishy"><p>readDisabled is called with a submitter that can be null two lines up.</p></aside>
         <pre class="diff"><code class="language-diff-javascript diff-highlight">@@ -410,3 +412,3 @@ function disable
    let submitter = form.querySelector('[type=submit]')
 -  if (submitter.disabled) return
 +  if (readDisabled(submitter)) return
 </code></pre>
       </figure>
-      <figure class="hunk file" id="h3" data-key="feedface">
-        <figcaption><span class="where">assets/logo@2x.png</span><span class="tools"><span class="tag added">added</span></span></figcaption>
+      <figure class="hunk lvl-plain" id="h5" data-key="0badf00d" data-level="1">
+        <figcaption><span class="lvl">read</span><span class="where">src/unpoly/params.rb:512 · <span class="sz">+2 −1</span></span><span class="tools"></span></figcaption>
+        <pre class="diff"><code class="language-diff-ruby diff-highlight">@@ -512,4 +512,5 @@ def self.from_form
+ def self.from_form(form, **options)
+   form = Element.get(form)
+-  new(form.serialize)
++  params = new(form.serialize)
++  params.merge(options)
+ end
+</code></pre>
+      </figure>
+      <figure class="hunk lvl-note file" id="h3" data-key="feedface" data-level="2" data-reason="a 2x asset with no 1x sibling">
+        <figcaption><span class="lvl">note</span><span class="where">assets/logo@2x.png</span><span class="tools"><span class="tag added">added</span></span></figcaption>
+        <aside class="flag note"><p>A 2x asset with no 1x sibling; fine if the layout only ever uses this size.</p></aside>
         <div class="binary">A binary file. A diff of bytes tells a reviewer nothing, so it is named, not shown.</div>
       </figure>
     </div>
@@ -129,8 +159,8 @@ backfill for the entries already written.</p></div>
   <section class="beat">
     <div class="say"><p>No topic in the change would lose these if it were reverted.</p></div>
     <div class="show">
-      <figure class="hunk" id="h4" data-key="12345678">
-        <figcaption><span class="where">.gitignore:17 · <span class="sz">+1</span></span><span class="tools"></span></figcaption>
+      <figure class="hunk lvl-skip" id="h4" data-key="12345678" data-level="0">
+        <figcaption><span class="lvl">skip</span><span class="where">.gitignore:17 · <span class="sz">+1</span></span><span class="tools"></span></figcaption>
         <pre class="diff"><code class="language-diff-none diff-highlight">@@ -17,1 +17,2 @@
  node_modules/
 +tmp/build/

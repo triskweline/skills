@@ -21,7 +21,7 @@ What a thankless job! Luckily, they have you. You will provide the human with a 
 
 **Narration**: Your tour must help the human follow and understand a large change by presenting smaller pieces in a logical order. For this you will cluster the hunks of a provided diff range into cohesive topics, find a human-friendly reading order and add some narration prose.
 
-**Fishiness:** You will tag each diff hunk with a "fishiness" factor. This is just your feeling / "Spidey sense" whether something *might* be wrong with this diff, and is worth a second look. This is not a code review! You will not verify your suspicion, that would take way too long. The fishiness badge is a quick and cheap vibes check to let the human know to take a closer look. If we print a wrong fishiness badge, no worries: Verification and judgement remains with the human.
+**Fishiness:** You will give each diff hunk an attention level, from "a tool could have written this, skip it" through "this may be wrong" to "a mistake here would be silent or irreversible, read every line". This is just your feeling / "Spidey sense" on a first read, and is worth exactly a second look. This is not a code review! You will not verify your suspicion, that would take way too long. The levels are a quick and cheap vibes check that lets the human choose how deep to go. If we print a wrong level, no worries: Verification and judgement remains with the human.
 
 ### What is NOT your job
 
@@ -48,7 +48,7 @@ Instead you deliver the tour as one self-contained HTML file.
 
 The file is assembled from **fragments**: each worker writes a plain HTML fragment for its topic into its own file, the orchestrating agent writes the opening fragment, and a script lays them out. Nobody ever re-reads a fragment, and nobody ever types out a diff hunk: fragments name hunks by id, and the script splices the real diff bytes in when assembling.
 
-Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, builds a sidebar with each chapter's fishiness heat, puts a beat's prose beside its hunks in two columns, highlights the diffs, and adds viewed marks and a theme switch. Fragments use only `<h2>`, `<h3>`, `<p>`, `<code>` and the hunk placeholder. Nothing else, no styling, no ids, no numbers.
+Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, puts a beat's prose beside its hunks in two columns, highlights the diffs, and adds viewed marks and a theme switch. From the one word you put in each placeholder, the page's own JavaScript draws a **heat strip** per chapter, one coloured square per hunk in reading order, in the sidebar and under the chapter heading, and offers the reader a **scrutiny dial** that collapses hunks below the level they care about. Fragments use only `<h2>`, `<h3>`, `<p>`, `<code>` and the hunk placeholder. Nothing else, no styling, no ids, no numbers.
 
 ## The helper script
 
@@ -91,8 +91,8 @@ Beat # One narration beat within a topic
 Hunk # One annotated diff hunk
 + id: string                 # h17, minted by the script
 + description: markdown      # describes what is done in that hunk
-+ fishiness_level: 'low' | 'high'  # low: `<!-- hunk h17 -->`, high: `<!-- hunk h17 fishy: reason -->`
-+ fishiness_reason: text     # required for high, absent for low; lives in the placeholder
++ attention_level: 'skip' | none | 'note' | 'fishy' | 'hot'  # one word in the placeholder
++ attention_reason: text     # required for note, fishy and hot; lives in the placeholder
 + diff_content: text         # spliced in by the script, never typed by an agent
 + path: string
 + starting_line_number: integer
@@ -266,37 +266,29 @@ Assign each topic hunk to exactly one narration beat.
 
 Don't do a deep analysis to assign hunks to beats. In particular, don't pay additional tool calls to better understand the codebase. When you're unsure, assign based on intuition.
 
-### Tag each hunk with fishiness factor
+### Give each hunk an attention level
 
-Tag each diff hunk with a "fishiness" level, which is one of:
+Every hunk gets one of five attention levels. The scale is not "how suspicious" but **how carefully the human should read this**. That is the one dimension the reader's scrutiny dial and the heat strips need, and it has room for two things suspicion cannot express: code that looks fine but everything stands on, and code a tool wrote that nobody needs to read.
 
-- "low": I would not stop here.
-- "high": Stop here, human, and this is why.
+| Level | Written as | The reviewer | Your one question |
+|---|---|---|---|
+| skip | `<!-- hunk h17 skip -->` | trusts your description, does not read the diff | Could a tool have written this, or is it pure fallout of another hunk? |
+| (none) | `<!-- hunk h17 -->` | reads once at normal speed | the default when no other question is a yes |
+| note | `<!-- hunk h17 note: why -->` | reads, then consciously decides; your phrase says what | Is there a choice or a nit here the reviewer should knowingly accept? |
+| fishy | `<!-- hunk h17 fishy: why -->` | verifies before approving | Can I name a specific way this is wrong? |
+| hot | `<!-- hunk h17 hot: why -->` | reads line by line, however it looks | If this were subtly wrong, would the mistake be impossible to undo, or go unnoticed while affecting everyone? |
 
-There is no middle level on purpose. A badge that asks for attention always says what to look at, and a badge that does not is just "low". When you are torn, ask yourself whether you can name what feels off in one phrase. If you can, it is "high". If you cannot, it is "low".
+**Classify as a cascade, top down, and stop at the first yes: hot, fishy, note, skip, else nothing.** Every question is answered from the hunk itself and what you already know. Most hunks fall through in a glance.
 
-This is not a code review! This is a quick and cheap "Spidey sense" whether something *might* be wrong with this diff. The fishiness badge is a quick and cheap vibes check to let the human know to take a closer look.
+Hot is about the cost of a mistake, not about how important or how public the code is. A broken public method fails loudly and a revert fixes it; that is fishy at most, and if the method is rarely used it is nothing. Hot is an auth or permission check that would fail open silently, a verification that would accept bad input without complaint, a gate on every request, a data rewrite, a delete, a payment, a sent email. Do not classify by file type or by category of code; ask the question.
 
-Do not verify any of your suspicion, work on intuition and what you already know about the code base.
+Note collects three things that all get the same reviewer action: nitpicks (naming, a hardcoded string, a stray comment, an unused dependency), decisions the author made that the reviewer must accept knowingly (a default that changes behaviour for everyone, a deliberately omitted exemption, an input limit), and missing coverage for something significant.
 
-If we print a wrong fishiness badge, no worries: Verification and judgement remains with the human.
+Skip is lockfiles, schema dumps, renames, `include` lines, locale strings, path helpers, and any hunk that exists only because another hunk exists. It is the one level that saves the reader time, so use it freely where it is true.
 
-Examples for "low" fishiness:
+This is not a code review! You do not verify anything; work on intuition and what you already know about the code base. If a level is wrong, no worries: the judgement remains with the human.
 
-- An internal method was renamed. We may assume that an agent or human has adapted callers.
-- A test for another code change (we assume it passes).
-- Any changes clearly downstream of another change.
-- Trivial preparatory work or clean-up work.
-
-Examples for "high" fishiness:
-
-- Code changes that doesn't seem to fit with what you learned so far about this code base
-- A typo that can change behaviour: an identifier, a hash key, a config key, a route, a string that something else compares against. Typos in comments and prose are low.
-- A public and commonly used API was changed in a backwards incompatible way, and unless all callers were adjusted, consequences would be high
-- Shaped like vulnerable code (e.g. XSS injections)
-- Significant changes for which you have seen no test coverage so far
-
-Every "high" badge comes with a short explanation what it is that feels off, one phrase or one sentence. No explanation, no "high". It is written into the hunk's placeholder: `<!-- hunk h17 fishy: the callback can be null two lines up -->`. Plain text, no HTML, no `--` inside.
+**Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. For hot the reason names what a mistake would cost: `hot: the gate on every request`. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
 
 ### Write the topic fragment
 
@@ -314,6 +306,12 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 
 <!-- hunk h4 fishy: what feels off, in one phrase or sentence -->
 <p>Description of hunk h4.</p>
+
+<!-- hunk h5 skip -->
+<p>The lockfile fallout of h1.</p>
+
+<!-- hunk h6 hot: the gate on every request -->
+<p>Description of hunk h6.</p>
 
 <h3>Next beat</h3>
 ...

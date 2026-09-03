@@ -3,11 +3,13 @@
 Imported by vibe-hunks.py for `--assemble`; not a script of its own.
 
 Workers write plain fragments: <h2> per topic, <h3> per beat, <p> prose, and a
-`<!-- hunk h17 -->` placeholder where a hunk belongs (`<!-- hunk h17 fishy: why -->`
-when it feels off). Everything else on the page is mechanical and happens here:
-chapter numbers, ids, the meta line, the two-column layout, the figures with the
-real diff bytes, syntax highlighting, the sidebar. Nothing in this file decides
-anything about the tour; it only lays out what the workers wrote.
+`<!-- hunk h17 -->` placeholder where a hunk belongs. The placeholder may carry the
+hunk's attention level: `<!-- hunk h17 skip -->`, `<!-- hunk h17 note: why -->`,
+`<!-- hunk h17 fishy: why -->`, `<!-- hunk h17 hot: why -->`. Everything else on the
+page is mechanical and happens here: chapter numbers, ids, the meta line, the
+two-column layout, the figures with the real diff bytes, syntax highlighting, the
+sidebar with its heat strips. Nothing in this file decides anything about the tour;
+it only lays out what the workers wrote.
 
 Standard library only. Works on Python 3.8+.
 """
@@ -110,7 +112,11 @@ def prism_bundle():
 
 # ------------------------------------------------------------------ fragments
 
-PLACEHOLDER = re.compile(r'<!--\s*hunk\s+(h\d+)(?:\s+fishy\b\s*:?\s*(.*?))?\s*-->', re.S | re.I)
+PLACEHOLDER = re.compile(
+    r'<!--\s*hunk\s+(h\d+)(?:\s+(skip|note|fishy|hot)\b\s*:?\s*(.*?))?\s*-->', re.S | re.I)
+
+# Attention levels, low to high. The number is what the page sorts and filters by.
+LEVELS = {'skip': 0, None: 1, 'note': 2, 'fishy': 3, 'hot': 4}
 WRAPPERS = re.compile(r'</?(?:section|article|main|body|html|head|div)\b[^>]*>|<!doctype[^>]*>', re.I)
 NUMBERING = re.compile(r'^\s*\d+(?:\.\d+)*[.):]?\s+')
 H1 = re.compile(r'<h1[^>]*>(.*?)</h1>', re.S | re.I)
@@ -135,12 +141,13 @@ def _prose(raw):
 
 
 def _beat(title, raw):
-    """One beat: its own prose, then (hunk id, fishy reason, note prose) items."""
+    """One beat: its own prose, then (hunk id, level, reason, note prose) items."""
     parts = PLACEHOLDER.split(raw)
     items = []
-    for i in range(1, len(parts), 3):
-        reason = parts[i + 1]
-        items.append((parts[i], reason.strip() if reason is not None else None, _prose(parts[i + 2])))
+    for i in range(1, len(parts), 4):
+        level = parts[i + 1].lower() if parts[i + 1] else None
+        reason = (parts[i + 2] or '').strip() if level else ''
+        items.append((parts[i], level, reason, _prose(parts[i + 3])))
     return {'title': _title(title) if title else '', 'say': _prose(parts[0]), 'items': items}
 
 
@@ -212,7 +219,7 @@ def _key(h):
     return hashlib.md5(('\n'.join(h.body) or (h.path + '\n'.join(h.header))).encode('utf-8')).hexdigest()[:10]
 
 
-def figure(h, ident, reason):
+def figure(h, ident, level, reason):
     kind = _kind(h)
     add = sum(1 for l in h.body[1:] if l.startswith('+'))
     rem = sum(1 for l in h.body[1:] if l.startswith('-'))
@@ -224,16 +231,18 @@ def figure(h, ident, reason):
     tags = []
     if kind in ('added', 'deleted', 'moved'):
         tags.append('<span class="tag %s">%s</span>' % (kind, kind))
-    fishy = reason is not None
-    if fishy:
-        tags.append('<span class="tag fishy">fishy</span>')
-    out = ['<figure class="hunk%s%s" id="%s" data-key="%s">'
-           % (' fishy' if fishy else '', ' file' if not h.body else '', ident, _key(h)),
-           '<figcaption><span class="where">%s</span><span class="tools">%s</span></figcaption>'
-           % (where, ''.join(tags))]
-    if fishy:
-        out.append('<aside class="fishy"><p>%s</p></aside>'
-                   % (html.escape(reason) if reason else 'Please check this change.'))
+    name = level or 'plain'
+    # The level sits at the left of the header bar, before the path, so it is the first
+    # thing the eye meets; the figure's edge carries the same colour.
+    badge = '<span class="lvl">%s</span>' % (level if level else 'read')
+    out = ['<figure class="hunk lvl-%s%s" id="%s" data-key="%s" data-level="%d"%s>'
+           % (name, ' file' if not h.body else '', ident, _key(h), LEVELS[level],
+              (' data-reason="%s"' % html.escape(reason, quote=True)) if reason else ''),
+           '<figcaption>%s<span class="where">%s</span><span class="tools">%s</span></figcaption>'
+           % (badge, where, ''.join(tags))]
+    if level in ('note', 'fishy', 'hot'):
+        out.append('<aside class="flag %s"><p>%s</p></aside>'
+                   % (level, html.escape(reason) if reason else 'Please check this change.'))
     if h.body:
         out.append('<pre class="diff"><code class="language-diff-%s diff-highlight">%s\n</code></pre>'
                    % (language_of(h.path, h.body), html.escape('\n'.join(h.body))))
@@ -247,8 +256,24 @@ def figure(h, ident, reason):
 
 STANDFIRST = (
     'A fast, narrated tour through one change, for a human reviewing code they did not '
-    'write. It groups the diff into topics and shows every hunk. A hunk marked '
-    '<b>fishy</b> felt off on a first read; nothing was verified, and the judgement is yours.')
+    'write. It groups the diff into topics and shows every hunk, each with a first-read '
+    'attention level. Nothing was verified, and the judgement is yours.')
+
+# The legend, once, at the top: the level's square on the left, what it asks of the
+# reader on the right. The same squares appear in the heat strips and on the hunks.
+LEGEND = [
+    ('skip', 'skip', 'A tool could have written it, or it is fallout of another hunk. Trust the description.'),
+    ('plain', 'read', 'Ordinary hand-written code. Read it once.'),
+    ('note', 'note', 'A choice or a nit to accept knowingly. The phrase says what to decide.'),
+    ('fishy', 'fishy', 'It may be wrong. Verify before approving.'),
+    ('hot', 'hot', 'A mistake here would be silent or irreversible. Read every line, however it looks.'),
+]
+
+
+def legend():
+    rows = ''.join('<div class="row"><span class="sq %s"></span><b>%s</b><span>%s</span></div>'
+                   % (cls, name, text) for cls, name, text in LEGEND)
+    return '<div class="legend">%s</div>' % rows
 
 
 def _git(*args):
@@ -276,7 +301,7 @@ def render(hunks, texts, git_args):
     by_id = dict((h.id, h) for h in hunks)
     seen, unknown, dupes = {}, [], []
 
-    def fig(hid, reason):
+    def fig(hid, level, reason):
         if hid not in by_id:
             unknown.append(hid)
             return '<p class="missing"><strong>Unknown hunk %s</strong></p>' % html.escape(hid)
@@ -284,7 +309,7 @@ def render(hunks, texts, git_args):
         seen[hid] = n
         if n > 1:
             dupes.append(hid)
-        return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), reason)
+        return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), level, reason)
 
     body = []
     for n, ch in enumerate(chapters, 1):
@@ -305,7 +330,7 @@ def render(hunks, texts, git_args):
         body.append('<div class="intro"><p>These hunks were not placed in any topic. '
                     'They are shown here so nothing is hidden.</p></div>')
         body.append('<section class="beat"><div class="say"></div><div class="show">%s</div></section>'
-                    % '\n'.join(fig(h.id, None) for h in missing))
+                    % '\n'.join(fig(h.id, None, '') for h in missing))
         body.append('</section>')
 
     top = _git('rev-parse', '--show-toplevel')
@@ -315,7 +340,8 @@ def render(hunks, texts, git_args):
     title = title or 'Vibe tour'
     head = ['<h1>%s</h1>' % title,
             '<p class="meta">%s</p>' % _meta(hunks, repo, source),
-            '<p class="standfirst">%s</p>' % STANDFIRST]
+            '<p class="standfirst">%s</p>' % STANDFIRST,
+            legend()]
     if summary:
         head.append('<div class="summary">%s</div>' % summary)
 
@@ -339,10 +365,10 @@ def _beat_html(beat, fig):
     if beat['say']:
         say.append(beat['say'])
     show = []
-    for hid, reason, note in beat['items']:
+    for hid, level, reason, note in beat['items']:
         if note:
             show.append('<div class="note">%s</div>' % note)
-        show.append(fig(hid, reason))
+        show.append(fig(hid, level, reason))
     if not show:
         return '<section class="beat solo"><div class="say">%s</div></section>' % '\n'.join(say)
     return ('<section class="beat"><div class="say">%s</div><div class="show">%s</div></section>'

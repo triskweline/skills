@@ -34,8 +34,18 @@
   --tok-variable: #c25b3a;
 
   --ok: #2da44e;
-  --fishy: #cf222e;
-  --fishy-rgb: 207, 34, 46;   /* the same hue, for the sidebar heat at varying alpha */
+
+  /* The five attention levels, low to high. One hue family from grey through amber and
+     red to a dark red, so a strip of squares reads as temperature at a glance. */
+  --l0: var(--panel);  /* skip: a ghost, white with a grey border */
+  --l1: #eda;          /* read once */
+  --l2: #fc0;          /* note: a choice to accept knowingly */
+  --l3: #f60;          /* fishy: may be wrong */
+  --l4: #f14;          /* hot: a mistake here is silent or irreversible */
+  --l2-ink: #8a6d00;
+  --l3-ink: #c24a00;
+  --l4-ink: #c40e33;
+  --fishy: var(--l3);
 
   --seen: #2c2;
   --badge: #6a737d;
@@ -77,8 +87,15 @@
   --tok-variable: #e0836c;
 
   --ok: #3fb950;
-  --fishy: #f85149;
-  --fishy-rgb: 248, 81, 73;
+  --l0: var(--panel);
+  --l1: #eda;
+  --l2: #fc0;
+  --l3: #f60;
+  --l4: #f14;
+  --l2-ink: #ffd21f;
+  --l3-ink: #ff8a3d;
+  --l4-ink: #ff5c7a;
+  --fishy: var(--l3);
   --badge: #55606b;
   }
 }
@@ -111,8 +128,15 @@
   --tok-variable: #e0836c;
 
   --ok: #3fb950;
-  --fishy: #f85149;
-  --fishy-rgb: 248, 81, 73;
+  --l0: var(--panel);
+  --l1: #eda;
+  --l2: #fc0;
+  --l3: #f60;
+  --l4: #f14;
+  --l2-ink: #ffd21f;
+  --l3-ink: #ff8a3d;
+  --l4-ink: #ff5c7a;
+  --fishy: var(--l3);
   --badge: #55606b;
   color-scheme: dark;
 }
@@ -151,38 +175,60 @@ body {
 }
 #nav .nav-head b { display: block; font-size: 13px; letter-spacing: .02em; }
 #nav ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: .6rem 0; }
-#nav li a {
+#nav > ol > li { border-left: 3px solid transparent; }
+#nav > ol > li > a {
   display: flex; align-items: baseline; gap: .55rem;
-  padding: .38rem 1.25rem .38rem 1rem;
+  padding: .38rem 1.25rem .1rem 1rem;
   color: var(--ink-2); text-decoration: none;
-  border-left: 3px solid transparent;
   line-height: 1.4;
 }
-#nav li a:hover { background: var(--panel-2); color: var(--ink); }
-#nav li a .n { color: var(--faint); font: 500 11.5px/1.5 var(--mono); min-width: 1.1em; }
-#nav li a .t { flex: 1; }
-#nav li a .c { color: var(--faint); font: 11px/1.5 var(--mono); white-space: nowrap; }
+#nav > ol > li:hover { background: var(--panel-2); }
+#nav > ol > li > a:hover { color: var(--ink); }
+#nav > ol > li > a .n { color: var(--faint); font: 500 11.5px/1.5 var(--mono); min-width: 1.1em; }
+#nav > ol > li > a .t { flex: 1; }
+#nav > ol > li > a .c { color: var(--faint); font: 11px/1.5 var(--mono); white-space: nowrap; }
+#nav > ol > li[aria-current] { background: var(--accent-soft); border-left-color: var(--accent); }
+#nav > ol > li[aria-current] > a { color: var(--accent); font-weight: 550; }
+#nav > ol > li[aria-current] > a .n { color: var(--accent); }
+#nav > ol > li > a.done .c { color: var(--seen); }
 
-/* The chapter's fishiness heat: how many of its hunks felt off, on a background whose
-   alpha is their share of the chapter. report.js sets the alpha. A reviewer scanning
-   the sidebar for where to spend a short review sees the heat without opening
-   anything; the number carries it again for anyone who cannot use the colour. */
-#nav li a .b {
-  font: 600 10px/1 var(--mono);
-  min-width: 1.5em; height: 1.5em; padding: 0 .3em; flex: 0 0 auto;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 3px; color: #fff;
-  background: rgba(var(--fishy-rgb), var(--heat, 0));
+/* ------------------------------------------------------------------ heat strips
+   One square per hunk, in reading order, coloured by attention level. Under each
+   chapter in the sidebar and under each chapter heading in the page, so the reader
+   sees the temperature of a chapter and where in it the heat sits before reading a
+   line. Each square is a link to its hunk. */
+.heat {
+  display: flex; flex-wrap: wrap; gap: 3px;
+  margin: 0; padding: 0;
+  list-style: none;
 }
-/* A badge that is empty still holds its column, so the badges of the chapters that do
-   have heat stay in one line down the sidebar. */
-#nav li a .b:empty { background: none; }
-#nav li a[aria-current] {
-  color: var(--accent); background: var(--accent-soft);
-  border-left-color: var(--accent); font-weight: 550;
+.heat .sq {
+  display: block; width: 9px; height: 9px; border-radius: 2px;
+  background: var(--l1); border: 1px solid transparent;
 }
-#nav li a[aria-current] .n { color: var(--accent); }
-#nav li a.done .c { color: var(--seen); }
+.heat .sq.l0 { background: var(--l0); border-color: var(--faint); }
+.heat .sq.l2 { background: var(--l2); }
+.heat .sq.l3 { background: var(--l3); }
+.heat .sq.l4 { background: var(--l4); }
+.heat .sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.heat .sq.seen { opacity: .35; }
+#nav > ol > li > .heat { padding: 0 1.25rem .45rem 2.4rem; }
+section.chapter > .heat { margin: -.6rem 0 1.4rem; gap: 4px; }
+section.chapter > .heat .sq { width: 14px; height: 14px; border-radius: 3px; }
+
+/* The scrutiny dial: how deep the reader wants to go. A hunk below the chosen level is
+   collapsed to its header bar, one click from open, so nothing leaves the page. */
+.dial { display: flex; gap: 2px; }
+.dial button {
+  font: 11px/1 var(--sans); color: var(--muted);
+  background: none; border: 1px solid var(--line); border-radius: 4px;
+  padding: .22rem .4rem; cursor: pointer;
+}
+.dial button:hover { color: var(--ink); border-color: var(--muted); }
+.dial button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+#nav .nav-foot { flex-wrap: wrap; row-gap: .5rem; }
+#nav .nav-foot .dial { flex-basis: 100%; }
+#nav .nav-foot .dial .lbl { font-size: 11px; color: var(--faint); align-self: center; margin-right: .3rem; }
 #nav .nav-foot {
   border-top: 1px solid var(--line-2);
   padding: .7rem .85rem;
@@ -233,7 +279,23 @@ p.standfirst {
   font-style: italic;
   line-height: 1.6;
 }
-p.standfirst b { color: var(--fishy); font-weight: 600; font-style: normal; }
+/* The legend: one row per attention level, the level's square on the left and what it
+   asks of the reader on the right. The squares are the same ones the heat strips use. */
+.legend {
+  max-width: 900px; margin: 1.4rem 0 0;
+  display: grid; grid-template-columns: auto auto 1fr; gap: .35rem .8rem; align-items: center;
+  font-size: 14.5px; color: var(--ink-2);
+}
+.legend .row { display: contents; }
+.legend .sq {
+  display: block; width: 14px; height: 14px; border-radius: 3px;
+  background: var(--l1); border: 1px solid transparent;
+}
+.legend .sq.skip { background: var(--l0); border-color: var(--faint); }
+.legend .sq.note { background: var(--l2); }
+.legend .sq.fishy { background: var(--l3); }
+.legend .sq.hot { background: var(--l4); }
+.legend b { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
 
 .summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
 .summary > :first-child { margin-top: 0; }
@@ -327,16 +389,31 @@ figure.hunk {
   overflow: hidden;
 }
 figure.hunk:last-child { margin-bottom: 0; }
-figure.hunk.fishy { border-color: var(--fishy); }
+/* The level is the figure's left edge, the same colour as its square in the strips. */
+figure.hunk { border-left-width: 4px; border-left-color: var(--l1); }
+figure.hunk.lvl-skip { border-left-color: var(--faint); opacity: .55; }
+figure.hunk.lvl-skip:hover, figure.hunk.lvl-skip:target { opacity: 1; }
+figure.hunk.lvl-note { border-left-color: var(--l2); }
+figure.hunk.lvl-fishy { border-left-color: var(--l3); }
+figure.hunk.lvl-hot { border-left-color: var(--l4); }
 
 /* No caption: the worker's prose is the .note above the figure. What is left is a
-   thin bar with where the hunk is and its tools. */
+   thin bar: the level first, then where the hunk is, then its tools. */
 figure.hunk > figcaption {
   padding: .45rem .85rem;
   border-bottom: 1px solid var(--line-2);
   background: var(--panel-2);
   display: flex; align-items: center; gap: .6rem;
 }
+figcaption .lvl {
+  font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
+  padding: .3rem .42rem; border-radius: 4px; color: #1b1f24; background: var(--l1);
+  border: 1px solid transparent;
+}
+figure.hunk.lvl-skip .lvl { background: var(--l0); color: var(--muted); border-color: var(--line); }
+figure.hunk.lvl-note .lvl { background: var(--l2); }
+figure.hunk.lvl-fishy .lvl { background: var(--l3); color: #fff; }
+figure.hunk.lvl-hot .lvl { background: var(--l4); color: #fff; }
 figcaption .where {
   flex: 1;
   font: 12px/1.5 var(--mono); color: var(--muted);
@@ -359,24 +436,23 @@ figcaption .tools { display: flex; align-items: center; gap: .4rem; }
 .tools .tag.added { color: var(--ok); border-color: var(--add-edge); }
 .tools .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
 .tools .tag.moved { color: var(--accent); border-color: var(--accent); }
-.tools .tag.fishy { color: #fff; background: var(--fishy); border-color: var(--fishy); }
 
-/* Why a hunk is fishy, in the worker's words, above the diff it is about. */
-aside.fishy {
+/* Why a hunk got its level, in the worker's words, above the diff it is about. */
+aside.flag {
   margin: 0; padding: .55rem .85rem;
   border-bottom: 1px solid var(--line-2);
-  border-left: 3px solid var(--fishy);
   font-size: 14.5px; color: var(--ink-2);
 }
-aside.fishy p { margin: 0; }
-aside.fishy::before {
-  content: "fishy";
+aside.flag p { margin: 0; }
+aside.flag::before {
   display: block;
   font: 600 10.5px/1 var(--sans);
   letter-spacing: .09em; text-transform: uppercase;
-  color: var(--fishy);
   margin-bottom: .3rem;
 }
+aside.flag.note::before { content: "note — a choice to accept knowingly"; color: var(--l2-ink); }
+aside.flag.fishy::before { content: "fishy — may be wrong"; color: var(--l3-ink); }
+aside.flag.hot::before { content: "hot — a mistake here would be silent or irreversible"; color: var(--l4-ink); }
 
 button.seen {
   font: 11.5px/1 var(--sans); color: var(--muted);
@@ -390,8 +466,8 @@ figure.hunk.seen { border-color: var(--seen); }
 figure.hunk.seen > figcaption { border-bottom-color: var(--seen); }
 figure.hunk.collapsed > pre,
 figure.hunk.collapsed > .binary,
-figure.hunk.collapsed > aside.fishy { display: none; }
-figure.hunk:target { box-shadow: 0 0 0 3px var(--accent); }
+figure.hunk.collapsed > aside.flag { display: none; }
+figure.hunk:target { outline: 3px solid var(--accent); outline-offset: -1px; }
 figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 
 /* One control for a run of hunks read as a group — a lockfile's forty hunks. */

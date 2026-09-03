@@ -129,9 +129,13 @@ class Repo(unittest.TestCase):
         self.assertIn('<p>Beat prose.</p>', page)
         # Prose before a placeholder belongs to the beat; prose after it is the hunk's note.
         self.assertRegex(page, r'(?s)<div class="say">[^<]*<h3>First beat</h3>.*Beat prose.*Desc of h1.*</div><div class="show">')
-        self.assertIn('<div class="note"><p>Desc of h3.</p></div>\n<figure class="hunk fishy" id="h3"', page)
-        self.assertIn('<aside class="fishy"><p>the greeting lost its exclamation</p></aside>', page)
-        self.assertIn('<figure class="hunk" id="h1"', page)
+        self.assertIn('<div class="note"><p>Desc of h3.</p></div>\n<figure class="hunk lvl-fishy" id="h3"', page)
+        self.assertIn('data-level="3" data-reason="the greeting lost its exclamation"', page)
+        self.assertIn('<figcaption><span class="lvl">fishy</span><span class="where">b.txt:1', page)
+        self.assertIn('<aside class="flag fishy"><p>the greeting lost its exclamation</p></aside>', page)
+        self.assertIn('<figure class="hunk lvl-plain" id="h1" data-key="', page)
+        self.assertIn('data-level="1"', page)
+        self.assertIn('<figcaption><span class="lvl">read</span><span class="where">a.py:1', page)
         self.assertIn('language-diff-python diff-highlight', page)
         self.assertIn('+CHANGED &lt;b&gt;&amp;', page)
         self.assertNotIn('<!-- hunk h1 -->', page)
@@ -139,13 +143,13 @@ class Repo(unittest.TestCase):
         # The rest of the diff is appended so nothing is hidden, and it is reported.
         self.assertIn('<span class="t">Unsorted hunks</span>', page)
         self.assertIn('id="h2"', page)
-        self.assertIn('class="hunk file" id="h4"', page)
+        self.assertIn('class="hunk lvl-plain file" id="h4"', page)
         self.assertIn('A binary file', page)
         self.assertIn('h2 h4', err)
         self.assertIn('(4 hunks, 2 placed by fragments, 2 appended)', out)
         # Assets are inlined: no external requests.
         self.assertIn('window.Prism', page)
-        self.assertIn('figure.hunk.fishy', page)
+        self.assertIn('.heat .sq', page)
         self.assertNotIn('src="../vendor', page)
         self.assertNotIn('the page shell', page)
 
@@ -197,7 +201,27 @@ class Repo(unittest.TestCase):
 
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
-        self.assertIn('<aside class="fishy"><p>Please check this change.</p></aside>', page)
+        self.assertIn('<aside class="flag fishy"><p>Please check this change.</p></aside>', page)
+
+    def test_all_five_levels_render(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h1 skip -->\n<!-- hunk h2 note: a default worth a conscious yes -->\n'
+            '<!-- hunk h3 HOT: verification runs on every request -->\n<!-- hunk h4 -->')
+        self.assertEqual(err, '')
+        self.assertIn('<figure class="hunk lvl-skip" id="h1" data-key="', page)
+        self.assertIn('data-level="0"', page)
+        self.assertIn('<span class="lvl">skip</span>', page)
+        self.assertNotIn('<aside class="flag skip"', page)
+        self.assertIn('<figure class="hunk lvl-note" id="h2"', page)
+        self.assertIn('<aside class="flag note"><p>a default worth a conscious yes</p></aside>', page)
+        self.assertIn('<figure class="hunk lvl-hot" id="h3"', page)
+        self.assertIn('data-level="4" data-reason="verification runs on every request"', page)
+        self.assertIn('<aside class="flag hot"><p>verification runs on every request</p></aside>', page)
+        self.assertIn('<figure class="hunk lvl-plain file" id="h4"', page)
+        # Reasons are escaped into the attribute and the aside alike.
+        page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 note: uses <b> & "quotes" --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('data-reason="uses &lt;b&gt; &amp; &quot;quotes&quot;"', page)
+        self.assertIn('<p>uses &lt;b&gt; &amp; &quot;quotes&quot;</p>', page)
 
     def test_missing_double_dash_prints_usage(self):
         code, out, err = hunks(self.dir, 'HEAD')

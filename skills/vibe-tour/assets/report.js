@@ -145,12 +145,35 @@
     show.insertBefore(bar, show.firstChild);
   });
 
-  /* ---- navigation, built from the chapters themselves. Each entry carries the
-     chapter's fishiness heat: the count of fishy hunks, on a background whose alpha is
-     their share of the chapter. ---- */
+  /* ---- navigation, built from the chapters themselves. Under each entry sits the
+     chapter's heat strip: one square per hunk, in reading order, coloured by attention
+     level, each a link to its hunk. The same strip is drawn under the chapter heading
+     in the page, larger. ---- */
   var nav = document.getElementById('nav');
   var list = nav && nav.querySelector('ol');
   var links = {};
+  var LEVEL_NAME = ['skip', 'read once', 'note', 'fishy', 'hot'];
+
+  function strip(ch) {
+    var ol = document.createElement('ol');
+    ol.className = 'heat';
+    [].slice.call(ch.querySelectorAll('figure.hunk')).forEach(function (fig) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      var lvl = fig.getAttribute('data-level') || '1';
+      a.className = 'sq l' + lvl;
+      a.href = '#' + fig.id;
+      var where = fig.querySelector('figcaption .where');
+      var reason = fig.getAttribute('data-reason');
+      a.title = LEVEL_NAME[+lvl] + ' · ' + (where ? where.textContent.trim() : fig.id)
+              + (reason ? '\n' + reason : '');
+      a.setAttribute('aria-label', a.title);
+      a.setAttribute('data-for', fig.id);
+      li.appendChild(a);
+      ol.appendChild(li);
+    });
+    return ol;
+  }
 
   if (list) {
     list.innerHTML = '';
@@ -163,23 +186,24 @@
       var li = document.createElement('li');
       var a = document.createElement('a');
       a.href = '#' + ch.id;
-      a.innerHTML = '<span class="n"></span><span class="t"></span>'
-                  + '<span class="c"></span><span class="b"></span>';
+      a.innerHTML = '<span class="n"></span><span class="t"></span><span class="c"></span>';
       a.querySelector('.n').textContent = num ? num.textContent : String(i + 1);
       a.querySelector('.t').textContent = title.textContent.trim();
-      var own = ch.querySelectorAll('figure.hunk').length;
-      var fishy = ch.querySelectorAll('figure.hunk.fishy').length;
-      var b = a.querySelector('.b');
-      if (fishy) {
-        b.textContent = String(fishy);
-        /* Never fainter than .35, or one fishy hunk in forty would be invisible. */
-        b.style.setProperty('--heat', String(0.35 + 0.65 * fishy / own));
-        b.title = fishy + ' of ' + own + ' hunks fishy';
-        b.setAttribute('aria-label', b.title);
-      }
       li.appendChild(a);
+      if (ch.querySelector('figure.hunk')) {
+        li.appendChild(strip(ch));
+        h2.parentNode.insertBefore(strip(ch), h2.nextSibling);
+      }
       list.appendChild(li);
       links[ch.id] = a;
+    });
+  }
+
+  /* A square dims once its hunk is marked viewed, so the strips double as progress. */
+  function paintStrips() {
+    [].slice.call(document.querySelectorAll('.heat .sq')).forEach(function (sq) {
+      var fig = document.getElementById(sq.getAttribute('data-for'));
+      sq.classList.toggle('seen', !!(fig && fig.classList.contains('seen')));
     });
   }
 
@@ -198,8 +222,39 @@
     if (bar) bar.style.width = hunks.length ? (100 * seen / hunks.length) + '%' : '0';
     var tally = nav && nav.querySelector('.tally');
     if (tally) tally.textContent = seen + '/' + hunks.length;
+    paintStrips();
   }
   counts();
+
+  /* ---- the scrutiny dial. Skim shows only hot and fishy hunks open; review adds
+     notes; thorough adds the unmarked hunks; everything opens the skips too. A hunk
+     below the threshold is collapsed to its header bar, one click from open, so every
+     hunk stays on the page. A hunk the reader marked viewed stays collapsed either way. ---- */
+  var DIAL = { skim: 3, review: 2, thorough: 1, everything: 0 };
+  var dialKey = 'vibetour.' + uid + '.scrutiny';
+  var dial = nav && nav.querySelector('.dial');
+
+  function applyDial(name) {
+    var min = DIAL[name];
+    if (min === undefined) { name = 'thorough'; min = 1; }
+    hunks.forEach(function (fig) {
+      if (fig.classList.contains('seen')) return;
+      var lvl = fig.getAttribute('data-level');
+      collapse(fig, (lvl === null ? 1 : +lvl) < min);
+    });
+    if (dial) {
+      [].slice.call(dial.querySelectorAll('button')).forEach(function (b) {
+        b.setAttribute('aria-pressed', b.getAttribute('data-dial') === name ? 'true' : 'false');
+      });
+    }
+    store.set(dialKey, name);
+  }
+  if (dial) {
+    [].slice.call(dial.querySelectorAll('button')).forEach(function (b) {
+      b.addEventListener('click', function () { applyDial(b.getAttribute('data-dial')); });
+    });
+  }
+  applyDial(store.get(dialKey) || 'thorough');
 
   var reset = nav && nav.querySelector('.reset');
   if (reset) reset.addEventListener('click', function () {
@@ -218,8 +273,9 @@
         if (visible[chapters[i].id]) current = chapters[i].id;
       }
       Object.keys(links).forEach(function (id) {
-        if (id === current) links[id].setAttribute('aria-current', 'true');
-        else links[id].removeAttribute('aria-current');
+        var li = links[id].parentNode;
+        if (id === current) li.setAttribute('aria-current', 'true');
+        else li.removeAttribute('aria-current');
       });
       if (current && links[current]) {
         var a = links[current], box = list.getBoundingClientRect(), r = a.getBoundingClientRect();
