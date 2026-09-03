@@ -343,4 +343,14 @@ Given a directory, the script takes every `.html` file under it in path order, w
 
 If the script reports unplaced hunks, that is acceptable for speed: they are shown. Only if the list is long, or the hunks clearly belong to one topic, write them into that topic's fragment with a one-line description each and run the assemble command again.
 
-Tell the human the path of the finished file. That is the end of the tour.
+## Hand over the tour
+
+Your final message is short, and it ends with the file. Anything you want to say about the run (unplaced hunks, a worker that had to be replaced, how many topics) goes first, in a sentence or two. Then, as the **last line of the message**, the path alone on its own line, as a `file://` URL so it is clickable in most terminals:
+
+```
+file:///tmp/vibe-tour.sLxCWm/vibe-tour.html
+```
+
+Nothing after it. The human is scanning for the link, and a path buried in a paragraph or followed by more prose is the thing they will not find.
+
+Right before the path, offer to open the file in their browser, in one sentence: "Say the word and I will open it in your browser." **Do not open it yourself.** Wait for the human to say yes; then run the platform's opener (`xdg-open` on Linux, `open` on macOS, `start` on Windows) on the path. That is the end of the tour.
