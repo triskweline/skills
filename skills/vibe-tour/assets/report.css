@@ -399,7 +399,7 @@ figure.hunk:last-child { margin-bottom: 0; }
 /* The level is the figure's left edge, the same colour as its square in the strips. */
 figure.hunk { border-left-width: 4px; border-left-color: var(--l1); }
 figure.hunk.lvl-skip { border-left-color: var(--faint); opacity: .55; }
-figure.hunk.lvl-skip:hover, figure.hunk.lvl-skip:target { opacity: 1; }
+figure.hunk.lvl-skip:hover { opacity: 1; }
 figure.hunk.lvl-note { border-left-color: var(--l2); }
 figure.hunk.lvl-fishy { border-left-color: var(--l3); }
 figure.hunk.lvl-hot { border-left-color: var(--l4); }
@@ -472,7 +472,6 @@ figure.hunk.collapsed > pre,
 figure.hunk.collapsed > .binary,
 figure.hunk.collapsed > .ctx,
 figure.hunk.collapsed > aside.flag { display: none; }
-figure.hunk:target { outline: 3px solid var(--accent); outline-offset: -1px; }
 figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 
 /* One control for a run of hunks read as a group — a lockfile's forty hunks. */
