@@ -99,43 +99,105 @@ class Repo(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(out.strip().splitlines(), ['### h1  b.txt:1'])
 
-    def test_assemble_splices_escaped_hunks_and_appends_unplaced_ones(self):
-        frag1 = os.path.join(self.dir, 't1.html')
-        frag2 = os.path.join(self.dir, 't2.html')
-        with open(frag1, 'w') as f:
-            f.write('<h1>Tour</h1>\n<section><h2>Topic one</h2>\n<p>desc</p>\n<!-- hunk h1 -->\n'
-                    '<p><strong>Fishiness: high</strong> odd</p>\n<!--hunk h99-->\n</section>\n')
-        with open(frag2, 'w') as f:
-            f.write('<section><h2>Topic two</h2>\n<!-- hunk h3 -->\n</section>\n')
+    def assemble(self, *frags):
+        paths = []
+        for n, body in enumerate(frags):
+            path = os.path.join(self.dir, 't%d.html' % n)
+            with open(path, 'w') as f:
+                f.write(body)
+            paths.append(path)
         out_path = os.path.join(self.dir, 'tour.html')
-        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', frag1, frag2)
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', *paths)
         self.assertEqual(code, 0, err)
-        page = read(out_path)
-        self.assertTrue(page.startswith('<!doctype html>'))
-        self.assertIn('<h1>Tour</h1>', page)
-        self.assertIn('<pre data-hunk="h1">', page)
-        self.assertIn('+CHANGED &lt;b&gt;&amp;', page)          # escaped, not raw
-        self.assertNotIn('<!-- hunk h1 -->', page)
-        self.assertIn('Unknown hunk h99', page)
-        self.assertIn('<h2>Unsorted hunks</h2>', page)
-        self.assertIn('<pre data-hunk="h2">', page)
-        self.assertIn('<pre data-hunk="h4">', page)
-        self.assertIn('h2 h4', err)
-        self.assertIn('h99', err)
-        self.assertIn('(4 hunks, 2 placed by fragments, 2 appended)', out)
-        # Topic order follows fragment order.
-        self.assertLess(page.index('Topic one'), page.index('Topic two'))
-        self.assertLess(page.index('Topic two'), page.index('Unsorted hunks'))
+        return read(out_path), out, err
 
-    def test_assemble_without_gaps_is_quiet(self):
-        frag = os.path.join(self.dir, 't.html')
-        with open(frag, 'w') as f:
-            f.write('<!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
-        out_path = os.path.join(self.dir, 'tour.html')
-        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', frag)
-        self.assertEqual(code, 0, err)
+    def test_assemble_lays_out_chapters_beats_and_escaped_hunks(self):
+        page, out, err = self.assemble(
+            '<h1>Tour <code>x</code></h1>\n<p>The summary.</p>\n',
+            '<section id="topic-1">\n<h2>1. Topic one</h2>\n<p>Chapter intro.</p>\n'
+            '<h3>1.1 First beat</h3>\n<p>Beat prose.</p>\n'
+            '<p>Desc of h1.</p>\n<!-- hunk h1 -->\n'
+            '<!-- hunk h3 fishy: the greeting lost its exclamation -->\n<p>Desc of h3.</p>\n'
+            '</section>\n')
+        self.assertTrue(page.startswith('<!doctype html>'))
+        self.assertIn('<title>Tour x</title>', page)
+        self.assertIn('<h1>Tour <code>x</code></h1>', page)
+        self.assertIn('<div class="summary"><p>The summary.</p></div>', page)
+        self.assertIn('<h2><span class="n">1</span><span class="t">Topic one</span></h2>', page)
+        self.assertIn('<div class="intro"><p>Chapter intro.</p></div>', page)
+        self.assertIn('<h3>First beat</h3>', page)
+        self.assertIn('<p>Beat prose.</p>', page)
+        # Prose before a placeholder belongs to the beat; prose after it is the hunk's note.
+        self.assertRegex(page, r'(?s)<div class="say">[^<]*<h3>First beat</h3>.*Beat prose.*Desc of h1.*</div><div class="show">')
+        self.assertIn('<div class="note"><p>Desc of h3.</p></div>\n<figure class="hunk fishy" id="h3"', page)
+        self.assertIn('<aside class="fishy"><p>the greeting lost its exclamation</p></aside>', page)
+        self.assertIn('<figure class="hunk" id="h1"', page)
+        self.assertIn('language-diff-python diff-highlight', page)
+        self.assertIn('+CHANGED &lt;b&gt;&amp;', page)
+        self.assertNotIn('<!-- hunk h1 -->', page)
+        self.assertNotIn('<section id="topic-1">', page)
+        # The rest of the diff is appended so nothing is hidden, and it is reported.
+        self.assertIn('<span class="t">Unsorted hunks</span>', page)
+        self.assertIn('id="h2"', page)
+        self.assertIn('class="hunk file" id="h4"', page)
+        self.assertIn('A binary file', page)
+        self.assertIn('h2 h4', err)
+        self.assertIn('(4 hunks, 2 placed by fragments, 2 appended)', out)
+        # Assets are inlined: no external requests.
+        self.assertIn('window.Prism', page)
+        self.assertIn('figure.hunk.fishy', page)
+        self.assertNotIn('src="../vendor', page)
+        self.assertNotIn('the page shell', page)
+
+    def test_meta_line_counts_the_diff(self):
+        page, out, err = self.assemble('<h1>T</h1>', '<h2>A</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertRegex(page, r'(?s)<p class="meta">.*<b>3</b> files.*<b class="added">\+3</b> <b class="removed">−3</b>.*<b>4</b> hunks.*<code>HEAD</code>')
         self.assertEqual(err, '')
-        self.assertNotIn('Unsorted hunks', read(out_path))
+        self.assertNotIn('Unsorted hunks', page)
+
+    def test_unknown_and_duplicate_placeholders_are_reported(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2><!-- hunk h1 --><!--hunk h99-->',
+            '<h2>B</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('Unknown hunk h99', page)
+        self.assertIn('h99', err)
+        self.assertIn('placed more than once', err)
+        self.assertIn('id="h1"', page)
+        self.assertIn('id="h1-2"', page)
+        self.assertLess(page.index('<span class="t">A</span>'), page.index('<span class="t">B</span>'))
+
+    def test_worker_shortcuts_are_tolerated(self):
+        # No <h2>, bare paragraphs, hunks before any <h3>.
+        page, out, err = self.assemble(
+            'Intro line.\n\n<!-- hunk h1 -->\nabout h1\n<h3>Later</h3>\n<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<span class="t">Topic 1</span>', page)
+        self.assertIn('<div class="intro"><p>Intro line.</p></div>', page)
+        self.assertIn('<div class="note"><p>about h1</p></div>', page)
+        self.assertIn('<h3>Later</h3>', page)
+
+    def test_a_directory_expands_to_its_fragments_in_path_order(self):
+        work = os.path.join(self.dir, 'work')
+        os.makedirs(os.path.join(work, 'topic-01'))
+        os.makedirs(os.path.join(work, 'topic-02'))
+        with open(os.path.join(work, '00-intro.html'), 'w') as f:
+            f.write('<h1>Dir tour</h1><p>Sum.</p>')
+        with open(os.path.join(work, 'topic-02', 'fragment.html'), 'w') as f:
+            f.write('<h2>Second</h2><!-- hunk h3 --><!-- hunk h4 -->')
+        with open(os.path.join(work, 'topic-01', 'fragment.html'), 'w') as f:
+            f.write('<h2>First</h2><!-- hunk h1 --><!-- hunk h2 -->')
+        out_path = os.path.join(work, 'vibe-tour.html')
+        for _ in range(2):   # the second run must not ingest the first run's output
+            code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', work)
+            self.assertEqual(code, 0, err)
+            self.assertEqual(err, '')
+        page = read(out_path)
+        self.assertIn('<h1>Dir tour</h1>', page)
+        self.assertLess(page.index('<span class="t">First</span>'), page.index('<span class="t">Second</span>'))
+        self.assertEqual(page.count('<h1>'), 1)
+
+    def test_fishy_without_reason_gets_a_default(self):
+        page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<aside class="fishy"><p>Please check this change.</p></aside>', page)
 
     def test_missing_double_dash_prints_usage(self):
         code, out, err = hunks(self.dir, 'HEAD')

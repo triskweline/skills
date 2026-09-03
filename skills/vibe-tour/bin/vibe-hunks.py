@@ -11,12 +11,14 @@
   vibe-hunks.py --only h17,h20 [--untracked] -- <git diff args>
       Only those hunks, with their file headers.
 
-  vibe-hunks.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT...
-      Concatenate the fragments in order into one HTML page. Every
-      `<!-- hunk h17 -->` placeholder is replaced with the real hunk, escaped,
-      as `<pre data-hunk="h17">`. Hunks nobody placed are appended in an
-      "Unsorted hunks" section and listed on stderr, so the page always shows
-      every hunk. Exit status is 0 either way; 2 on a broken invocation.
+  vibe-hunks.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT|DIR...
+      Lay the fragments out, in order (a directory means every .html under it, in
+      path order, minus OUT.html itself), as one self-contained HTML page: sidebar,
+      two-column beats, syntax highlighting. Every `<!-- hunk h17 -->` placeholder
+      becomes the real hunk, escaped; `<!-- hunk h17 fishy: why -->` marks it fishy.
+      Hunks nobody placed are appended in an "Unsorted hunks" chapter and listed on
+      stderr, so the page always shows every hunk. Exit status is 0 either way;
+      2 on a broken invocation. The layout itself lives in vibe_html.py.
 
 `--untracked` adds files git does not track yet, as additions. Use it for the
 `dirty` and `uncommitted` targets, where `git diff` alone would miss them.
@@ -27,14 +29,13 @@ of its own, so it is shown too.
 Standard library only. Works on Python 3.8+.
 """
 
-import html
 import os
 import re
 import subprocess
 import sys
 
-PLACEHOLDER = re.compile(r'<!--\s*hunk\s+(h\d+)\s*-->')
-
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import vibe_html  # noqa: E402
 
 class Hunk:
     def __init__(self, hid, path, line, header, body):
@@ -135,46 +136,46 @@ def parse(diff_text):
     return hunks
 
 
-def hunk_html(h):
-    return ('<div class="hunk"><p><code>%s</code></p>\n<pre data-hunk="%s">%s</pre></div>\n'
-            % (html.escape(h.marker()[4:]), h.id, html.escape('\n'.join(h.body))))
+def expand_fragments(args, out_path):
+    """A directory stands for every .html file under it, in path order, so the intro
+    (00-intro.html) comes first and topic-NN/fragment.html follow in reading order.
+    The output file is skipped, so re-assembling into the same directory is safe."""
+    skip = os.path.abspath(out_path) if out_path else None
+    files = []
+    for a in args:
+        if os.path.isdir(a):
+            found = []
+            for root, dirs, names in os.walk(a):
+                dirs.sort()
+                for n in sorted(names):
+                    if n.endswith('.html'):
+                        found.append(os.path.join(root, n))
+            files.extend(sorted(found))
+        else:
+            files.append(a)
+    return [f for f in files if os.path.abspath(f) != skip]
 
 
-def assemble(out_path, hunks, fragments):
-    by_id = dict((h.id, h) for h in hunks)
-    placed, unknown = set(), []
-
-    def replace(m):
-        hid = m.group(1)
-        if hid not in by_id:
-            unknown.append(hid)
-            return '<p><strong>Unknown hunk %s</strong></p>' % hid
-        placed.add(hid)
-        return hunk_html(by_id[hid])
-
-    pieces = []
+def assemble(out_path, hunks, fragments, git_args):
+    texts = []
     for frag in fragments:
         with open(frag, encoding='utf-8') as f:
-            pieces.append(PLACEHOLDER.sub(replace, f.read()))
-    missing = [h for h in hunks if h.id not in placed]
-    if missing:
-        pieces.append('<section id="unsorted"><h2>Unsorted hunks</h2>\n'
-                      '<p>These hunks were not placed in any topic. '
-                      'They are shown here so nothing is hidden.</p>\n')
-        pieces.extend(hunk_html(h) for h in missing)
-        pieces.append('</section>\n')
-    page = ('<!doctype html>\n<html><head><meta charset="utf-8">'
-            '<title>Vibe tour</title></head>\n<body>\n' + ''.join(pieces) + '</body></html>\n')
+            texts.append(f.read())
+    page, report = vibe_html.render(hunks, texts, git_args)
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(page)
+    missing, unknown, dupes = report['missing'], report['unknown'], report['dupes']
     if missing:
         sys.stderr.write('%d hunk(s) were not placed and were appended as "Unsorted hunks": %s\n'
                          % (len(missing), ' '.join(h.id for h in missing)))
     if unknown:
         sys.stderr.write('%d placeholder(s) name a hunk that does not exist: %s\n'
                          % (len(unknown), ' '.join(unknown)))
+    if dupes:
+        sys.stderr.write('%d hunk(s) were placed more than once (fine if shared between topics): %s\n'
+                         % (len(dupes), ' '.join(dupes)))
     print('%s  (%d hunks, %d placed by fragments, %d appended)'
-          % (out_path, len(hunks), len(placed), len(missing)))
+          % (out_path, len(hunks), report['placed'], len(missing)))
 
 
 def main(argv):
@@ -201,6 +202,7 @@ def main(argv):
     fragments = []
     if '++' in rest:
         rest, fragments = rest[:rest.index('++')], rest[rest.index('++') + 1:]
+        fragments = expand_fragments(fragments, arg if mode == 'assemble' else None)
 
     text = run_git(rest)
     if untracked:
@@ -216,7 +218,7 @@ def main(argv):
             if h.id in wanted:
                 sys.stdout.write(h.text())
     elif mode == 'assemble':
-        assemble(arg, hunks, fragments)
+        assemble(arg, hunks, fragments, rest)
     else:
         last_header = None
         for h in hunks:

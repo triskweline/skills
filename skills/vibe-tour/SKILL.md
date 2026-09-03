@@ -39,32 +39,20 @@ A regular git diff prints in a second. Your tour is only useful to the human whe
 
 The only rule where we don't compromise is: Every hunk of the diff must be shown somewhere in the tour. A script enforces this at the end, so you never have to re-read the diff to check.
 
-This skill uses parallel agents aggressively to cut down generation time. This skill explicitly allows you to fork agents and spawn sub-agents, you don't need the human's permission for this. The instructions below define the exact moments when we fork or spawn other agents.
-
-### Check the model before you do anything else
-
-This skill is meant to run on a fast model. In Claude Code that is Sonnet, not Opus.
-
-Do this check **first**, before the help text, before any git command. The reason: the workers you fork later inherit the model of the agent that forks them. Once a slow model has read the diff, there is no way to switch the workers to a fast one. The only moment to change the model is now.
-
-Your system prompt names the model you are running on. If it is a fast model, carry on and say nothing. If it is a slow model (in Claude Code: Opus), stop and give the human this choice:
-
-1. **Switch and re-run.** The human switches the session to a fast model (`/model sonnet` in Claude Code) and invokes `/vibe-tour` again. This is the cleanest option.
-2. **Delegate the whole skill.** You spawn one sub-agent on a fast model and hand it the entire skill run: the target, the working directory, and these instructions. Its forks inherit the fast model. You wait for it, then relay the path of the finished tour. A sub-agent cannot ask the human anything, so before delegating, you resolve the help text and make sure the diff range is local (see below) yourself.
-3. **Stay on the slow model.** If the human insists, you let them, and carry on here.
+This skill uses parallel agents aggressively to cut down generation time. The **orchestrating agent** (the one the human invoked) may fork agents and spawn sub-agents without asking the human. The instructions below define the exact moments when it does. **Workers never fork or spawn anything.**
 
 ## Tour format is HTML
 
 The tour will *not* be printed to this session.
 Instead you deliver the tour as one self-contained HTML file.
 
-The file is assembled from **fragments**: each worker writes the HTML for its topic into its own file, the orchestrating agent writes the opening fragment, and a script concatenates them. Nobody ever re-reads a fragment, and nobody ever types out a diff hunk: fragments name hunks by id, and the script splices the real diff bytes in when assembling.
+The file is assembled from **fragments**: each worker writes a plain HTML fragment for its topic into its own file, the orchestrating agent writes the opening fragment, and a script lays them out. Nobody ever re-reads a fragment, and nobody ever types out a diff hunk: fragments name hunks by id, and the script splices the real diff bytes in when assembling.
 
-At this stage of this skill, the HTML is super simple. Use only built-in HTML elements, no CSS styling, no syntax highlighting, no JavaScript.
+Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, builds a sidebar with each chapter's fishiness heat, puts a beat's prose beside its hunks in two columns, highlights the diffs, and adds viewed marks and a theme switch. Fragments use only `<h2>`, `<h3>`, `<p>`, `<code>` and the hunk placeholder. Nothing else, no styling, no ids, no numbers.
 
 ## The helper script
 
-The skill ships one script, `bin/vibe-hunks.py` in the skill directory. It needs only git and python3. It has four modes, all taking the same `git diff` arguments after a `--`:
+The skill ships one script, `bin/vibe-hunks.py` in the skill directory, with the page layout beside it in `bin/vibe_html.py`, `assets/` and the vendored `vendor/prism`. It needs only git and python3. It has four modes, all taking the same `git diff` arguments after a `--`:
 
 ```
 vibe-hunks.py [--untracked] -- <git diff args>           the full diff, every hunk numbered
@@ -103,8 +91,8 @@ Beat # One narration beat within a topic
 Hunk # One annotated diff hunk
 + id: string                 # h17, minted by the script
 + description: markdown      # describes what is done in that hunk
-+ fishiness_level: 'low' | 'high'
-+ fishiness_reason: markdown # required for high, absent for low
++ fishiness_level: 'low' | 'high'  # low: `<!-- hunk h17 -->`, high: `<!-- hunk h17 fishy: reason -->`
++ fishiness_reason: text     # required for high, absent for low; lives in the placeholder
 + diff_content: text         # spliced in by the script, never typed by an agent
 + path: string
 + starting_line_number: integer
@@ -153,16 +141,21 @@ Translate the target into `git diff` arguments once, and use the same arguments 
 | `<commit>` | `-- <commit>~1..<commit>` |
 | PR / MR | fetch, then as a range |
 
-## Create the working directory
+## One setup command: working directory, overview, numbered diff
 
-Create one directory for this tour, outside the repository, e.g. `mktemp -d -t vibe-tour.XXXXXX`. Every fragment and the finished tour go in there. Remember the path; the workers need it.
+Everything mechanical before the clustering happens in **one shell call**. Each separate call costs a full model turn, and the trial runs spent close to a minute on six calls whose commands took seven seconds together.
 
-## Get an overview
+```
+WORK=$(mktemp -d -t vibe-tour.XXXXXX) && echo "WORK=$WORK" \
+  && git log --oneline <range> \
+  && git diff --stat <git diff args> \
+  && <skill dir>/bin/vibe-hunks.py [--untracked] -- <git diff args> > "$WORK/diff.txt" \
+  && wc -l "$WORK/diff.txt"
+```
 
-Before we ingest the full diff, let's get some initial overview.
+Remember the working directory; every fragment and the finished tour go in there, and the workers need the path. It is outside the repository on purpose, so a `dirty` tour never numbers its own output.
 
-List all commits in the diff range, in a single command, but don't trust it completely.
-In a perfect world, commits would already tell a narrated story, but often we see something different:
+The commit list is a hint, not the plan. In a perfect world, commits would already tell a narrated story, but often we see something different:
 
 - There might be random "WIP"-style commits without a coherent topic
 - There might be a giant mother of all commits, mixing all sorts of topics
@@ -170,21 +163,15 @@ In a perfect world, commits would already tell a narrated story, but often we se
 - A commit might be topic-pure, but the topic is too large to ingest in one gulp for a human
 - There might be a mix of good and bad commit styles
 
-So we check the commit log in case it does give a good signal. But our final selection of `Topic`s is deferred to a scan of the entire diff.
-
-Also retrieve a list of all changed files, in a single command, e.g. `git diff --stat BASE HEAD`.
+So we glance at the commit log in case it does give a good signal. But our final selection of `Topic`s is deferred to a scan of the entire diff.
 
 ## Read the full diff
 
-Read the complete, numbered diff top to bottom in one command:
+The numbered diff is in `$WORK/diff.txt`. **Read that file with the Read tool**, not by printing it in a shell: a shell result is capped and a long diff would be truncated, saved elsewhere and read back in pieces, which is three calls where one will do. The Read tool takes up to 2000 lines per call; `wc -l` told you how many calls that is. If it is more than one, read with an offset, back to back, nothing in between.
 
-```
-<skill dir>/bin/vibe-hunks.py [--untracked] -- <git diff args>
-```
+Do not run a plain `git diff` as well. You will eventually need to hold the entire diff in your context, so there is no point in doing a partial diff.
 
-Do not run a plain `git diff` as well. You will eventually need to hold the entire diff in your context, so there is no point in doing a partial diff. Only do batches if there is a hard technical limitation that prevents you from digesting the entire diff in one go.
-
-Binary files show up as a marker with no diff body. For those we only need to know that they were added, changed, removed or moved, which the file header tells you.
+Every hunk has a marker line `### h17  path:line` before it. From here on, everybody refers to hunks by that id. Binary files show up as a marker with no diff body. For those we only need to know that they were added, changed, removed or moved, which the file header tells you.
 
 ## Generate a list of topics
 
@@ -192,7 +179,7 @@ Now that you've seen the commits and the full diff, you probably have some ideas
 Turn this into a list of thematically cohesive topics ("clusters", "stories", "body of work") that categorizes most of the diff.
 
 Don't do a deep analysis to generate the list of topics.
-You have a maximum budget of 10 tool calls to understand any of the concepts changed in the diff. The three initial commands (the commit list, the changed files, the numbered read) do not count against it. Everything after that counts, including any further git command. Focus on key questions you have, and only ask for the purpose of clustering hunks into topics. Don't stress if open questions remain, just work on intuition for those.
+You have a maximum budget of 10 tool calls to understand any of the concepts changed in the diff. The setup command and the Read calls for the numbered diff do not count against it. Everything after that counts, including any further git command. Focus on key questions you have, and only ask for the purpose of clustering hunks into topics. Don't stress if open questions remain, just work on intuition for those.
 
 For each topic, list some sub-topics or content examples or significant edit motions that make up that topic. These will be the idea seed for the "beat generation" in the next step. Remember these sub-topics with the topic (`topic.beat_ideas`).
 
@@ -227,17 +214,39 @@ Don't do a deep analysis to assign hunks to topics. In particular, don't pay add
 
 Fork multiple agents (called "workers" from here on). Each worker will narrate a topic.
 
-Large topics should get a dedicated worker. Multiple small topics can be grouped into a single worker.
+Large topics should get a dedicated worker. Multiple small topics can be grouped into a single worker; that worker writes them into one fragment, in reading order.
 
-Forks inherit your context, so a worker already holds the numbered diff. Do not paste hunks into the fork prompt. Give each worker only:
+Every worker gets its own directory, `<working dir>/topic-<NN>/`, numbered by the first topic it holds and zero-padded so the shell sorts them in reading order. Create it before forking. The worker writes exactly one file there, `fragment.html`, and never looks anywhere else. Workers cannot see each other's output, so they have nothing to react to.
 
-- The topic title and its number in reading order
-- Some ideas for narration beats
-- The list of hunk ids assigned to this topic
-- Which of those hunks another topic also shows, and which one: `Shared with topic 3: h9 h11`. The worker mentions this in one sentence where the hunk appears.
-- The fragment path to write: `<working dir>/topic-<NN>.html`, zero-padded so the shell sorts them in reading order
+Forks inherit your context, so a worker already holds the numbered diff. Do not paste hunks into the fork prompt. The prompt is short and always has the same shape. Its first line is fixed; it is what tells the fork that it is a worker and that only the worker section of this skill applies to it:
+
+```
+You are a vibe-tour worker. Only the section "Worker instructions per topic" applies to you.
+
+Topic 3: Thread the tenant id into the cache key
+Beat ideas: the key builder; the two call sites; the backfill migration
+Hunks: h3 h4 h9 h10 h11 h17
+Shared with topic 5: h9 h11
+Write your fragment to: /tmp/vibe-tour.sLxCWm/topic-03/fragment.html
+```
+
+That is the whole briefing. Nothing about assembling, nothing about other topics, no path other than the worker's own file.
+
+Fork all workers, then wait for all of them. If a worker fails or returns without having written its file, fork one replacement for that topic with the same briefing; do not touch the other workers' directories.
 
 ## Worker instructions per topic
+
+**You are a worker if, and only if, your prompt begins with "You are a vibe-tour worker."** Then this section, from here to "You are done" below, is your entire instruction set. Everything above it describes the orchestrating agent's job, not yours. You already hold the numbered diff in your context; that is the only thing you take from the steps above.
+
+What a worker never does, no matter what it notices:
+
+- It does not fork or spawn any agent. There is no situation in which a worker needs help.
+- It does not list, read or write anything outside its own directory. Other workers' directories and the working directory itself are not its business.
+- It does not re-read the diff, does not cluster topics, does not reassign hunks, does not renumber anything.
+- It does not assemble the tour, does not run the helper script's `--assemble` mode, and does not fix what it thinks other workers got wrong.
+- It does not write more than one file.
+
+If your briefing seems wrong (a hunk id that is not in the diff, a topic that does not fit), narrate what you can and say so in one sentence in your return message. Do not go looking for the answer.
 
 ### Get a cursory understanding of your hunks
 
@@ -287,53 +296,52 @@ Examples for "high" fishiness:
 - Shaped like vulnerable code (e.g. XSS injections)
 - Significant changes for which you have seen no test coverage so far
 
-Every "high" badge comes with a short explanation what it is that feels off, one phrase or one sentence. No explanation, no "high".
+Every "high" badge comes with a short explanation what it is that feels off, one phrase or one sentence. No explanation, no "high". It is written into the hunk's placeholder: `<!-- hunk h17 fishy: the callback can be null two lines up -->`. Plain text, no HTML, no `--` inside.
 
 ### Write the topic fragment
 
 Write the whole topic as one HTML fragment to the path you were given. One `Write`, no re-reading. This is the shape:
 
 ```html
-<section id="topic-1">
-<h2>1. Topic title</h2>
+<h2>Topic title</h2>
 <p>Topic summary: what this body of work does, across all its beats.</p>
 
-<h3>1.1 Beat title</h3>
+<h3>Beat title</h3>
 <p>Summary of what happens in this beat, across all hunks.</p>
 
-<p>Description of hunk h3.</p>
 <!-- hunk h3 -->
-<p><strong>Fishiness: low</strong></p>
+<p>Description of hunk h3.</p>
 
+<!-- hunk h4 fishy: what feels off, in one phrase or sentence -->
 <p>Description of hunk h4.</p>
-<!-- hunk h4 -->
-<p><strong>Fishiness: high</strong> — What feels off, in one or two sentences.</p>
 
-<h3>1.2 Next beat</h3>
+<h3>Next beat</h3>
 ...
-</section>
 ```
 
 The rules that matter:
 
-- **Never type out a diff.** Put `<!-- hunk h17 -->` where the hunk belongs. The assembler replaces it with the real, escaped diff and its `path:line` caption. Typing the hunk yourself is slower, and a `<` in the code would break the page.
+- **Never type out a diff.** Put `<!-- hunk h17 -->` where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page.
 - Every hunk id you were given appears exactly once as a placeholder.
-- Each placeholder is preceded by its description and followed by its fishiness line.
+- The paragraph **after** a placeholder describes that hunk and is rendered right above its diff. The prose **before** the first placeholder of a beat is the beat's narration and sits beside the hunks.
+- No numbers in headings, no `<section>`, no ids, no styling. The script numbers chapters by fragment order and builds the sidebar; anything you add there is stripped or, worse, disagrees with it.
 - The topic summary is the summary of all its beats. The beat summary is the summary of all its hunks.
 
-Once the file is written, return to the orchestrating agent with two things only: the fragment path, and the topic summary in one or two sentences. Nothing else; the fragment is the deliverable.
+### You are done
+
+Once `fragment.html` is written, you are done. Return to the orchestrating agent with two things only: the fragment path, and the topic summary in one or two sentences. Then exit. Do not wait for other workers, do not check on them, do not verify the assembly, do not start anything else. The fragment is the deliverable and the orchestrating agent takes it from here.
 
 ## Assemble the tour
 
-Once all workers have returned, write the opening fragment `<working dir>/00-intro.html`: the `<h1>` headline, a summary paragraph built from the topic summaries the workers returned, and a `<ul>` table of contents linking to `#topic-1`, `#topic-2`, and so on in reading order.
+Once all workers have returned, write the opening fragment `<working dir>/00-intro.html`: the `<h1>` headline and one or two summary paragraphs built from the topic summaries the workers returned. Nothing else; the script builds the sidebar and the meta line.
 
 Then assemble, in one command:
 
 ```
-<skill dir>/bin/vibe-hunks.py --assemble <working dir>/vibe-tour.html [--untracked] -- <git diff args> ++ <working dir>/*.html
+<skill dir>/bin/vibe-hunks.py --assemble <working dir>/vibe-tour.html [--untracked] -- <git diff args> ++ <working dir>
 ```
 
-The shell glob puts `00-intro.html` first and the topics after it in reading order. The script splices every placeholder, and appends any hunk no fragment placed in a final "Unsorted hunks" section, listing those ids on stderr. That is the completeness rule, enforced without anyone re-reading the diff.
+Given a directory, the script takes every `.html` file under it in path order, which puts `00-intro.html` first and the workers' `topic-NN/fragment.html` after it in reading order; the output file itself is skipped. The script splices every placeholder, and appends any hunk no fragment placed in a final "Unsorted hunks" chapter, listing those ids on stderr. That is the completeness rule, enforced without anyone re-reading the diff. It also lists placeholders that name no hunk, and hunks placed more than once; the latter is expected for shared hunks.
 
 If the script reports unplaced hunks, that is acceptable for speed: they are shown. Only if the list is long, or the hunks clearly belong to one topic, write them into that topic's fragment with a one-line description each and run the assemble command again.
 

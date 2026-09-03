@@ -1,0 +1,453 @@
+/* vibe tour — report styles.
+   Edit this file and reload assets/layout.html in a browser; the assembler inlines it
+   verbatim, so what the fixture shows is what a tour looks like. */
+
+:root {
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --bg: #fbfbfc;
+  --panel: #fff;
+  --panel-2: #f5f6f8;
+  --ink: #1b1f24;
+  --ink-2: #3d4650;
+  --muted: #6a737d;
+  --faint: #99a1ab;
+  --line: #e2e5e9;
+  --line-2: #eceef1;
+  --accent: #2f6feb;
+  --accent-soft: #e8f0fe;
+
+  --add-bg: #e6ffec;
+  --add-edge: #6fd28a;
+  --del-bg: #ffebe9;
+  --del-edge: #f0a7a1;
+
+  --tok-comment: #8a919b;
+  --tok-keyword: #a626a4;
+  --tok-string: #3f8f3f;
+  --tok-function: #3b6fd4;
+  --tok-number: #96660a;
+  --tok-class: #a2740c;
+  --tok-operator: #4b5560;
+  --tok-punct: #6a737d;
+  --tok-variable: #c25b3a;
+
+  --ok: #2da44e;
+  --fishy: #cf222e;
+  --fishy-rgb: 207, 34, 46;   /* the same hue, for the sidebar heat at varying alpha */
+
+  --seen: #2c2;
+  --badge: #6a737d;
+
+  --nav-w: clamp(200px, 20vw, 400px);
+}
+
+/* The light palette above is the base. Dark is applied when the system asks for it
+   and no explicit choice was made, and again when the toggle asks for it, so the
+   toggle wins in both directions. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  --bg: #0f1116;
+  --panel: #16191f;
+  --panel-2: #1b1f26;
+  --ink: #e6e9ef;
+  --ink-2: #c3c9d3;
+  --muted: #8b949e;
+  --faint: #6e7681;
+  --line: #262b33;
+  --line-2: #1e232a;
+  --accent: #6ea8ff;
+  --accent-soft: #16233a;
+
+  --add-bg: rgba(63, 185, 80, .13);
+  --add-edge: rgba(63, 185, 80, .55);
+  --del-bg: rgba(248, 81, 73, .12);
+  --del-edge: rgba(248, 81, 73, .5);
+
+  --tok-comment: #7d8590;
+  --tok-keyword: #c678dd;
+  --tok-string: #98c379;
+  --tok-function: #61afef;
+  --tok-number: #d19a66;
+  --tok-class: #e5c07b;
+  --tok-operator: #56b6c2;
+  --tok-punct: #9aa3ae;
+  --tok-variable: #e0836c;
+
+  --ok: #3fb950;
+  --fishy: #f85149;
+  --fishy-rgb: 248, 81, 73;
+  --badge: #55606b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1116;
+  --panel: #16191f;
+  --panel-2: #1b1f26;
+  --ink: #e6e9ef;
+  --ink-2: #c3c9d3;
+  --muted: #8b949e;
+  --faint: #6e7681;
+  --line: #262b33;
+  --line-2: #1e232a;
+  --accent: #6ea8ff;
+  --accent-soft: #16233a;
+
+  --add-bg: rgba(63, 185, 80, .13);
+  --add-edge: rgba(63, 185, 80, .55);
+  --del-bg: rgba(248, 81, 73, .12);
+  --del-edge: rgba(248, 81, 73, .5);
+
+  --tok-comment: #7d8590;
+  --tok-keyword: #c678dd;
+  --tok-string: #98c379;
+  --tok-function: #61afef;
+  --tok-number: #d19a66;
+  --tok-class: #e5c07b;
+  --tok-operator: #56b6c2;
+  --tok-punct: #9aa3ae;
+  --tok-variable: #e0836c;
+
+  --ok: #3fb950;
+  --fishy: #f85149;
+  --fishy-rgb: 248, 81, 73;
+  --badge: #55606b;
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: light; }
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16.5px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------------------------------------------------------------- navigation */
+
+#nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--nav-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  font-size: 13.5px;
+  z-index: 10;
+}
+#nav .nav-head {
+  padding: 1.35rem 1.25rem 1rem;
+  border-bottom: 1px solid var(--line-2);
+}
+#nav .nav-head b { display: block; font-size: 13px; letter-spacing: .02em; }
+#nav ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: .6rem 0; }
+#nav li a {
+  display: flex; align-items: baseline; gap: .55rem;
+  padding: .38rem 1.25rem .38rem 1rem;
+  color: var(--ink-2); text-decoration: none;
+  border-left: 3px solid transparent;
+  line-height: 1.4;
+}
+#nav li a:hover { background: var(--panel-2); color: var(--ink); }
+#nav li a .n { color: var(--faint); font: 500 11.5px/1.5 var(--mono); min-width: 1.1em; }
+#nav li a .t { flex: 1; }
+#nav li a .c { color: var(--faint); font: 11px/1.5 var(--mono); white-space: nowrap; }
+
+/* The chapter's fishiness heat: how many of its hunks felt off, on a background whose
+   alpha is their share of the chapter. report.js sets the alpha. A reviewer scanning
+   the sidebar for where to spend a short review sees the heat without opening
+   anything; the number carries it again for anyone who cannot use the colour. */
+#nav li a .b {
+  font: 600 10px/1 var(--mono);
+  min-width: 1.5em; height: 1.5em; padding: 0 .3em; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px; color: #fff;
+  background: rgba(var(--fishy-rgb), var(--heat, 0));
+}
+/* A badge that is empty still holds its column, so the badges of the chapters that do
+   have heat stay in one line down the sidebar. */
+#nav li a .b:empty { background: none; }
+#nav li a[aria-current] {
+  color: var(--accent); background: var(--accent-soft);
+  border-left-color: var(--accent); font-weight: 550;
+}
+#nav li a[aria-current] .n { color: var(--accent); }
+#nav li a.done .c { color: var(--seen); }
+#nav .nav-foot {
+  border-top: 1px solid var(--line-2);
+  padding: .7rem .85rem;
+  display: flex; gap: .4rem; align-items: center;
+}
+#nav .nav-foot .bar {
+  flex: 1; height: 4px; border-radius: 2px; background: var(--line);
+  overflow: hidden;
+}
+#nav .nav-foot .bar i { display: block; height: 100%; width: 0; background: var(--seen); }
+
+button.plain {
+  font: inherit; font-size: 11.5px;
+  color: var(--muted); background: none;
+  border: 1px solid var(--line); border-radius: 5px;
+  padding: .2rem .45rem; cursor: pointer;
+}
+button.plain:hover { color: var(--ink); border-color: var(--muted); }
+
+/* ---------------------------------------------------------------------- page */
+
+main {
+  margin-left: var(--nav-w);
+  max-width: 1560px;
+  padding: 3.2rem 3rem 8rem;
+}
+
+h1 {
+  font-size: 2.05rem; line-height: 1.2; font-weight: 650;
+  letter-spacing: -.015em; margin: 0;
+}
+p.meta {
+  margin: .7rem 0 0; color: var(--muted);
+  font: 12.5px/1.6 var(--mono);
+}
+p.meta b { color: var(--ink-2); font-weight: 500; }
+p.meta b.added { color: var(--ok); }
+p.meta b.removed { color: var(--fishy); }
+
+/* What this document is, said once, in a voice that is plainly not the narration. */
+p.standfirst {
+  max-width: 900px;
+  margin: 1.5rem 0 0;
+  padding: 0 0 0 1rem;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.6;
+}
+p.standfirst b { color: var(--fishy); font-weight: 600; font-style: normal; }
+
+.summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
+.summary > :first-child { margin-top: 0; }
+
+section.chapter { margin-top: 4.5rem; scroll-margin-top: 1.5rem; }
+section.chapter h2 {
+  display: flex; align-items: center; gap: .75rem;
+  font-size: 1.5rem; line-height: 1.25; font-weight: 600;
+  letter-spacing: -.01em;
+  margin: 0 0 1.4rem;
+  padding-bottom: .7rem;
+  border-bottom: 2px solid var(--line);
+}
+section.chapter h2 .n {
+  font: 600 1.1rem/1 var(--mono);
+  color: #fff;
+  background-color: var(--badge);
+  padding: 0.2em 0.3em 0.1em 0.3em;
+  border-radius: 0.2em;
+}
+
+.intro { max-width: 900px; }
+.intro > :first-child { margin-top: 0; }
+.intro > :last-child { margin-bottom: 0; }
+
+/* --------------------------------------------------------------------- beats */
+
+.beat {
+  display: grid;
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+  gap: 2.6rem;
+  margin-top: 2.9rem;
+  border-top: 1px solid var(--line-2);
+  padding-top: 2.9rem;
+}
+section.chapter > h2 + .beat { border-top: none; padding-top: 0; }
+.beat > .say {
+  position: sticky; top: 1.5rem; align-self: start;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+}
+.beat > .show { min-width: 0; }
+.beat.solo { display: block; }
+.beat.solo > .say { position: static; }
+
+.beat h3 {
+  font-size: 1.12rem; line-height: 1.35; font-weight: 600;
+  margin: 0 0 .55rem; scroll-margin-top: 1.5rem;
+}
+.beat h3 + p { margin-top: 0; }
+
+.say, .note, .summary, .intro { font-size: 15.5px; color: var(--ink-2); }
+.say, .note { max-width: 900px; }
+/* The paragraph a worker wrote for the hunk under it, so it sits close to what it describes. */
+.note { margin: 0 0 .6rem; }
+.note > :first-child { margin-top: 0; }
+.note > :last-child { margin-bottom: 0; }
+figure.hunk + .note { margin-top: 1.4rem; }
+.say p, .note p, .summary p, .intro p { margin: .8rem 0; }
+.say ul, .say ol, .note ul, .note ol, .summary ul, .intro ul { margin: .8rem 0; padding-left: 1.35rem; }
+.say li, .note li, .summary li, .intro li { margin: .3rem 0; }
+.say strong, .note strong, .summary strong, .intro strong { color: var(--ink); font-weight: 600; }
+.say a, .note a, .summary a, .intro a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.say code, .note code, .summary code, .intro code, .meta code {
+  font: 0.86em/1.4 var(--mono);
+  background: var(--panel-2); border: 1px solid var(--line-2);
+  border-radius: 4px; padding: .1em .3em;
+}
+p.missing { color: var(--fishy); }
+
+/* A reviewer reads this beside their editor, so the layout has to survive a
+   half-width window even though full width is what it is designed for. */
+@media (max-width: 1100px) {
+  #nav {
+    position: static; inset: auto; width: auto; height: auto;
+    border-right: none; border-bottom: 1px solid var(--line);
+  }
+  #nav ol { max-height: 40vh; }
+  main { margin-left: 0; padding: 2rem 1.5rem 6rem; }
+  .beat { grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
+  .beat > .say { position: static; max-height: none; overflow: visible; }
+}
+
+/* --------------------------------------------------------------------- hunks */
+
+figure.hunk {
+  margin: 0 0 1.4rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+figure.hunk:last-child { margin-bottom: 0; }
+figure.hunk.fishy { border-color: var(--fishy); }
+
+/* No caption: the worker's prose is the .note above the figure. What is left is a
+   thin bar with where the hunk is and its tools. */
+figure.hunk > figcaption {
+  padding: .45rem .85rem;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--panel-2);
+  display: flex; align-items: center; gap: .6rem;
+}
+figcaption .where {
+  flex: 1;
+  font: 12px/1.5 var(--mono); color: var(--muted);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+figcaption .where:hover { color: var(--accent); }
+figcaption .where:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+figcaption .sz { color: var(--faint); }
+figcaption .tools { display: flex; align-items: center; gap: .4rem; }
+
+/* Scoped to .tools, and it must stay scoped: Prism's markup grammar emits
+   <span class="token tag"> for every HTML tag it highlights, so a bare `.tag` rule here
+   would reach inside every diff. */
+.tools .tag {
+  font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
+  padding: .3rem .42rem; border-radius: 4px;
+  color: var(--muted); background: var(--bg); border: 1px solid var(--line);
+}
+.tools .tag.added { color: var(--ok); border-color: var(--add-edge); }
+.tools .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
+.tools .tag.moved { color: var(--accent); border-color: var(--accent); }
+.tools .tag.fishy { color: #fff; background: var(--fishy); border-color: var(--fishy); }
+
+/* Why a hunk is fishy, in the worker's words, above the diff it is about. */
+aside.fishy {
+  margin: 0; padding: .55rem .85rem;
+  border-bottom: 1px solid var(--line-2);
+  border-left: 3px solid var(--fishy);
+  font-size: 14.5px; color: var(--ink-2);
+}
+aside.fishy p { margin: 0; }
+aside.fishy::before {
+  content: "fishy";
+  display: block;
+  font: 600 10.5px/1 var(--sans);
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--fishy);
+  margin-bottom: .3rem;
+}
+
+button.seen {
+  font: 11.5px/1 var(--sans); color: var(--muted);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+  padding: .34rem .5rem; cursor: pointer; white-space: nowrap;
+}
+button.seen:hover { color: var(--ink); border-color: var(--muted); }
+/* Marking a hunk viewed collapses it and gives it a green edge, the way a reviewed
+   file behaves on a pull request. Clicking the path collapses without marking. */
+figure.hunk.seen { border-color: var(--seen); }
+figure.hunk.seen > figcaption { border-bottom-color: var(--seen); }
+figure.hunk.collapsed > pre,
+figure.hunk.collapsed > .binary,
+figure.hunk.collapsed > aside.fishy { display: none; }
+figure.hunk:target { box-shadow: 0 0 0 3px var(--accent); }
+figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
+
+/* One control for a run of hunks read as a group — a lockfile's forty hunks. */
+.groupbar { margin: 0 0 .6rem; }
+button.seen.group { padding: .3rem .6rem; }
+button.seen.group.seen, button.seen.group[aria-pressed="true"] {
+  color: var(--seen); border-color: var(--seen);
+}
+
+figure.hunk .binary {
+  padding: .8rem .85rem; color: var(--muted); font-size: 14.5px;
+}
+
+/* ------------------------------------------------------------------ the diff */
+
+pre.diff {
+  margin: 0;
+  overflow-x: auto;
+  padding: .5rem 0;
+  font: 12.5px/1.58 var(--mono);
+  tab-size: 2;
+}
+pre.diff > code {
+  display: inline-block;
+  min-width: 100%;
+  font: inherit;
+}
+/* Prism's diff plugin groups a run of same-sign lines into one token span, so a
+   run tinted as a block is exactly one tint per line. */
+pre.diff > code > .token.inserted:not(.prefix),
+pre.diff > code > .token.deleted:not(.prefix),
+pre.diff > code > .token.unchanged:not(.prefix) {
+  display: block;
+  padding: 0 .85rem;
+  border-left: 3px solid transparent;
+}
+pre.diff > code > .token.inserted:not(.prefix) {
+  background: var(--add-bg); border-left-color: var(--add-edge);
+}
+pre.diff > code > .token.deleted:not(.prefix) {
+  background: var(--del-bg); border-left-color: var(--del-edge);
+}
+pre.diff > code > .token.coord { display: block; padding: 0 .85rem; color: var(--faint); }
+/* Before Prism runs, and if it never does, the raw diff still reads correctly. */
+pre.diff > code:not(.highlighted) { padding: 0 .85rem; white-space: pre; }
+.token.prefix { color: var(--faint); user-select: none; }
+
+/* Prism tokens. One palette, ours, so a tour looks the same everywhere. */
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--tok-comment); font-style: italic; }
+.token.punctuation { color: var(--tok-punct); }
+.token.operator, .token.entity, .token.url { color: var(--tok-operator); }
+.token.keyword, .token.atrule, .token.important, .token.rule { color: var(--tok-keyword); }
+.token.boolean, .token.number, .token.constant, .token.symbol { color: var(--tok-number); }
+.token.string, .token.char, .token.attr-value, .token.regex { color: var(--tok-string); }
+.token.function, .token.method, .token.tag { color: var(--tok-function); }
+.token.class-name, .token.builtin, .token.namespace, .token.selector, .token.property, .token.attr-name { color: var(--tok-class); }
+.token.variable, .token.interpolation, .token.parameter { color: var(--tok-variable); }
+.token.bold { font-weight: 600; }
+.token.italic { font-style: italic; }
