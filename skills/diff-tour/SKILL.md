@@ -15,6 +15,7 @@ description: >-
   it with a correctness pass such as /code-review.
 metadata:
   version: 2.0.0
+disable-model-invocation: true
 ---
 
 # Diff Tour
