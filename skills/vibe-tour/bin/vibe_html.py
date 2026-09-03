@@ -244,8 +244,15 @@ def figure(h, ident, level, reason):
         out.append('<aside class="flag %s"><p>%s</p></aside>'
                    % (level, html.escape(reason) if reason else 'Please check this change.'))
     if h.body:
+        # The @@ line is not shown: its numbers are in the header bar already. Git's
+        # function context after the second @@, the nearest declaration above the hunk,
+        # is code and stays in the code column, set apart so it reads as "somewhere
+        # above", not as the line before the first context line.
+        m = re.match(r'@@ [^@]*@@ ?(.*)$', h.body[0])
+        if m and m.group(1).strip():
+            out.append('<div class="ctx">%s</div>' % html.escape(m.group(1).rstrip()))
         out.append('<pre class="diff"><code class="language-diff-%s diff-highlight">%s\n</code></pre>'
-                   % (language_of(h.path, h.body), html.escape('\n'.join(h.body))))
+                   % (language_of(h.path, h.body), html.escape('\n'.join(h.body[1:]))))
     else:
         out.append('<div class="binary">%s</div>' % NO_BODY[kind])
     out.append('</figure>')
@@ -260,20 +267,25 @@ STANDFIRST = (
     'attention level. Nothing was verified, and the judgement is yours.')
 
 # The legend, once, at the top: the level's square on the left, what it asks of the
-# reader on the right. The same squares appear in the heat strips and on the hunks.
+# reader on the right, and for the three lower levels a button that marks every hunk
+# of that level viewed, which is how a reader chooses how deep to go.
 LEGEND = [
-    ('skip', 'skip', 'A tool could have written it, or it is fallout of another hunk. Trust the description.'),
-    ('plain', 'read', 'Ordinary hand-written code. Read it once.'),
-    ('note', 'note', 'A choice or a nit to accept knowingly. The phrase says what to decide.'),
-    ('fishy', 'fishy', 'It may be wrong. Verify before approving.'),
-    ('hot', 'hot', 'A mistake here would be silent or irreversible. Read every line, however it looks.'),
+    (0, 'skip', 'A tool could have written it, or it is fallout of another hunk. Trust the description.', True),
+    (1, 'read', 'Ordinary hand-written code. Read it once.', True),
+    (2, 'note', 'A choice or a nit to accept knowingly. The phrase says what to decide.', True),
+    (3, 'fishy', 'It may be wrong. Verify before approving.', False),
+    (4, 'hot', 'A mistake here would be silent or irreversible. Read every line, however it looks.', False),
 ]
 
 
 def legend():
-    rows = ''.join('<div class="row"><span class="sq %s"></span><b>%s</b><span>%s</span></div>'
-                   % (cls, name, text) for cls, name, text in LEGEND)
-    return '<div class="legend">%s</div>' % rows
+    rows = []
+    for lvl, name, text, button in LEGEND:
+        rows.append('<div class="row"><span class="sq l%d"></span><b>%s</b><span>%s</span>%s</div>'
+                    % (lvl, name, text,
+                       ('<button type="button" class="seen level" data-level="%d">Mark viewed</button>' % lvl)
+                       if button else '<span></span>'))
+    return '<div class="legend">%s</div>' % ''.join(rows)
 
 
 def _git(*args):

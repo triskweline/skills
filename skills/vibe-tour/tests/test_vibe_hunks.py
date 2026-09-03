@@ -199,6 +199,34 @@ class Repo(unittest.TestCase):
         self.assertLess(page.index('<span class="t">First</span>'), page.index('<span class="t">Second</span>'))
         self.assertEqual(page.count('<h1>'), 1)
 
+    def test_function_context_becomes_a_row_above_the_diff(self):
+        # A change below a declaration: git puts the declaration after the second @@.
+        self.write('m.py', 'def alpha():\n    a = 1\n    b = 2\n    c = 3\n    d = 4\n    e = 5\n    f = 6\n    return a\n')
+        sh(self.dir, 'git', 'add', 'm.py')
+        sh(self.dir, 'git', 'commit', '-q', '-m', 'm')
+        self.write('m.py', 'def alpha():\n    a = 1\n    b = 2\n    c = 3\n    d = 4\n    e = 55\n    f = 6\n    return a\n')
+        code, out, err = hunks(self.dir, '--ids', '--', 'HEAD', '--', 'm.py')
+        self.assertEqual(out.strip(), '### h1  m.py:3', err)
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2><!-- hunk h1 -->')
+        out_path = os.path.join(self.dir, 'tour.html')
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '--', 'm.py', '++', frag)
+        self.assertEqual(code, 0, err)
+        page = read(out_path)
+        self.assertIn('<div class="ctx">def alpha():</div>\n<pre class="diff">', page)
+        # The @@ line itself is not shown; the diff starts with the first context line.
+        self.assertNotIn('@@ -3,6', page)
+        self.assertIn('diff-highlight">     b = 2\n', page)
+        # A hunk starting at line 1 has no declaration above it and gets no row; the
+        # second hunk in the same file does (git's default heuristic picks "line6").
+        page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertNotIn('@@ -1,3', page)
+        h1 = re.search(r'<figure class="hunk lvl-plain" id="h1".*?</figure>', page, re.S).group(0)
+        self.assertNotIn('<div class="ctx">', h1)
+        h2 = re.search(r'<figure class="hunk lvl-plain" id="h2".*?</figure>', page, re.S).group(0)
+        self.assertIn('<div class="ctx">line6</div>', h2)
+
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<aside class="flag fishy"><p>Please check this change.</p></aside>', page)

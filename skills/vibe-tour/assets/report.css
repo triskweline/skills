@@ -166,7 +166,7 @@ body {
   flex-direction: column;
   background: var(--panel);
   border-right: 1px solid var(--line);
-  font-size: 13.5px;
+  font-size: 14.5px;
   z-index: 10;
 }
 #nav .nav-head {
@@ -174,19 +174,28 @@ body {
   border-bottom: 1px solid var(--line-2);
 }
 #nav .nav-head b { display: block; font-size: 13px; letter-spacing: .02em; }
-#nav ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: .6rem 0; }
-#nav > ol > li { border-left: 3px solid transparent; }
+/* The chapter list shares the sidebar's height in proportion to chapter size: report.js
+   sets each entry's flex-grow to its hunk count, so a forty-hunk chapter takes more room
+   than a two-hunk one, and every entry keeps a minimum height so small chapters stay
+   readable. Once the entries outgrow the sidebar the list scrolls. */
+#nav > ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+#nav > ol > li {
+  border-left: 3px solid transparent;
+  flex: 1 0 auto; min-height: 3.6rem;
+  display: flex; flex-direction: column; justify-content: flex-start;
+}
+#nav > ol > li + li { border-top: 1px solid var(--line-2); }
 #nav > ol > li > a {
   display: flex; align-items: baseline; gap: .55rem;
-  padding: .38rem 1.25rem .1rem 1rem;
+  padding: .5rem 1.25rem .2rem 1rem;
   color: var(--ink-2); text-decoration: none;
   line-height: 1.4;
 }
 #nav > ol > li:hover { background: var(--panel-2); }
 #nav > ol > li > a:hover { color: var(--ink); }
-#nav > ol > li > a .n { color: var(--faint); font: 500 11.5px/1.5 var(--mono); min-width: 1.1em; }
+#nav > ol > li > a .n { color: var(--faint); font: 500 12.5px/1.5 var(--mono); min-width: 1.1em; }
 #nav > ol > li > a .t { flex: 1; }
-#nav > ol > li > a .c { color: var(--faint); font: 11px/1.5 var(--mono); white-space: nowrap; }
+#nav > ol > li > a .c { color: var(--faint); font: 12px/1.5 var(--mono); white-space: nowrap; }
 #nav > ol > li[aria-current] { background: var(--accent-soft); border-left-color: var(--accent); }
 #nav > ol > li[aria-current] > a { color: var(--accent); font-weight: 550; }
 #nav > ol > li[aria-current] > a .n { color: var(--accent); }
@@ -203,32 +212,24 @@ body {
   list-style: none;
 }
 .heat .sq {
-  display: block; width: 9px; height: 9px; border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 3px;
   background: var(--l1); border: 1px solid transparent;
+  color: #1b1f24; text-decoration: none;
+  font: 700 9px/1 var(--sans);
 }
 .heat .sq.l0 { background: var(--l0); border-color: var(--faint); }
 .heat .sq.l2 { background: var(--l2); }
-.heat .sq.l3 { background: var(--l3); }
-.heat .sq.l4 { background: var(--l4); }
+.heat .sq.l3 { background: var(--l3); color: #fff; }
+.heat .sq.l4 { background: var(--l4); color: #fff; }
 .heat .sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
-.heat .sq.seen { opacity: .35; }
-#nav > ol > li > .heat { padding: 0 1.25rem .45rem 2.4rem; }
-section.chapter > .heat { margin: -.6rem 0 1.4rem; gap: 4px; }
-section.chapter > .heat .sq { width: 14px; height: 14px; border-radius: 3px; }
+/* A viewed hunk's square carries a tick, sized to sit inside the square. */
+.heat .sq.seen::after { content: "✓"; }
+#nav > ol > li > .heat { padding: 0 1.25rem .6rem 2.4rem; gap: 4px; }
+/* In the page the strip sits in the chapter heading, pushed to the right edge, and wraps
+   onto further rows for a long chapter. */
+section.chapter h2 .heat { margin-left: auto; max-width: 50%; justify-content: flex-end; gap: 4px; }
 
-/* The scrutiny dial: how deep the reader wants to go. A hunk below the chosen level is
-   collapsed to its header bar, one click from open, so nothing leaves the page. */
-.dial { display: flex; gap: 2px; }
-.dial button {
-  font: 11px/1 var(--sans); color: var(--muted);
-  background: none; border: 1px solid var(--line); border-radius: 4px;
-  padding: .22rem .4rem; cursor: pointer;
-}
-.dial button:hover { color: var(--ink); border-color: var(--muted); }
-.dial button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-#nav .nav-foot { flex-wrap: wrap; row-gap: .5rem; }
-#nav .nav-foot .dial { flex-basis: 100%; }
-#nav .nav-foot .dial .lbl { font-size: 11px; color: var(--faint); align-self: center; margin-right: .3rem; }
 #nav .nav-foot {
   border-top: 1px solid var(--line-2);
   padding: .7rem .85rem;
@@ -240,13 +241,17 @@ section.chapter > .heat .sq { width: 14px; height: 14px; border-radius: 3px; }
 }
 #nav .nav-foot .bar i { display: block; height: 100%; width: 0; background: var(--seen); }
 
-button.plain {
-  font: inherit; font-size: 11.5px;
-  color: var(--muted); background: none;
+/* Every button on the page, one style: quiet, bordered, no native chrome. */
+button.plain, button.seen {
+  font: 11.5px/1 var(--sans);
+  color: var(--muted); background: var(--bg);
   border: 1px solid var(--line); border-radius: 5px;
-  padding: .2rem .45rem; cursor: pointer;
+  padding: .34rem .5rem; cursor: pointer; white-space: nowrap;
+  -webkit-appearance: none; appearance: none;
 }
-button.plain:hover { color: var(--ink); border-color: var(--muted); }
+button.plain:hover, button.seen:hover { color: var(--ink); border-color: var(--muted); }
+button.plain:disabled, button.seen:disabled { opacity: .5; cursor: default; }
+#nav .nav-foot button.plain { padding: .2rem .45rem; }
 
 /* ---------------------------------------------------------------------- page */
 
@@ -279,11 +284,13 @@ p.standfirst {
   font-style: italic;
   line-height: 1.6;
 }
-/* The legend: one row per attention level, the level's square on the left and what it
-   asks of the reader on the right. The squares are the same ones the heat strips use. */
+/* The legend: one row per attention level, the level's square on the left, what it asks
+   of the reader, and for skip, read and note a button that marks every hunk of that
+   level viewed. That is how a reader chooses how deep to go: a skim marks skip, read
+   and note viewed and leaves fishy and hot open. The squares are the strips' squares. */
 .legend {
   max-width: 900px; margin: 1.4rem 0 0;
-  display: grid; grid-template-columns: auto auto 1fr; gap: .35rem .8rem; align-items: center;
+  display: grid; grid-template-columns: auto auto 1fr auto; gap: .35rem .8rem; align-items: center;
   font-size: 14.5px; color: var(--ink-2);
 }
 .legend .row { display: contents; }
@@ -291,11 +298,13 @@ p.standfirst {
   display: block; width: 14px; height: 14px; border-radius: 3px;
   background: var(--l1); border: 1px solid transparent;
 }
-.legend .sq.skip { background: var(--l0); border-color: var(--faint); }
-.legend .sq.note { background: var(--l2); }
-.legend .sq.fishy { background: var(--l3); }
-.legend .sq.hot { background: var(--l4); }
+.legend .sq.l0 { background: var(--l0); border-color: var(--faint); }
+.legend .sq.l2 { background: var(--l2); }
+.legend .sq.l3 { background: var(--l3); }
+.legend .sq.l4 { background: var(--l4); }
 .legend b { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
+.legend button.level { justify-self: end; }
+.legend button.level[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
 
 .summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
 .summary > :first-child { margin-top: 0; }
@@ -349,11 +358,13 @@ section.chapter > h2 + .beat { border-top: none; padding-top: 0; }
 
 .say, .note, .summary, .intro { font-size: 15.5px; color: var(--ink-2); }
 .say, .note { max-width: 900px; }
-/* The paragraph a worker wrote for the hunk under it, so it sits close to what it describes. */
-.note { margin: 0 0 .6rem; }
-.note > :first-child { margin-top: 0; }
-.note > :last-child { margin-bottom: 0; }
-figure.hunk + .note { margin-top: 1.4rem; }
+/* The paragraph a worker wrote for the hunk under it, so it sits close to what it describes.
+   Scoped to div.note: `note` is also an attention level, and a bare .note rule leaked a
+   margin onto the legend's NOTE square. */
+div.note { margin: 0 0 .6rem; }
+div.note > :first-child { margin-top: 0; }
+div.note > :last-child { margin-bottom: 0; }
+figure.hunk + div.note { margin-top: 1.4rem; }
 .say p, .note p, .summary p, .intro p { margin: .8rem 0; }
 .say ul, .say ol, .note ul, .note ol, .summary ul, .intro ul { margin: .8rem 0; padding-left: 1.35rem; }
 .say li, .note li, .summary li, .intro li { margin: .3rem 0; }
@@ -411,6 +422,7 @@ figcaption .lvl {
   border: 1px solid transparent;
 }
 figure.hunk.lvl-skip .lvl { background: var(--l0); color: var(--muted); border-color: var(--line); }
+figure.hunk.seen .lvl::before { content: "✓ "; }
 figure.hunk.lvl-note .lvl { background: var(--l2); }
 figure.hunk.lvl-fishy .lvl { background: var(--l3); color: #fff; }
 figure.hunk.lvl-hot .lvl { background: var(--l4); color: #fff; }
@@ -454,18 +466,15 @@ aside.flag.note::before { content: "note — a choice to accept knowingly"; colo
 aside.flag.fishy::before { content: "fishy — may be wrong"; color: var(--l3-ink); }
 aside.flag.hot::before { content: "hot — a mistake here would be silent or irreversible"; color: var(--l4-ink); }
 
-button.seen {
-  font: 11.5px/1 var(--sans); color: var(--muted);
-  background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
-  padding: .34rem .5rem; cursor: pointer; white-space: nowrap;
-}
-button.seen:hover { color: var(--ink); border-color: var(--muted); }
 /* Marking a hunk viewed collapses it and gives it a green edge, the way a reviewed
    file behaves on a pull request. Clicking the path collapses without marking. */
 figure.hunk.seen { border-color: var(--seen); }
-figure.hunk.seen > figcaption { border-bottom-color: var(--seen); }
+/* A collapsed figure is only its header bar, whose bottom rule would sit on the figure's
+   own bottom border and read as one line twice as thick. */
+figure.hunk.collapsed > figcaption { border-bottom: none; }
 figure.hunk.collapsed > pre,
 figure.hunk.collapsed > .binary,
+figure.hunk.collapsed > .ctx,
 figure.hunk.collapsed > aside.flag { display: none; }
 figure.hunk:target { outline: 3px solid var(--accent); outline-offset: -1px; }
 figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
@@ -473,13 +482,25 @@ figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 /* One control for a run of hunks read as a group — a lockfile's forty hunks. */
 .groupbar { margin: 0 0 .6rem; }
 button.seen.group { padding: .3rem .6rem; }
-button.seen.group.seen, button.seen.group[aria-pressed="true"] {
+button.seen.group[aria-pressed="true"] {
   color: var(--seen); border-color: var(--seen);
 }
 
 figure.hunk .binary {
   padding: .8rem .85rem; color: var(--muted); font-size: 14.5px;
 }
+
+/* The nearest declaration above the hunk, from git's function context. It is code,
+   so it sits in the code column in the code font, but faint, led by an ellipsis and
+   closed with a dashed seam: there may be any number of lines between it and the
+   first line of the diff. */
+figure.hunk .ctx {
+  font: 12.5px/1.58 var(--mono); color: var(--faint);
+  padding: .3rem .85rem;
+  border-bottom: 1px dashed var(--line);
+  white-space: pre; overflow-x: auto;
+}
+figure.hunk .ctx::before { content: "⋯ "; }
 
 /* ------------------------------------------------------------------ the diff */
 
@@ -496,20 +517,17 @@ pre.diff > code {
   font: inherit;
 }
 /* Prism's diff plugin groups a run of same-sign lines into one token span, so a
-   run tinted as a block is exactly one tint per line. */
+   run tinted as a block is exactly one tint per line. The tint is the whole signal:
+   no edge on the run, because the figure's own left edge already carries the
+   attention level and two coloured edges side by side read as noise. */
 pre.diff > code > .token.inserted:not(.prefix),
 pre.diff > code > .token.deleted:not(.prefix),
 pre.diff > code > .token.unchanged:not(.prefix) {
   display: block;
   padding: 0 .85rem;
-  border-left: 3px solid transparent;
 }
-pre.diff > code > .token.inserted:not(.prefix) {
-  background: var(--add-bg); border-left-color: var(--add-edge);
-}
-pre.diff > code > .token.deleted:not(.prefix) {
-  background: var(--del-bg); border-left-color: var(--del-edge);
-}
+pre.diff > code > .token.inserted:not(.prefix) { background: var(--add-bg); }
+pre.diff > code > .token.deleted:not(.prefix) { background: var(--del-bg); }
 pre.diff > code > .token.coord { display: block; padding: 0 .85rem; color: var(--faint); }
 /* Before Prism runs, and if it never does, the raw diff still reads correctly. */
 pre.diff > code:not(.highlighted) { padding: 0 .85rem; white-space: pre; }

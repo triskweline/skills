@@ -48,7 +48,7 @@ Instead you deliver the tour as one self-contained HTML file.
 
 The file is assembled from **fragments**: each worker writes a plain HTML fragment for its topic into its own file, the orchestrating agent writes the opening fragment, and a script lays them out. Nobody ever re-reads a fragment, and nobody ever types out a diff hunk: fragments name hunks by id, and the script splices the real diff bytes in when assembling.
 
-Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, puts a beat's prose beside its hunks in two columns, highlights the diffs, and adds viewed marks and a theme switch. From the one word you put in each placeholder, the page's own JavaScript draws a **heat strip** per chapter, one coloured square per hunk in reading order, in the sidebar and under the chapter heading, and offers the reader a **scrutiny dial** that collapses hunks below the level they care about. Fragments use only `<h2>`, `<h3>`, `<p>`, `<code>` and the hunk placeholder. Nothing else, no styling, no ids, no numbers.
+Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, puts a beat's prose beside its hunks in two columns, highlights the diffs, and adds viewed marks and a theme switch. From the one word you put in each placeholder, the page's own JavaScript draws a **heat strip** per chapter, one coloured square per hunk in reading order, in the sidebar and under the chapter heading, and gives the legend a **mark viewed** button for skip, read and note, so a reader can fold away whole levels and be left with fishy and hot. Fragments use only `<h2>`, `<h3>`, `<p>`, `<code>` and the hunk placeholder. Nothing else, no styling, no ids, no numbers.
 
 ## The helper script
 
@@ -268,7 +268,7 @@ Don't do a deep analysis to assign hunks to beats. In particular, don't pay addi
 
 ### Give each hunk an attention level
 
-Every hunk gets one of five attention levels. The scale is not "how suspicious" but **how carefully the human should read this**. That is the one dimension the reader's scrutiny dial and the heat strips need, and it has room for two things suspicion cannot express: code that looks fine but everything stands on, and code a tool wrote that nobody needs to read.
+Every hunk gets one of five attention levels. The scale is not "how suspicious" but **how carefully the human should read this**. That is the one dimension the heat strips and the legend's mark-viewed buttons need, and it has room for two things suspicion cannot express: code that looks fine but everything stands on, and code a tool wrote that nobody needs to read.
 
 | Level | Written as | The reviewer | Your one question |
 |---|---|---|---|

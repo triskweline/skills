@@ -125,7 +125,6 @@
     }
     function paintGroup() {
       var n = own.filter(function (f) { return f.classList.contains('seen'); }).length;
-      b.classList.toggle('seen', allSeen());
       b.textContent = allSeen()
         ? 'All ' + own.length + ' viewed'
         : 'Mark all ' + own.length + ' viewed' + (n ? ' (' + n + ' done)' : '');
@@ -190,9 +189,12 @@
       a.querySelector('.n').textContent = num ? num.textContent : String(i + 1);
       a.querySelector('.t').textContent = title.textContent.trim();
       li.appendChild(a);
-      if (ch.querySelector('figure.hunk')) {
+      var n = ch.querySelectorAll('figure.hunk').length;
+      /* The entry's share of the sidebar grows with the chapter's size. */
+      li.style.flexGrow = String(Math.max(1, n));
+      if (n) {
         li.appendChild(strip(ch));
-        h2.parentNode.insertBefore(strip(ch), h2.nextSibling);
+        h2.appendChild(strip(ch));
       }
       list.appendChild(li);
       links[ch.id] = a;
@@ -226,35 +228,31 @@
   }
   counts();
 
-  /* ---- the scrutiny dial. Skim shows only hot and fishy hunks open; review adds
-     notes; thorough adds the unmarked hunks; everything opens the skips too. A hunk
-     below the threshold is collapsed to its header bar, one click from open, so every
-     hunk stays on the page. A hunk the reader marked viewed stays collapsed either way. ---- */
-  var DIAL = { skim: 3, review: 2, thorough: 1, everything: 0 };
-  var dialKey = 'vibetour.' + uid + '.scrutiny';
-  var dial = nav && nav.querySelector('.dial');
-
-  function applyDial(name) {
-    var min = DIAL[name];
-    if (min === undefined) { name = 'thorough'; min = 1; }
-    hunks.forEach(function (fig) {
-      if (fig.classList.contains('seen')) return;
-      var lvl = fig.getAttribute('data-level');
-      collapse(fig, (lvl === null ? 1 : +lvl) < min);
-    });
-    if (dial) {
-      [].slice.call(dial.querySelectorAll('button')).forEach(function (b) {
-        b.setAttribute('aria-pressed', b.getAttribute('data-dial') === name ? 'true' : 'false');
-      });
+  /* ---- the legend's buttons: one per lower level, marking every hunk of that level
+     viewed (or, when all of them already are, unmarking them). A reader who wants a
+     skim presses skip, read and note and is left with fishy and hot. ---- */
+  [].slice.call(document.querySelectorAll('.legend button.level')).forEach(function (b) {
+    var lvl = b.getAttribute('data-level');
+    var own = hunks.filter(function (f) { return (f.getAttribute('data-level') || '1') === lvl; });
+    function allSeen() {
+      return own.length > 0 && own.every(function (f) { return f.classList.contains('seen'); });
     }
-    store.set(dialKey, name);
-  }
-  if (dial) {
-    [].slice.call(dial.querySelectorAll('button')).forEach(function (b) {
-      b.addEventListener('click', function () { applyDial(b.getAttribute('data-dial')); });
+    function paintLevel() {
+      var on = allSeen();
+      b.textContent = on ? '✓ ' + own.length + ' viewed'
+                         : 'Mark ' + own.length + ' viewed';
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.disabled = own.length === 0;
+    }
+    b.addEventListener('click', function () {
+      var to = !allSeen();
+      own.forEach(function (f) { setSeen(f, to); });
+      paintLevel();
     });
-  }
-  applyDial(store.get(dialKey) || 'thorough');
+    /* Stay honest when hunks are marked one at a time or the reset is pressed. */
+    document.addEventListener('click', function () { setTimeout(paintLevel, 0); });
+    paintLevel();
+  });
 
   var reset = nav && nav.querySelector('.reset');
   if (reset) reset.addEventListener('click', function () {
