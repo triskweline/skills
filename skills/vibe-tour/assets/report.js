@@ -189,6 +189,13 @@
       a.querySelector('.n').textContent = num ? num.textContent : String(i + 1);
       a.querySelector('.t').textContent = title.textContent.trim();
       li.appendChild(a);
+      /* The whole entry is the chapter's target, not just its title line: a click on the
+         empty part of the entry follows the title link. A square keeps its own link. */
+      li.style.cursor = 'pointer';
+      li.addEventListener('click', function (e) {
+        if (e.target.closest('a')) return;
+        a.click();
+      });
       var n = ch.querySelectorAll('figure.hunk').length;
       /* The entry's share of the sidebar grows with the chapter's size. */
       li.style.flexGrow = String(Math.max(1, n));
