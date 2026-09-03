@@ -202,10 +202,9 @@ body {
 #nav > ol > li > a.done .c { color: var(--seen); }
 
 /* ------------------------------------------------------------------ heat strips
-   One square per hunk, in reading order, coloured by attention level. Under each
-   chapter in the sidebar and under each chapter heading in the page, so the reader
-   sees the temperature of a chapter and where in it the heat sits before reading a
-   line. Each square is a link to its hunk. */
+   One square per hunk, in reading order, coloured by attention level, under each
+   chapter in the sidebar, so the reader sees the temperature of a chapter and where in
+   it the heat sits before reading a line. Each square is a link to its hunk. */
 .heat {
   display: flex; flex-wrap: wrap; gap: 3px;
   margin: 0; padding: 0;
@@ -226,9 +225,6 @@ body {
 /* A viewed hunk's square carries a tick, sized to sit inside the square. */
 .heat .sq.seen::after { content: "✓"; }
 #nav > ol > li > .heat { padding: 0 1.25rem .6rem 2.4rem; gap: 4px; }
-/* In the page the strip sits in the chapter heading, pushed to the right edge, and wraps
-   onto further rows for a long chapter. */
-section.chapter h2 .heat { margin-left: auto; max-width: 50%; justify-content: flex-end; gap: 4px; }
 
 #nav .nav-foot {
   border-top: 1px solid var(--line-2);

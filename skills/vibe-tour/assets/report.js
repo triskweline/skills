@@ -146,8 +146,7 @@
 
   /* ---- navigation, built from the chapters themselves. Under each entry sits the
      chapter's heat strip: one square per hunk, in reading order, coloured by attention
-     level, each a link to its hunk. The same strip is drawn under the chapter heading
-     in the page, larger. ---- */
+     level, each a link to its hunk. ---- */
   var nav = document.getElementById('nav');
   var list = nav && nav.querySelector('ol');
   var links = {};
@@ -199,10 +198,7 @@
       var n = ch.querySelectorAll('figure.hunk').length;
       /* The entry's share of the sidebar grows with the chapter's size. */
       li.style.flexGrow = String(Math.max(1, n));
-      if (n) {
-        li.appendChild(strip(ch));
-        h2.appendChild(strip(ch));
-      }
+      if (n) li.appendChild(strip(ch));
       list.appendChild(li);
       links[ch.id] = a;
     });
