@@ -277,7 +277,7 @@ You read this part if you are the orchestrator and the workers are running.
 
 The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context.
 
-**The whole summary is under 400 words.** The last tour's ran to 944 and read as a wall of text; a reader spent four minutes on it before the first chapter. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. No other markup, no emojis.
+**The whole summary is under 400 words**, the before/after table's cells not counted. The last tour's ran to 944 and read as a wall of text; a reader spent four minutes on it before the first chapter. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. The before/after table is a plain `<table>` with `<tr>`, `<th>` and `<td>`. No other markup, no emojis.
 
 **The enumeration guard applies here too, and matters most here**, because at this zoom level the reader has no diff beside the prose to anchor names to. Describe what a solution or a mechanism changes about the system, never the classes, methods or files it would touch. "Trusted devices become records instead of a cookie" is a mechanism; a list of the six classes that would change is not.
 
@@ -288,6 +288,11 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 
 <h2>What this change achieves</h2>
 <p>...</p>
+<table>
+  <tr><th>Before</th><th>After</th></tr>
+  <tr><td>...</td><td>...</td></tr>
+</table>
+<p>Not changed, deliberately: ...</p>
 
 <h2>How it was built</h2>
 <ul><li><strong>Mechanism.</strong> ...</li>...</ul>
@@ -309,7 +314,11 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 
 ### What this change achieves
 
-At most 80 words. What is better after this change than before it, in the terms of whoever benefits. For a user-facing change, what a user can now do. For a refactoring, what became simpler, safer or faster to work on, and for whom. For a performance change, what got faster and where that shows. If the change has no benefit you can name, say so; that is a finding.
+Three parts. First a paragraph of at most 80 words: what is better after this change than before it, in the terms of whoever benefits. For a user-facing change, what a user can now do. For a refactoring, what became simpler, safer or faster to work on, and for whom. For a performance change, what got faster and where that shows. If the change has no benefit you can name, say so; that is a finding.
+
+Then a **before/after table**: one row per behaviour that a user, an API consumer or the data itself would notice, at most eight rows, each cell a phrase. Rows are behaviours someone can observe ("booking a taken parking spot crashed with a server error" / "rejected with a validation message"), never files, classes or methods. A change nobody outside the code can observe, a pure refactoring, gets the single line "Nothing a user or API sees changes" instead of a table.
+
+Then one line, **"Not changed, deliberately:"**, naming what the change leaves alone that a reviewer would otherwise wonder about: a notification not sent, a check not applied, a path not touched. It answers the question before the reviewer carries it through nine chapters. Leave the line out if there is nothing to say.
 
 ### How it was built
 

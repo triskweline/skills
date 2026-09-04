@@ -342,6 +342,12 @@ button.seen[aria-pressed="true"] { color: var(--seen); border-color: var(--seen)
    way on every tour, so a returning reader knows the labels at a glance. */
 .summary .byline { margin: 0 0 .5rem; font-size: 14px; font-style: italic; color: var(--muted); }
 .summary ul li { margin: .35rem 0; }
+/* The before/after table under "What this change achieves": one row per behaviour a user
+   or an API would notice. */
+.summary table { border-collapse: collapse; width: 100%; margin: .9rem 0; font-size: 14.5px; }
+.summary th, .summary td { text-align: left; vertical-align: top; padding: .45rem .7rem; border-top: 1px solid var(--line-2); }
+.summary th { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); border-top: none; padding-top: 0; }
+.summary td:first-child { color: var(--muted); width: 42%; }
 /* The spectrum: one row per solution, the label and its byline on the left, the prose on
    the right, so the four read as a table the eye can scan down. */
 .summary .spectrum { display: grid; grid-template-columns: minmax(170px, 240px) 1fr; gap: 0 1.6rem; margin-top: .6rem; }
