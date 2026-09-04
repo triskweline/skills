@@ -62,4 +62,4 @@ YAML wants for itself.
 from real, private repositories, kept locally so test fixtures can be distilled from
 them. The fixtures that land in git are written from the *shapes* those files revealed,
 never copied out of them. If you add another corpus directory, gitignore it the same way
-and check it with `skills/diff-tour/tests/scrub.py` first.
+and check it for private content before anything derived from it is committed.

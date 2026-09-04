@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 """Number the hunks of a git diff, set up a tour, and assemble one from fragments.
 
-  vibe-hunks.py --setup <target>
+  difftour.py --setup <target>
       Resolve a tour target (dirty, staged, uncommitted, branch, <range>, <commit>,
       <branch>, <PR/MR number>, <PR/MR URL>), create the working directory with its
       topic folders, and write the numbered diff into it. Prints WORK=, ARGS= (to paste
       into --assemble), the commit list, the stat, TOPICS= (the folder names) and DIFF=. Exit 3 with one line
       saying what went wrong when the target cannot be resolved.
 
-  vibe-hunks.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT|DIR...
+  difftour.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT|DIR...
       Lay the fragments out, in order (a directory means every .html under it, in
       path order, minus OUT.html itself), as one self-contained HTML page: sidebar,
       two-column beats, syntax highlighting. Every `<!-- hunk h17 -->` placeholder
       becomes the real hunk, escaped; `<!-- hunk h17 fishy: why -->` marks it fishy.
       Hunks nobody placed are appended in an "Unsorted hunks" chapter and listed on
       stderr, so the page always shows every hunk. Exit status is 0 either way;
-      2 on a broken invocation. The layout itself lives in vibe_html.py.
+      2 on a broken invocation. The layout itself lives in difftour_html.py.
 
-  vibe-hunks.py [--untracked] -- <git diff args>
+  difftour.py [--untracked] -- <git diff args>
       Print the diff with a marker line before every hunk:  ### h17  path:line
       This is what --setup writes to diff.txt. Read that file, not `git diff`.
 
-  vibe-hunks.py --ids [--untracked] -- <git diff args>
+  difftour.py --ids [--untracked] -- <git diff args>
       Only the marker lines. For tests and for checking a tour by hand.
 
-  vibe-hunks.py --only h17,h20 [--untracked] -- <git diff args>
+  difftour.py --only h17,h20 [--untracked] -- <git diff args>
       Only those hunks, with their file headers. For a worker that lost a hunk from
       its context, and for tests.
 
@@ -44,7 +44,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import vibe_html  # noqa: E402
+import difftour_html  # noqa: E402
 
 class Hunk:
     def __init__(self, hid, path, line, header, body):
@@ -78,7 +78,7 @@ def untracked_diff():
     parts = []
     for path in ls.stdout.decode('utf-8', 'replace').splitlines():
         # A tour living in the repository's tmp/ must never number its own files.
-        if not path or '/vibe-tour.' in '/' + path:
+        if not path or '/diff-tour.' in '/' + path:
             continue
         out = subprocess.run(['git', 'diff', '--no-color', '--no-ext-diff', '--no-index',
                               '--', '/dev/null', path], stdout=subprocess.PIPE)
@@ -171,7 +171,7 @@ def assemble(out_path, hunks, fragments, git_args):
     for frag in fragments:
         with open(frag, encoding='utf-8') as f:
             texts.append(f.read())
-    page, report = vibe_html.render(hunks, texts, git_args, out_path)
+    page, report = difftour_html.render(hunks, texts, git_args, out_path)
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(page)
     missing, unknown, dupes = report['missing'], report['unknown'], report['dupes']
@@ -254,7 +254,7 @@ def fetch_pr(number, kind=None):
     if listed is None:
         raise SetupError('git ls-remote origin failed; is the remote reachable?')
     found = [line.split('\t')[1] for line in listed.splitlines() if '\t' in line]
-    local = 'refs/vibe-tour/pr-%s' % number
+    local = 'refs/diff-tour/pr-%s' % number
     if found:
         if git_out('fetch', '-q', 'origin', '%s:%s' % (found[0], local)) is None:
             raise SetupError('fetching %s from origin failed' % found[0])
@@ -341,7 +341,7 @@ def setup(target):
     # makes the folder name unique per tour, so generations never collide.
     top = git_out('rev-parse', '--show-toplevel')
     local_tmp = os.path.join(top, 'tmp')
-    work = tempfile.mkdtemp(prefix='vibe-tour.', dir=local_tmp if os.path.isdir(local_tmp) else None)
+    work = tempfile.mkdtemp(prefix='diff-tour.', dir=local_tmp if os.path.isdir(local_tmp) else None)
     for n in range(1, 13):
         os.makedirs(os.path.join(work, 'topic-%02d' % n))
     diff_path = os.path.join(work, 'diff.txt')
@@ -366,12 +366,12 @@ def main(argv):
     args = list(argv)
     if args[:1] == ['--setup']:
         if len(args) != 2:
-            sys.stderr.write('usage: vibe-hunks.py --setup <target>\n')
+            sys.stderr.write('usage: difftour.py --setup <target>\n')
             return 2
         try:
             setup(args[1])
         except SetupError as e:
-            sys.stderr.write('vibe-hunks: %s\n' % e)
+            sys.stderr.write('difftour: %s\n' % e)
             return 3
         return 0
     if '--' not in args:

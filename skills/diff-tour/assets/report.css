@@ -1,6 +1,6 @@
 /* diff tour — report styles.
-   Edit this file and reload assets/layout.html in a browser; the builder inlines it
-   verbatim, so what the fixture shows is what a report looks like. */
+   Edit this file and reload assets/layout.html in a browser; the assembler inlines it
+   verbatim, so what the fixture shows is what a tour looks like. */
 
 :root {
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -33,14 +33,19 @@
   --tok-punct: #6a737d;
   --tok-variable: #c25b3a;
 
-  --blast-narrow: #2da44e;
-  --blast-moderate: #bf8700;
-  --blast-wide: #cf222e;
-  /* Backgrounds for white text, which the lighter tones above cannot carry: white on
-     #bf8700 is about 2.6:1. These are the same hues, darkened to clear 4.5:1. */
-  --badge-narrow: #1a7f37;
-  --badge-moderate: #9a6700;
-  --badge-wide: #cf222e;
+  --ok: #2da44e;
+
+  /* The five attention levels, low to high. One hue family from grey through amber and
+     red to a dark red, so a strip of squares reads as temperature at a glance. */
+  --l0: var(--panel);  /* skip: a ghost, white with a grey border */
+  --l1: #eda;          /* read once */
+  --l2: #fc0;          /* note: a choice to accept knowingly */
+  --l3: #f60;          /* fishy: may be wrong */
+  --l4: #f14;          /* hot: a mistake here is silent or irreversible */
+  --l2-ink: #8a6d00;
+  --l3-ink: #c24a00;
+  --l4-ink: #c40e33;
+  --fishy: var(--l3);
 
   --seen: #2c2;
   --badge: #6a737d;
@@ -53,10 +58,6 @@
    toggle wins in both directions. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* The default state for a dark-mode reader who never touches the
-       toggle. Without it the browser paints light scrollbars, and this
-       page scrolls in several places at once: the nav, the sticky prose
-       column, and every wide diff. */
     color-scheme: dark;
   --bg: #0f1116;
   --panel: #16191f;
@@ -85,9 +86,16 @@
   --tok-punct: #9aa3ae;
   --tok-variable: #e0836c;
 
-  --blast-narrow: #3fb950;
-  --blast-moderate: #d29922;
-  --blast-wide: #f85149;
+  --ok: #3fb950;
+  --l0: var(--panel);
+  --l1: #eda;
+  --l2: #fc0;
+  --l3: #f60;
+  --l4: #f14;
+  --l2-ink: #ffd21f;
+  --l3-ink: #ff8a3d;
+  --l4-ink: #ff5c7a;
+  --fishy: var(--l3);
   --badge: #55606b;
   }
 }
@@ -119,9 +127,16 @@
   --tok-punct: #9aa3ae;
   --tok-variable: #e0836c;
 
-  --blast-narrow: #3fb950;
-  --blast-moderate: #d29922;
-  --blast-wide: #f85149;
+  --ok: #3fb950;
+  --l0: var(--panel);
+  --l1: #eda;
+  --l2: #fc0;
+  --l3: #f60;
+  --l4: #f14;
+  --l2-ink: #ffd21f;
+  --l3-ink: #ff8a3d;
+  --l4-ink: #ff5c7a;
+  --fishy: var(--l3);
   --badge: #55606b;
   color-scheme: dark;
 }
@@ -151,7 +166,7 @@ body {
   flex-direction: column;
   background: var(--panel);
   border-right: 1px solid var(--line);
-  font-size: 13.5px;
+  font-size: 14.5px;
   z-index: 10;
 }
 #nav .nav-head {
@@ -159,41 +174,67 @@ body {
   border-bottom: 1px solid var(--line-2);
 }
 #nav .nav-head b { display: block; font-size: 13px; letter-spacing: .02em; }
-#nav ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: .6rem 0; }
-#nav li a {
+/* The chapter list shares the sidebar's height in proportion to chapter size: report.js
+   sets each entry's flex-grow to its hunk count, so a forty-hunk chapter takes more room
+   than a two-hunk one, and every entry keeps a minimum height so small chapters stay
+   readable. Once the entries outgrow the sidebar the list scrolls. */
+#nav > ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+#nav > ol > li {
+  position: relative;
+  flex: 1 0 auto; min-height: 3.6rem;
+  display: flex; flex-direction: column; justify-content: flex-start;
+}
+#nav > ol > li + li { border-top: 1px solid var(--line-2); }
+/* The chapter's heat, as one fat stripe down its left edge: one segment per hunk in
+   reading order, sized by the hunk's line count, coloured by its level. report.js paints
+   it as a gradient. It links nothing; it is a glance, not a control. */
+#nav > ol > li > .stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; }
+#nav > ol > li > a {
   display: flex; align-items: baseline; gap: .55rem;
-  padding: .38rem 1.25rem .38rem 1rem;
+  padding: .5rem 1.25rem .5rem 1.25rem;
   color: var(--ink-2); text-decoration: none;
-  border-left: 3px solid transparent;
   line-height: 1.4;
 }
-#nav li a:hover { background: var(--panel-2); color: var(--ink); }
-#nav li a .n { color: var(--faint); font: 500 11.5px/1.5 var(--mono); min-width: 1.1em; }
-#nav li a .t { flex: 1; }
-#nav li a .c { color: var(--faint); font: 11px/1.5 var(--mono); white-space: nowrap; }
+#nav > ol > li:hover { background: var(--panel-2); }
+#nav > ol > li > a:hover { color: var(--ink); }
+#nav > ol > li > a .n { color: var(--faint); font: 500 12.5px/1.5 var(--mono); min-width: 1.1em; }
+#nav > ol > li > a .t { flex: 1; }
+#nav > ol > li > a .c { color: var(--faint); font: 12px/1.5 var(--mono); white-space: nowrap; }
+#nav > ol > li[aria-current] { background: var(--accent-soft); }
+#nav > ol > li[aria-current] > a { color: var(--accent); font-weight: 550; }
+#nav > ol > li[aria-current] > a .n { color: var(--accent); }
+#nav > ol > li > a.done .c { color: var(--seen); }
 
-/* The chapter's blast level, as one letter. A reviewer scanning the sidebar for where to
-   spend a short review sees the risk without opening anything. Colour carries the same
-   meaning as the blast box in the chapter, and the letter carries it again for anyone who
-   cannot use the colour. */
-#nav li a .b {
-  font: 600 9.5px/1 var(--sans); letter-spacing: .04em;
-  width: 1.35em; height: 1.35em; flex: 0 0 auto;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 3px; color: #fff;
+/* ------------------------------------------------------------------ heat squares
+   One square = one hunk's heat, in the legend and in a beat's list of changes. In the
+   list it is a button that toggles the hunk's viewed state, and it shows a tick when
+   viewed. */
+.sq {
+  display: flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 3px; flex: 0 0 auto;
+  background: var(--l1); border: 1px solid transparent;
+  color: #1b1f24; text-decoration: none;
+  font: 700 9px/1 var(--sans);
 }
-/* A badge that is empty still holds its column, so the badges of the chapters that do
-   have a level stay in one line down the sidebar. */
-#nav li a .b:empty { background: none; }
-#nav li a .b.narrow { background: var(--badge-narrow); }
-#nav li a .b.moderate { background: var(--badge-moderate); }
-#nav li a .b.wide { background: var(--badge-wide); }
-#nav li a[aria-current] {
-  color: var(--accent); background: var(--accent-soft);
-  border-left-color: var(--accent); font-weight: 550;
-}
-#nav li a[aria-current] .n { color: var(--accent); }
-#nav li a.done .c { color: var(--seen); }
+.sq.l0 { background: var(--l0); border-color: var(--faint); }
+.sq.l2 { background: var(--l2); }
+.sq.l3 { background: var(--l3); color: #fff; }
+.sq.l4 { background: var(--l4); color: #fff; }
+button.sq { padding: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
+button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* A viewed hunk's square carries a tick, sized to sit inside the square. */
+.sq.seen::after { content: "✓"; }
+/* A beat's list of its hunks, in the prose column: square, path, and one button for all
+   of them. It stays in view while the hunks scroll, so it doubles as the beat's progress. */
+.changes { margin-top: 1.1rem; }
+.changes .lbl { margin: 0 0 .35rem; font-size: 13px; color: var(--muted); }
+/* More specific than the prose column's generic list rule, which would indent it. */
+.say .changes ol, .changes ol { list-style: none; margin: 0; padding: 0; }
+.changes li { display: flex; align-items: center; gap: .55rem; margin: .3rem 0; }
+.changes li a.loc { color: var(--ink-2); text-decoration: none; font: 12.5px/1.5 var(--mono); overflow-wrap: anywhere; }
+.changes li a.loc:hover { color: var(--accent); }
+.changes button { margin-top: .6rem; }
+
 #nav .nav-foot {
   border-top: 1px solid var(--line-2);
   padding: .7rem .85rem;
@@ -205,13 +246,17 @@ body {
 }
 #nav .nav-foot .bar i { display: block; height: 100%; width: 0; background: var(--seen); }
 
-button.plain {
-  font: inherit; font-size: 11.5px;
-  color: var(--muted); background: none;
+/* Every button on the page, one style: quiet, bordered, no native chrome. */
+button.plain, button.seen {
+  font: 11.5px/1 var(--sans);
+  color: var(--muted); background: var(--bg);
   border: 1px solid var(--line); border-radius: 5px;
-  padding: .2rem .45rem; cursor: pointer;
+  padding: .34rem .5rem; cursor: pointer; white-space: nowrap;
+  -webkit-appearance: none; appearance: none;
 }
-button.plain:hover { color: var(--ink); border-color: var(--muted); }
+button.plain:hover, button.seen:hover { color: var(--ink); border-color: var(--muted); }
+button.plain:disabled, button.seen:disabled { opacity: .5; cursor: default; }
+#nav .nav-foot button.plain { padding: .2rem .45rem; }
 
 /* ---------------------------------------------------------------------- page */
 
@@ -230,8 +275,8 @@ p.meta {
   font: 12.5px/1.6 var(--mono);
 }
 p.meta b { color: var(--ink-2); font-weight: 500; }
-p.meta b.added { color: var(--blast-narrow); }
-p.meta b.removed { color: var(--blast-wide); }
+p.meta b.added { color: var(--ok); }
+p.meta b.removed { color: var(--fishy); }
 
 /* What this document is, said once, in a voice that is plainly not the narration. */
 p.standfirst {
@@ -244,6 +289,39 @@ p.standfirst {
   font-style: italic;
   line-height: 1.6;
 }
+/* The legend: one row per attention level, the level's square on the left, what it asks
+   of the reader, and for skip, read and note a button that marks every hunk of that
+   level viewed. That is how a reader chooses how deep to go: a skim marks skip, read
+   and note viewed and leaves fishy and hot open. The squares are the strips' squares. */
+.legend {
+  max-width: 900px; margin: 1.4rem 0 0;
+  display: grid; grid-template-columns: auto auto 1fr auto; gap: .35rem .8rem; align-items: center;
+  font-size: 14.5px; color: var(--ink-2);
+}
+.legend .row { display: contents; }
+.legend b { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
+.legend button.level { justify-self: end; }
+.legend button.level[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
+
+.summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
+.summary > :first-child { margin-top: 0; }
+.summary h2 { font-size: 1.37rem; line-height: 1.3; font-weight: 600; margin: 2.4rem 0 .3rem; color: var(--ink); }
+.summary h3 { font-size: 1rem; line-height: 1.3; font-weight: 600; margin: 1.2rem 0 .15rem; color: var(--ink); }
+/* The fixed line under a fixed heading: what this part of the summary is, said the same
+   way on every tour, so a returning reader knows the labels at a glance. */
+.summary .byline { margin: 0 0 .5rem; font-size: 14px; font-style: italic; color: var(--muted); }
+.summary ul li { margin: .35rem 0; }
+/* The spectrum: one row per solution, the label and its byline on the left, the prose on
+   the right, so the four read as a table the eye can scan down. */
+.summary .spectrum { display: grid; grid-template-columns: minmax(170px, 240px) 1fr; gap: 0 1.6rem; margin-top: .6rem; }
+.summary .spectrum .row { display: contents; }
+.summary .spectrum .lbl, .summary .spectrum .prose { padding: .8rem 0; border-top: 1px solid var(--line-2); }
+.summary .spectrum .lbl h3 { margin: 0 0 .25rem; }
+.summary .spectrum .lbl .byline { margin: 0; font-size: 13px; }
+.summary .spectrum .prose > :first-child { margin-top: 0; }
+.summary .spectrum .prose > :last-child { margin-bottom: 0; }
+@media (max-width: 1100px) { .summary .spectrum { grid-template-columns: 1fr; gap: 0; } .summary .spectrum .prose { border-top: none; padding-top: 0; } }
+.summary ul { margin: .8rem 0; padding-left: 1.35rem; }
 
 section.chapter { margin-top: 4.5rem; scroll-margin-top: 1.5rem; }
 section.chapter h2 {
@@ -262,46 +340,9 @@ section.chapter h2 .n {
   border-radius: 0.2em;
 }
 
-.intro, .blast { max-width: 900px; }
-.intro > :first-child, .blast > :first-child { margin-top: 0; }
-.intro > :last-child, .blast > :last-child { margin-bottom: 0; }
-
-.blast {
-  margin: 1.3rem 0 0;
-  padding: .85rem 1.1rem;
-  border-left: 3px solid var(--edge, var(--muted));
-  background: var(--panel-2);
-  border-radius: 0 6px 6px 0;
-  font-size: 15.5px;
-}
-/* A beat may carry the level too, meaning "this is where the chapter's level comes
-   from". Quieter than the chapter's box — it is a pointer inside a chapter the reader
-   has already chosen to read, not a headline. */
-.blast.beat {
-  margin: .8rem 0 0; padding: .55rem .85rem; font-size: 14.5px;
-}
-.blast.beat::before { content: attr(data-level) " — the risk in this chapter"; }
-.beatblast {
-  font: 600 9.5px/1 var(--sans); vertical-align: .18em; margin-right: .45rem;
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 1.3em; height: 1.3em; border-radius: 3px;
-  border: 1px solid currentColor;
-}
-.beatblast.narrow { color: var(--blast-narrow); }
-.beatblast.moderate { color: var(--blast-moderate); }
-.beatblast.wide { color: var(--blast-wide); }
-
-.blast::before {
-  content: attr(data-level) " blast radius";
-  display: block;
-  font: 600 10.5px/1 var(--sans);
-  letter-spacing: .09em; text-transform: uppercase;
-  color: var(--edge, var(--muted));
-  margin-bottom: .45rem;
-}
-.blast.narrow { --edge: var(--blast-narrow); }
-.blast.moderate { --edge: var(--blast-moderate); }
-.blast.wide { --edge: var(--blast-wide); }
+.intro { max-width: 900px; }
+.intro > :first-child { margin-top: 0; }
+.intro > :last-child { margin-bottom: 0; }
 
 /* --------------------------------------------------------------------- beats */
 
@@ -310,16 +351,12 @@ section.chapter h2 .n {
   grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
   gap: 2.6rem;
   margin-top: 2.9rem;
-  /* Full width, across both columns, so a beat reads as one unit and the next one
-     as another. Not drawn where the chapter heading's own rule is already there. */
   border-top: 1px solid var(--line-2);
   padding-top: 2.9rem;
 }
 section.chapter > h2 + .beat { border-top: none; padding-top: 0; }
 .beat > .say {
   position: sticky; top: 1.5rem; align-self: start;
-  /* Prose taller than the viewport would otherwise have its tail pinned out of
-     reach until the diff beside it ends. */
   max-height: calc(100vh - 3rem);
   overflow-y: auto;
 }
@@ -333,29 +370,25 @@ section.chapter > h2 + .beat { border-top: none; padding-top: 0; }
 }
 .beat h3 + p { margin-top: 0; }
 
-.say, .note { font-size: 15.5px; color: var(--ink-2); max-width: 900px; }
-/* The lead paragraph of the block under it, so it sits close to what it introduces. */
-.note { margin: 0 0 .6rem; }
-.note > :first-child { margin-top: 0; }
-.note > :last-child { margin-bottom: 0; }
-figure.hunk + .note { margin-top: 1.4rem; }
-.say p, .note p { margin: .8rem 0; }
-.say ul, .say ol, .note ul, .note ol { margin: .8rem 0; padding-left: 1.35rem; }
-.say li, .note li { margin: .3rem 0; }
-.say strong, .note strong { color: var(--ink); font-weight: 600; }
-.say a, .note a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
-/* A cross-reference to a block: reads as its code, behaves as a link. */
-a.ref { text-decoration: none; }
-a.ref > code {
-  color: var(--accent); background: var(--accent-soft);
-  border-color: transparent;
-}
-a.ref:hover > code { text-decoration: underline; }
-.say code, .note code, .meta code, .cap code {
+.say, .note, .summary, .intro { font-size: 15.5px; color: var(--ink-2); }
+.say, .note { max-width: 900px; }
+/* The paragraph a worker wrote for the hunk under it, so it sits close to what it describes.
+   Scoped to div.note: `note` is also an attention level, and a bare .note rule leaked a
+   margin onto the legend's NOTE square. */
+div.note { margin: 0 0 .6rem; }
+div.note > :first-child { margin-top: 0; }
+div.note > :last-child { margin-bottom: 0; }
+.say p, .note p, .summary p, .intro p { margin: .8rem 0; }
+.say ul, .say ol, .note ul, .note ol, .summary ul, .intro ul { margin: .8rem 0; padding-left: 1.35rem; }
+.say li, .note li, .summary li, .intro li { margin: .3rem 0; }
+.say strong, .note strong, .summary strong, .intro strong { color: var(--ink); font-weight: 600; }
+.say a, .note a, .summary a, .intro a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.say code, .note code, .summary code, .intro code, .meta code {
   font: 0.86em/1.4 var(--mono);
   background: var(--panel-2); border: 1px solid var(--line-2);
   border-radius: 4px; padding: .1em .3em;
 }
+p.missing { color: var(--fishy); }
 
 /* A reviewer reads this beside their editor, so the layout has to survive a
    half-width window even though full width is what it is designed for. */
@@ -372,142 +405,144 @@ a.ref:hover > code { text-decoration: underline; }
 
 /* --------------------------------------------------------------------- hunks */
 
+/* A hunk is one figure holding its sentence, its reason if any, and the diff card. The
+   figure's left edge is the attention level, so the hunks of a beat stack into one
+   vertical line striped by level, and the badge opens the sentence so the level is the
+   first word the reader meets. The card below is only the code. */
 figure.hunk {
-  margin: 0 0 1.4rem;
+  margin: 0 0 1.6rem;
+  padding: 0 0 0 .9rem;
+  border-left: 4px solid var(--l1);
+}
+figure.hunk:last-child { margin-bottom: 0; }
+figure.hunk.lvl-skip { border-left-color: var(--faint); }
+figure.hunk.lvl-note { border-left-color: var(--l2); }
+figure.hunk.lvl-fishy { border-left-color: var(--l3); }
+figure.hunk.lvl-hot { border-left-color: var(--l4); }
+
+figure.hunk > .note { margin: 0 0 .6rem; }
+.lvl {
+  display: inline-block; vertical-align: .12em; margin-right: .5rem;
+  font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
+  padding: .3rem .42rem; border-radius: 4px; color: #1b1f24; background: var(--l1);
+  border: 1px solid transparent;
+}
+figure.hunk.lvl-skip .lvl { background: var(--l0); color: var(--muted); border-color: var(--line); }
+figure.hunk.lvl-note .lvl { background: var(--l2); }
+figure.hunk.lvl-fishy .lvl { background: var(--l3); color: #fff; }
+figure.hunk.lvl-hot .lvl { background: var(--l4); color: #fff; }
+
+/* Why the hunk got its level, in the worker's words, in the level's colour, between the
+   sentence and the code. */
+figure.hunk > p.flag { margin: -.2rem 0 .7rem; font-size: 14.5px; max-width: 900px; }
+figure.hunk > p.flag b { font-weight: 600; }
+figure.hunk > p.flag.note { color: var(--l2-ink); }
+figure.hunk > p.flag.fishy { color: var(--l3-ink); }
+figure.hunk > p.flag.hot { color: var(--l4-ink); }
+
+/* The diff card: a thin header bar with where the hunk is and its tools, then the code. */
+figure.hunk > .card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
 }
-figure.hunk:last-child { margin-bottom: 0; }
-
-figure.hunk > figcaption {
-  padding: .6rem .85rem;
+.card > figcaption {
+  padding: .45rem .85rem;
   border-bottom: 1px solid var(--line-2);
   background: var(--panel-2);
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "code cap  tools" "code path tools";
-  gap: 0 .6rem;
-  align-items: baseline;
-}
-figcaption .code {
-  grid-area: code; align-self: center;
-  font: 600 12px/1 var(--mono);
-  color: var(--accent); background: var(--accent-soft);
-  border-radius: 5px; padding: .32rem .42rem;
-}
-figcaption .cap {
-  grid-area: cap;
-  font-size: 14.5px; font-weight: 550; color: var(--ink);
+  display: flex; align-items: center; gap: .6rem;
 }
 figcaption .where {
-  grid-area: path;
-  font: 11.5px/1.5 var(--mono); color: var(--muted);
+  flex: 1;
+  font: 12px/1.5 var(--mono); color: var(--muted);
   overflow-wrap: anywhere;
+  cursor: pointer;
 }
-figcaption .where a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--faint); }
-figcaption .where a:hover { color: var(--accent); }
+figcaption .where:hover { color: var(--accent); }
+figcaption .where:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 figcaption .sz { color: var(--faint); }
-figcaption .tools {
-  grid-area: tools; align-self: center;
-  display: flex; align-items: center; gap: .4rem;
-}
+figcaption .tools { display: flex; align-items: center; gap: .4rem; }
 
 /* Scoped to .tools, and it must stay scoped: Prism's markup grammar emits
    <span class="token tag"> for every HTML tag it highlights, so a bare `.tag` rule here
-   reaches inside every diff. It did — `text-transform: uppercase` rewrote every tag in
-   an HTML or markdown hunk as <DIV CLASS="PILLS">, which reads as though the diff
-   contained code nobody wrote. */
+   would reach inside every diff. */
 .tools .tag {
   font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
   padding: .3rem .42rem; border-radius: 4px;
   color: var(--muted); background: var(--bg); border: 1px solid var(--line);
 }
-.tools .tag.added { color: var(--blast-narrow); border-color: var(--add-edge); }
-.tools .tag.deleted { color: var(--blast-wide); border-color: var(--del-edge); }
-.tools .tag.moved,
-.tools .tag.copied { color: var(--accent); border-color: var(--accent); }
+.tools .tag.added { color: var(--ok); border-color: var(--add-edge); }
+.tools .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
+.tools .tag.moved { color: var(--accent); border-color: var(--accent); }
 
-button.seen {
-  font: 11.5px/1 var(--sans); color: var(--muted);
-  background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
-  padding: .34rem .5rem; cursor: pointer; white-space: nowrap;
-}
-button.seen:hover { color: var(--ink); border-color: var(--muted); }
-/* Marking a block viewed collapses it and gives it a green edge, the way a reviewed
-   file behaves on a pull request. Clicking a caption collapses without marking. */
-figure.hunk.seen { border-color: var(--seen); }
-figure.hunk.seen > figcaption { border-bottom-color: var(--seen); }
-figure.hunk.collapsed > pre,
-figure.hunk.collapsed > .binary,
-figure.hunk.collapsed > .gap { display: none; }
-figure.hunk > figcaption { cursor: pointer; }
-figure.hunk > figcaption:hover .cap { color: var(--accent); }
-figure.hunk > figcaption:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-/* Following a #3.2 link on a 200-block page has to say where you landed. The ring
-   only, not the border, so a block that is both viewed and the current target still
-   shows its green edge. */
-figure.hunk:target { box-shadow: 0 0 0 3px var(--accent); }
+/* Marking a hunk viewed collapses its code and fades the whole hunk. When every hunk of
+   a beat is viewed its prose column fades too, and when every hunk of a chapter is viewed
+   so do the chapter's heading and intro. The three rules hit siblings, never an element
+   inside a faded one, so nothing fades twice. All of it is CSS, so unmarking a hunk brings
+   everything back. */
+figure.hunk.seen { opacity: .5; filter: saturate(0); }
+section.beat:has(figure.hunk):not(:has(figure.hunk:not(.seen))) > .say { opacity: .5; filter: saturate(0); }
+section.chapter:has(figure.hunk):not(:has(figure.hunk:not(.seen))) > h2,
+section.chapter:has(figure.hunk):not(:has(figure.hunk:not(.seen))) > .intro { opacity: .5; filter: saturate(0); }
+figure.hunk.collapsed > .card > pre,
+figure.hunk.collapsed > .card > .binary,
+figure.hunk.collapsed > .card > .ctx { display: none; }
+/* A collapsed card is only its header bar, whose bottom rule would sit on the card's
+   own bottom border and read as one line twice as thick. */
+figure.hunk.collapsed > .card > figcaption { border-bottom: none; }
 figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 
-/* One control for a run of changes read as a group — a lockfile's forty hunks under one
-   caption. It sits above them rather than inside any of them, because it is about all
-   of them. */
-.groupbar { margin: 0 0 .6rem; }
-button.seen.group { padding: .3rem .6rem; }
-button.seen.group.seen, button.seen.group[aria-pressed="true"] {
-  color: var(--seen); border-color: var(--seen);
-}
+button.seen.group[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
 
-figure.hunk .binary {
+.card .binary {
   padding: .8rem .85rem; color: var(--muted); font-size: 14.5px;
 }
 
+/* The nearest declaration above the hunk, from git's function context. It is code,
+   so it sits in the code column in the code font, but faint, led by an ellipsis and
+   closed with a dashed seam: there may be any number of lines between it and the
+   first line of the diff. */
+.card .ctx {
+  font: 12.5px/1.58 var(--mono); color: var(--faint);
+  padding: .3rem .85rem;
+  border-bottom: 1px dashed var(--line);
+  white-space: pre; overflow-x: auto;
+}
+.card .ctx::before { content: "⋯ "; }
+
 /* ------------------------------------------------------------------ the diff */
 
-pre.diff, pre.code {
+pre.diff {
   margin: 0;
   overflow-x: auto;
   padding: .5rem 0;
   font: 12.5px/1.58 var(--mono);
   tab-size: 2;
 }
-pre.diff > code, pre.code > code {
+pre.diff > code {
   display: inline-block;
   min-width: 100%;
   font: inherit;
 }
 /* Prism's diff plugin groups a run of same-sign lines into one token span, so a
-   run tinted as a block is exactly one tint per line, and a block comment across
-   four added lines still tokenises as one comment. */
+   run tinted as a block is exactly one tint per line. The tint is the whole signal:
+   no edge on the run, because the figure's own left edge already carries the
+   attention level and two coloured edges side by side read as noise. */
 pre.diff > code > .token.inserted:not(.prefix),
 pre.diff > code > .token.deleted:not(.prefix),
 pre.diff > code > .token.unchanged:not(.prefix) {
   display: block;
   padding: 0 .85rem;
-  border-left: 3px solid transparent;
 }
-pre.diff > code > .token.inserted:not(.prefix) {
-  background: var(--add-bg); border-left-color: var(--add-edge);
-}
-pre.diff > code > .token.deleted:not(.prefix) {
-  background: var(--del-bg); border-left-color: var(--del-edge);
-}
+pre.diff > code > .token.inserted:not(.prefix) { background: var(--add-bg); }
+pre.diff > code > .token.deleted:not(.prefix) { background: var(--del-bg); }
 pre.diff > code > .token.coord { display: block; padding: 0 .85rem; color: var(--faint); }
-pre.code > code { padding: 0 .85rem; }
 /* Before Prism runs, and if it never does, the raw diff still reads correctly. */
 pre.diff > code:not(.highlighted) { padding: 0 .85rem; white-space: pre; }
 .token.prefix { color: var(--faint); user-select: none; }
 
-.gap {
-  display: block; padding: .1rem .85rem;
-  color: var(--faint); font: 12.5px/1.58 var(--mono);
-  border-top: 1px dashed var(--line);
-  border-bottom: 1px dashed var(--line);
-}
-
-/* Prism tokens. One palette, ours, so a report looks the same everywhere. */
+/* Prism tokens. One palette, ours, so a tour looks the same everywhere. */
 .token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--tok-comment); font-style: italic; }
 .token.punctuation { color: var(--tok-punct); }
 .token.operator, .token.entity, .token.url { color: var(--tok-operator); }
@@ -519,6 +554,3 @@ pre.diff > code:not(.highlighted) { padding: 0 .85rem; white-space: pre; }
 .token.variable, .token.interpolation, .token.parameter { color: var(--tok-variable); }
 .token.bold { font-weight: 600; }
 .token.italic { font-style: italic; }
-/* Never let a grammar's own inserted/deleted token repaint a diff row. */
-pre.code > code .token.inserted { color: var(--blast-narrow); }
-pre.code > code .token.deleted { color: var(--blast-wide); }

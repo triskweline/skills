@@ -1,6 +1,6 @@
 """Fragments + numbered hunks -> one self-contained HTML page.
 
-Imported by vibe-hunks.py for `--assemble`; not a script of its own.
+Imported by difftour.py for `--assemble`; not a script of its own.
 
 Workers write plain fragments: <h2> per topic, <h3> per beat, <p> prose, and a
 `<!-- hunk h17 -->` placeholder where a hunk belongs. The placeholder may carry the
@@ -425,8 +425,8 @@ def render(hunks, texts, git_args, out_path=''):
     # The uid scopes the reader's viewed marks in the browser to this one tour. It comes
     # from the output path: the working directory is minted per tour, so two tours never
     # share marks, while re-assembling the same tour keeps them.
-    uid = hashlib.md5(os.path.abspath(out_path or 'vibe-tour.html').encode('utf-8')).hexdigest()[:10]
-    title = title or 'Vibe tour'
+    uid = hashlib.md5(os.path.abspath(out_path or 'diff-tour.html').encode('utf-8')).hexdigest()[:10]
+    title = title or 'Diff tour'
     head = ['<h1>%s</h1>' % title,
             '<p class="meta">%s</p>' % _meta(hunks, repo, source),
             '<p class="standfirst">%s</p>' % STANDFIRST,
@@ -435,7 +435,7 @@ def render(hunks, texts, git_args, out_path=''):
         head.append('<div class="summary">%s</div>' % summary)
 
     page = _read('layout.html')
-    page = re.sub(r'<!--\s*\n  vibe tour — the page shell.*?-->\n', '', page, count=1, flags=re.S)
+    page = re.sub(r'<!--\s*\n  diff tour — the page shell.*?-->\n', '', page, count=1, flags=re.S)
     page = _swap(page, 'PRISM', '\n<script>%s</script>\n' % prism_bundle())
     page = _swap(page, 'CSS', '\n<style>\n%s</style>\n' % _read('report.css'))
     page = _swap(page, 'JS', '\n<script>\n%s</script>\n' % _read('report.js'))
