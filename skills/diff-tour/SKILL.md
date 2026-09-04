@@ -294,7 +294,9 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
   <tr><th>Before</th><th>After</th></tr>
   <tr><td>...</td><td>...</td></tr>
 </table>
-<p>Not changed, deliberately: ...</p>
+
+<h2>Not changed, deliberately</h2>
+<ul><li>...</li></ul>
 
 <h2>How it was built</h2>
 <ul><li><strong>Mechanism.</strong> ...</li>...</ul>
@@ -322,7 +324,9 @@ One paragraph, at most 80 words, about the world *before* this change: what was 
 
 A **before/after table**: one row per behaviour that a user, an API consumer or the data itself would notice, at most eight rows, each cell a phrase. Rows are behaviours someone can observe ("booking a taken parking spot crashed with a server error" / "rejected with a validation message"), never files, classes or methods. A change nobody outside the code can observe, a pure refactoring, gets the single line "Nothing a user or API sees changes" instead of a table.
 
-Then one line, **"Not changed, deliberately:"**, naming what the change leaves alone that a reviewer would otherwise wonder about: a notification not sent, a check not applied, a path not touched. It answers the question before the reviewer carries it through nine chapters. Leave the line out if there is nothing to say.
+### Not changed, deliberately
+
+A bullet list of what the change leaves alone that a reviewer would otherwise wonder about: a notification not sent, a check not applied, a path not touched, a scope the author drew a line around. One bullet per item, one phrase each, at most six. It answers those questions before the reviewer carries them through nine chapters. Leave the whole heading out if there is nothing to say.
 
 ### How it was built
 

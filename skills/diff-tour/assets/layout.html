@@ -88,7 +88,11 @@ needed two tenants to ask within the same cache window.</p>
   <tr><td>Two tenants requesting the same resource id could read each other's cached copy</td><td>Each tenant reads only entries written under its own id</td></tr>
   <tr><td>Entries written before the change stayed reachable by every tenant</td><td>A backfill rekeys them once on deploy</td></tr>
 </table>
-<p>Not changed, deliberately: the cache store itself and its expiry rules.</p>
+<h2>Not changed, deliberately</h2>
+<ul>
+  <li>The cache store itself and its expiry rules</li>
+  <li>Keys written by background jobs, which never carried a tenant and still do not</li>
+</ul>
 <h2>The spectrum of solutions</h2>
 <p class="byline">Three other ways this could have been built, so you can see the room the author was standing in. Then where this change sits.</p>
 <div class="spectrum">
