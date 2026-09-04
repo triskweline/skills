@@ -58,8 +58,7 @@ YAML wants for itself.
 
 ## Never commit a corpus from a private repository
 
-`skills/diff-tour/_examples/` is gitignored on purpose: it holds patches and narrations
-from real, private repositories, kept locally so test fixtures can be distilled from
-them. The fixtures that land in git are written from the *shapes* those files revealed,
-never copied out of them. If you add another corpus directory, gitignore it the same way
-and check it for private content before anything derived from it is committed.
+Test fixtures are written from the *shapes* that real diffs and tours revealed, never
+copied out of them. If you keep patches or generated tours from a private repository
+around to study, keep them outside the repository or gitignore the directory, and check
+anything derived from them for private content before it is committed.

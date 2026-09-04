@@ -110,7 +110,7 @@ class TestTheLintLeavesSafeProseAlone(unittest.TestCase):
         self.assertEqual([], problems_for(VALID))
 
     def test_a_block_scalar_may_contain_anything(self):
-        """This is how diff-tour's own description is written, and it contains
+        """This is how a long skill description is written, and it contains
         two colon-spaces. Flagging its continuation lines would be the bug."""
         self.assertEqual([], problems_for(
             'name: demo\n'

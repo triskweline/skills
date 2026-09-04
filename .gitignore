@@ -1,6 +1,2 @@
 __pycache__/
 *.pyc
-
-# A local corpus of real tour output: patches and narrations from private repos,
-# kept for distilling test fixtures. Never committed.
-skills/diff-tour/_examples/
