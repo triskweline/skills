@@ -68,19 +68,27 @@
   }
 
   var painters = [];      // each repaints one widget from the `seen` classes; order is irrelevant
-  var chapterRecs = [];   // {el, link, figs, done}, in document order
+  var chapterRecs = [];   // {el, link, num, figs, done}, in document order
+  var beatRecs = [];      // {el, chapter, figs, done}, in document order; only beats with hunks
 
+  /* Repaint everything, then work out what this change finished: which beats and which
+     chapters went from unfinished to finished, and which chapters are still open. */
   function repaint() {
     painters.forEach(function (paint) { paint(); });
-    var completed = [], remaining = [];
+    var delta = { beats: [], completed: [], remaining: [] };
+    beatRecs.forEach(function (rec) {
+      var now = allSeen(rec.figs);
+      if (now && !rec.done) delta.beats.push(rec);
+      rec.done = now;
+    });
     chapterRecs.forEach(function (rec) {
       if (!rec.figs.length) return;
       var now = allSeen(rec.figs);
-      if (now && !rec.done) completed.push(rec);
-      if (!now) remaining.push(rec);
+      if (now && !rec.done) delta.completed.push(rec);
+      if (!now) delta.remaining.push(rec);
       rec.done = now;
     });
-    return { completed: completed, remaining: remaining };
+    return delta;
   }
 
   function mark(figs, on) {
@@ -147,6 +155,7 @@
     var say = beat.querySelector('.say');
     var own = [].slice.call(beat.querySelectorAll('.show figure.hunk'));
     if (!say || !own.length) return;
+    beatRecs.push({ el: beat, chapter: beat.closest('section.chapter'), figs: own, done: false });
     var box = document.createElement('div');
     box.className = 'changes';
     var lbl = document.createElement('p');
@@ -328,7 +337,20 @@
     setTimeout(function () { wrap.remove(); }, 4000);
   }
   function announce(delta) {
-    if (!delta.completed.length) return;
+    if (!delta.completed.length) {
+      /* No chapter finished, but a beat did: move on to the next unfinished beat of the
+         same chapter, wrapping around to an earlier one, so the reader never hunts. */
+      if (!delta.beats.length) return;
+      var beat = delta.beats[delta.beats.length - 1];
+      var siblings = beatRecs.filter(function (r) { return r.chapter === beat.chapter; });
+      var j = siblings.indexOf(beat), nextBeat = null;
+      for (var m = 1; m <= siblings.length && !nextBeat; m++) {
+        var s = siblings[(j + m) % siblings.length];
+        if (!s.done) nextBeat = s;
+      }
+      if (nextBeat) nextBeat.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     if (!delta.remaining.length) {
       flash('All chapters done', 'Tour completed');
       party();
