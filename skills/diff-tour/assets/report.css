@@ -182,15 +182,15 @@ body {
    readable. Once the entries outgrow the sidebar the list scrolls. */
 #nav > ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 #nav > ol > li {
-  position: relative;
-  flex: 1 0 auto; min-height: 3.6rem;
+  position: relative; cursor: pointer;
+  flex: var(--share, 1) 0 auto; min-height: 3.6rem;   /* --share: the chapter's hunk count, set by report.js */
   display: flex; flex-direction: column; justify-content: flex-start;
 }
 #nav > ol > li + li { border-top: 1px solid var(--line-2); }
 /* The chapter's heat, as one fat stripe down its left edge: one segment per hunk in
    reading order, sized by the hunk's line count, coloured by its level. report.js paints
    it as a gradient. It links nothing; it is a glance, not a control. */
-#nav > ol > li > .stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; }
+#nav > ol > li > .stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; background: var(--stripe); }
 #nav > ol > li > a {
   display: flex; align-items: baseline; gap: .55rem;
   padding: .5rem 1.25rem .5rem 1.25rem;
@@ -226,7 +226,7 @@ body {
 button.sq { padding: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
 button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* A viewed hunk's square carries a tick, sized to sit inside the square. */
-.sq.seen::after { content: "✓"; }
+.sq[aria-pressed="true"]::after { content: "✓"; }
 /* A beat's list of its hunks, in the prose column: square, path, and one button for all
    of them. It stays in view while the hunks scroll, so it doubles as the beat's progress. */
 .changes { margin-top: 1.1rem; }
@@ -243,7 +243,7 @@ button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
    viewed. Its width animates, so a click is answered by movement the eye catches without
    looking for a number. */
 .progress { position: fixed; left: 0; right: 0; bottom: 0; height: 7px; z-index: 20; pointer-events: none; }
-.progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .35s ease; }
+.progress i { display: block; height: 100%; width: var(--progress, 0%); background: var(--accent); transition: width .35s ease; }
 
 /* The flash: a card in the middle of the window when a chapter is finished, or the whole
    tour. Shown for three seconds by report.js, never in the way of a click. */
@@ -265,8 +265,9 @@ button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
    so a reader who asked for reduced motion gets none of it. */
 .party { position: fixed; inset: 0; z-index: 29; pointer-events: none; overflow: hidden; }
 .party span {
-  position: absolute; top: -10vh; font-size: 28px;
-  animation: party-fall 3s linear forwards;
+  position: absolute; top: -10vh; left: var(--x);
+  font-size: var(--size, 28px);
+  animation: party-fall var(--dur, 3s) linear var(--delay, 0s) forwards;
 }
 @keyframes party-fall {
   from { transform: translateY(0) rotate(0deg); opacity: 1; }
@@ -329,7 +330,9 @@ p.standfirst {
 .legend .row { display: contents; }
 .legend b { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
 .legend button.level { justify-self: end; }
-.legend button.level[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
+/* Every viewed-state button on the page, pressed: the per-hunk button, a beat's group
+   button, a legend level button. JS sets aria-pressed; this draws it. */
+button.seen[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
 
 .summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
 .summary > :first-child { margin-top: 0; }
@@ -512,9 +515,7 @@ figure.hunk.collapsed > .card > .ctx { display: none; }
 /* A collapsed card is only its header bar, whose bottom rule would sit on the card's
    own bottom border and read as one line twice as thick. */
 figure.hunk.collapsed > .card > figcaption { border-bottom: none; }
-figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 
-button.seen.group[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
 
 .card .binary {
   padding: .8rem .85rem; color: var(--muted); font-size: 14.5px;

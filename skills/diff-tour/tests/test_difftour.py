@@ -159,7 +159,7 @@ class Repo(RepoCase):
         self.assertIn(out_path if False else 'tour.html', out)
         # Assets are inlined: no external requests.
         self.assertIn('window.Prism', page)
-        self.assertIn('.changes .sq', page)
+        self.assertIn('.sq[aria-pressed="true"]::after', page)
         self.assertIn('rel="icon" href="data:image/svg+xml,', page)
         self.assertNotIn('src="../vendor', page)
         self.assertNotIn('the page shell', page)
