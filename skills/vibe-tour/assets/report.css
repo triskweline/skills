@@ -238,7 +238,8 @@ a.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
    of them. It stays in view while the hunks scroll, so it doubles as the beat's progress. */
 .changes { margin-top: 1.1rem; }
 .changes .lbl { margin: 0 0 .35rem; font-size: 13px; color: var(--muted); }
-.changes ol { list-style: none; margin: 0; padding: 0; }
+/* More specific than the prose column's generic list rule, which would indent it. */
+.say .changes ol, .changes ol { list-style: none; margin: 0; padding: 0; }
 .changes li { display: flex; align-items: center; gap: .55rem; margin: .3rem 0; }
 .changes li a.loc { color: var(--ink-2); text-decoration: none; font: 12.5px/1.5 var(--mono); overflow-wrap: anywhere; }
 .changes li a.loc:hover { color: var(--accent); }
