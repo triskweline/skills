@@ -344,10 +344,17 @@ button.seen[aria-pressed="true"] { color: var(--seen); border-color: var(--seen)
 .summary ul li { margin: .35rem 0; }
 /* The before/after table under "What this change achieves": one row per behaviour a user
    or an API would notice. */
-.summary table { border-collapse: collapse; width: 100%; margin: .9rem 0; font-size: 14.5px; }
-.summary th, .summary td { text-align: left; vertical-align: top; padding: .45rem .7rem; border-top: 1px solid var(--line-2); }
+.summary table { border-collapse: collapse; width: 100%; margin: 1.4rem 0 1.8rem; font-size: 14.5px; }
+.summary th, .summary td { text-align: left; vertical-align: top; padding: .55rem .9rem; border-top: 1px solid var(--line-2); }
+/* Flush with the prose: no padding on the outer edges, so the table's left and right
+   sides line up with the paragraphs above and below it. */
+.summary th:first-child, .summary td:first-child { padding-left: 0; }
+.summary th:last-child, .summary td:last-child { padding-right: 0; }
+.summary tr:last-child td { border-bottom: 1px solid var(--line-2); }
 .summary th { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); border-top: none; padding-top: 0; }
-.summary td:first-child { color: var(--muted); width: 42%; }
+.summary td:first-child { color: var(--muted); width: 44%; }
+/* The arrow column the script inserts between the two sides. */
+.summary .arrow { width: 1.2rem; padding-left: 0; padding-right: 0; text-align: center; color: var(--faint); }
 /* The spectrum: one row per solution, the label and its byline on the left, the prose on
    the right, so the four read as a table the eye can scan down. */
 .summary .spectrum { display: grid; grid-template-columns: minmax(170px, 240px) 1fr; gap: 0 1.6rem; margin-top: .6rem; }

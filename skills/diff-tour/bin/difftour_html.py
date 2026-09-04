@@ -182,12 +182,28 @@ BYLINES = {
 HEADING = re.compile(r'(<h([23])[^>]*>(.*?)</h\2>)', re.S | re.I)
 
 
+ROW = re.compile(r'<tr[^>]*>(.*?)</tr>', re.S | re.I)
+CELL = re.compile(r'(<t[dh]\b[^>]*>.*?</t[dh]>)', re.S | re.I)
+
+
+def _arrow_column(summary_html):
+    """A before/after table is written with two cells per row; the page shows an arrow
+    between them, as a column of its own so the two sides stay aligned."""
+    def row(m):
+        cells = CELL.findall(m.group(1))
+        if len(cells) != 2:
+            return m.group(0)
+        arrow = '<th class="arrow"></th>' if cells[0].lower().startswith('<th') else '<td class="arrow">→</td>'
+        return m.group(0).replace(m.group(1), cells[0] + arrow + cells[1], 1)
+    return ROW.sub(row, summary_html)
+
+
 def _with_bylines(summary_html):
     def add(m):
         key = re.sub(r'<[^>]+>', '', m.group(3)).strip().lower().rstrip('.')
         line = BYLINES.get(key)
         return m.group(1) + ('\n<p class="byline">%s</p>' % line if line else '')
-    return _spectrum_rows(HEADING.sub(add, summary_html))
+    return _spectrum_rows(_arrow_column(HEADING.sub(add, summary_html)))
 
 
 SPECTRUM_H2 = re.compile(r'<h2[^>]*>\s*the spectrum of solutions\s*</h2>', re.I)

@@ -265,6 +265,16 @@ class Repo(RepoCase):
         self.assertIn('<h2>What this change achieves</h2>', page)
         self.assertNotIn('<span class="t">What this change achieves</span>', page)
 
+    def test_before_after_table_gets_an_arrow_column(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1>\n<h2>What changes</h2>\n<table>\n<tr><th>Before</th><th>After</th></tr>\n'
+            '<tr><td>Crashed</td><td>Rejected</td></tr>\n<tr><td>One</td><td>Two</td><td>Three</td></tr>\n</table>',
+            '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<tr><th>Before</th><th class="arrow"></th><th>After</th></tr>', page)
+        self.assertIn('<tr><td>Crashed</td><td class="arrow">→</td><td>Rejected</td></tr>', page)
+        # A row that is not two cells is left alone.
+        self.assertIn('<tr><td>One</td><td>Two</td><td>Three</td></tr>', page)
+
     def test_intro_fixed_headings_get_their_bylines(self):
         page, out, err = self.assemble(
             '<h1>T</h1>\n<h2>The spectrum of solutions</h2>\n<h3>The minimal solution</h3>\n<p>Patch it.</p>\n'
