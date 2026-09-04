@@ -163,10 +163,10 @@ Everything mechanical before the clustering happens in **one script call**, run 
 <skill dir>/bin/vibe-hunks.py --setup <target>
 ```
 
-It resolves the target exactly as the help text lists them (a branch is compared against the default branch from its merge base; a PR or MR is fetched from the origin remote into a local ref, never checked out, so local changes are safe), creates the working directory outside the repository with twelve empty topic folders in it, and writes the numbered diff. It prints:
+It resolves the target exactly as the help text lists them (a branch is compared against the default branch from its merge base; a PR or MR is fetched from the origin remote into a local ref, never checked out, so local changes are safe), creates the working directory with twelve empty topic folders in it, and writes the numbered diff. The working directory is a uniquely named folder inside the repository's `tmp/` if it has one (Rails apps do), otherwise in the system temp dir; two tours never share a folder, and a tour never numbers its own files. It prints:
 
 ```
-WORK=/tmp/vibe-tour.sLxCWm                      the working directory; fragments and the tour go here
+WORK=/home/me/app/tmp/vibe-tour.sLxCWm          the working directory; fragments and the tour go here
 ARGS=-- 9b1f3c2a7e4d..feature/x                 paste this into --assemble in Part 4, verbatim
 COMMITS:                                        the commit list, or "(none: working tree)"
 ...

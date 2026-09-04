@@ -77,7 +77,8 @@ def untracked_diff():
                         stdout=subprocess.PIPE, check=True)
     parts = []
     for path in ls.stdout.decode('utf-8', 'replace').splitlines():
-        if not path:
+        # A tour living in the repository's tmp/ must never number its own files.
+        if not path or '/vibe-tour.' in '/' + path:
             continue
         out = subprocess.run(['git', 'diff', '--no-color', '--no-ext-diff', '--no-index',
                               '--', '/dev/null', path], stdout=subprocess.PIPE)
@@ -335,7 +336,12 @@ def setup(target):
     hunks = parse(text)
     if not hunks:
         raise SetupError('the diff for %s is empty; nothing to tour' % target)
-    work = tempfile.mkdtemp(prefix='vibe-tour.')
+    # A repository with a tmp/ folder (Rails apps have one) keeps its tours there, so
+    # they sit next to the code they describe; otherwise the system temp dir. mkdtemp
+    # makes the folder name unique per tour, so generations never collide.
+    top = git_out('rev-parse', '--show-toplevel')
+    local_tmp = os.path.join(top, 'tmp')
+    work = tempfile.mkdtemp(prefix='vibe-tour.', dir=local_tmp if os.path.isdir(local_tmp) else None)
     for n in range(1, 13):
         os.makedirs(os.path.join(work, 'topic-%02d' % n))
     diff_path = os.path.join(work, 'diff.txt')

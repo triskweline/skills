@@ -319,6 +319,19 @@ class Setup(RepoCase):
         self.assertIn('5 hunks', facts['DIFF'])
         shutil.rmtree(facts['WORK'])
 
+    def test_a_repository_tmp_folder_hosts_the_tour_and_is_never_toured(self):
+        os.makedirs(os.path.join(self.dir, 'tmp'))
+        code, facts, out, err = setup(self.dir, 'dirty')
+        self.assertEqual(code, 0, err)
+        self.assertTrue(facts['WORK'].startswith(os.path.join(os.path.realpath(self.dir), 'tmp', 'vibe-tour.'))
+                        or facts['WORK'].startswith(os.path.join(self.dir, 'tmp', 'vibe-tour.')), facts['WORK'])
+        # tmp/ is not ignored here, yet a second tour does not number the first tour's files,
+        # and gets its own folder.
+        code2, facts2, out2, err2 = setup(self.dir, 'dirty')
+        self.assertEqual(code2, 0, err2)
+        self.assertNotEqual(facts['WORK'], facts2['WORK'])
+        self.assertIn('5 hunks', facts2['DIFF'])
+
     def test_commit_range_branch_and_pr_targets(self):
         d = self.dir
         sh(d, 'git', 'add', '.')
