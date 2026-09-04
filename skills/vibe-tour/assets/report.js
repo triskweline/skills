@@ -128,10 +128,11 @@
     own.forEach(function (fig) {
       var li = document.createElement('li');
       var lvl = fig.getAttribute('data-level') || '1';
-      var sq = document.createElement('a');
+      var sq = document.createElement('button');
+      sq.type = 'button';
       sq.className = 'sq l' + lvl;
-      sq.href = '#' + fig.id;
       sq.setAttribute('data-for', fig.id);
+      sq.addEventListener('click', function () { setSeen(fig, !fig.classList.contains('seen')); });
       var where = fig.querySelector('figcaption .where');
       var loc = document.createElement('a');
       loc.className = 'loc';
@@ -139,7 +140,9 @@
       var code = document.createElement('code');
       code.textContent = where ? where.textContent.trim().split(' · ')[0] : fig.id;
       loc.appendChild(code);
-      sq.title = loc.title = code.textContent;
+      loc.title = code.textContent;
+      sq.title = 'mark ' + code.textContent + ' viewed';
+      sq.setAttribute('aria-label', sq.title);
       li.appendChild(sq);
       li.appendChild(loc);
       ol.appendChild(li);
@@ -170,33 +173,33 @@
     say.appendChild(box);
   });
 
-  /* ---- navigation, built from the chapters themselves. Under each entry sits the
-     chapter's heat strip: one square per hunk, in reading order, coloured by attention
-     level, each a link to its hunk. ---- */
+  /* ---- navigation, built from the chapters themselves. Each entry carries a stripe down
+     its left edge: the chapter's hunks in reading order, each segment as tall as the
+     hunk's line count, coloured by level. ---- */
   var nav = document.getElementById('nav');
   var list = nav && nav.querySelector('ol');
   var links = {};
-  var LEVEL_NAME = ['skip', 'read once', 'note', 'fishy', 'hot'];
+  var LEVEL_VAR = ['var(--line)', 'var(--l1)', 'var(--l2)', 'var(--l3)', 'var(--l4)'];
 
-  function strip(ch) {
-    var ol = document.createElement('ol');
-    ol.className = 'heat';
-    [].slice.call(ch.querySelectorAll('figure.hunk')).forEach(function (fig) {
-      var li = document.createElement('li');
-      var a = document.createElement('a');
-      var lvl = fig.getAttribute('data-level') || '1';
-      a.className = 'sq l' + lvl;
-      a.href = '#' + fig.id;
-      var where = fig.querySelector('figcaption .where');
-      var reason = fig.getAttribute('data-reason');
-      a.title = LEVEL_NAME[+lvl] + ' · ' + (where ? where.textContent.trim() : fig.id)
-              + (reason ? '\n' + reason : '');
-      a.setAttribute('aria-label', a.title);
-      a.setAttribute('data-for', fig.id);
-      li.appendChild(a);
-      ol.appendChild(li);
+  function stripe(ch) {
+    var figs = [].slice.call(ch.querySelectorAll('figure.hunk'));
+    var sizes = figs.map(function (fig) {
+      var code = fig.querySelector('pre > code');
+      return code ? Math.max(1, code.textContent.split('\n').length - 1) : 1;
     });
-    return ol;
+    var total = sizes.reduce(function (a, b) { return a + b; }, 0) || 1;
+    var stops = [], at = 0;
+    figs.forEach(function (fig, i) {
+      var lvl = +(fig.getAttribute('data-level') || '1');
+      var from = at, to = at + 100 * sizes[i] / total;
+      stops.push(LEVEL_VAR[lvl] + ' ' + from.toFixed(2) + '% ' + to.toFixed(2) + '%');
+      at = to;
+    });
+    var el = document.createElement('span');
+    el.className = 'stripe';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.background = 'linear-gradient(to bottom, ' + stops.join(', ') + ')';
+    return el;
   }
 
   if (list) {
@@ -214,8 +217,7 @@
       a.querySelector('.n').textContent = num ? num.textContent : String(i + 1);
       a.querySelector('.t').textContent = title.textContent.trim();
       li.appendChild(a);
-      /* The whole entry is the chapter's target, not just its title line: a click on the
-         empty part of the entry follows the title link. A square keeps its own link. */
+      /* The whole entry is the chapter's target, not just its title line. */
       li.style.cursor = 'pointer';
       li.addEventListener('click', function (e) {
         if (e.target.closest('a')) return;
@@ -224,15 +226,15 @@
       var n = ch.querySelectorAll('figure.hunk').length;
       /* The entry's share of the sidebar grows with the chapter's size. */
       li.style.flexGrow = String(Math.max(1, n));
-      if (n) li.appendChild(strip(ch));
+      if (n) li.appendChild(stripe(ch));
       list.appendChild(li);
       links[ch.id] = a;
     });
   }
 
-  /* A square dims once its hunk is marked viewed, so the strips double as progress. */
+  /* A square shows a tick once its hunk is marked viewed. */
   function paintStrips() {
-    [].slice.call(document.querySelectorAll('.heat .sq, .changes .sq')).forEach(function (sq) {
+    [].slice.call(document.querySelectorAll('.changes .sq')).forEach(function (sq) {
       var fig = document.getElementById(sq.getAttribute('data-for'));
       sq.classList.toggle('seen', !!(fig && fig.classList.contains('seen')));
     });

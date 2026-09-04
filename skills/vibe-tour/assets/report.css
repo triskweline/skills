@@ -180,14 +180,18 @@ body {
    readable. Once the entries outgrow the sidebar the list scrolls. */
 #nav > ol { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 #nav > ol > li {
-  border-left: 3px solid transparent;
+  position: relative;
   flex: 1 0 auto; min-height: 3.6rem;
   display: flex; flex-direction: column; justify-content: flex-start;
 }
 #nav > ol > li + li { border-top: 1px solid var(--line-2); }
+/* The chapter's heat, as one fat stripe down its left edge: one segment per hunk in
+   reading order, sized by the hunk's line count, coloured by its level. report.js paints
+   it as a gradient. It links nothing; it is a glance, not a control. */
+#nav > ol > li > .stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; }
 #nav > ol > li > a {
   display: flex; align-items: baseline; gap: .55rem;
-  padding: .5rem 1.25rem .2rem 1rem;
+  padding: .5rem 1.25rem .5rem 1.25rem;
   color: var(--ink-2); text-decoration: none;
   line-height: 1.4;
 }
@@ -196,21 +200,15 @@ body {
 #nav > ol > li > a .n { color: var(--faint); font: 500 12.5px/1.5 var(--mono); min-width: 1.1em; }
 #nav > ol > li > a .t { flex: 1; }
 #nav > ol > li > a .c { color: var(--faint); font: 12px/1.5 var(--mono); white-space: nowrap; }
-#nav > ol > li[aria-current] { background: var(--accent-soft); border-left-color: var(--accent); }
+#nav > ol > li[aria-current] { background: var(--accent-soft); }
 #nav > ol > li[aria-current] > a { color: var(--accent); font-weight: 550; }
 #nav > ol > li[aria-current] > a .n { color: var(--accent); }
 #nav > ol > li > a.done .c { color: var(--seen); }
 
-/* ------------------------------------------------------------------ heat strips
-   One square per hunk, in reading order, coloured by attention level, under each
-   chapter in the sidebar, so the reader sees the temperature of a chapter and where in
-   it the heat sits before reading a line. Each square is a link to its hunk. */
-.heat {
-  display: flex; flex-wrap: wrap; gap: 3px;
-  margin: 0; padding: 0;
-  list-style: none;
-}
-/* One square = one hunk's heat, in the sidebar strips and in a beat's list of changes. */
+/* ------------------------------------------------------------------ heat squares
+   One square = one hunk's heat, in the legend and in a beat's list of changes. In the
+   list it is a button that toggles the hunk's viewed state, and it shows a tick when
+   viewed. */
 .sq {
   display: flex; align-items: center; justify-content: center;
   width: 14px; height: 14px; border-radius: 3px; flex: 0 0 auto;
@@ -222,18 +220,10 @@ body {
 .sq.l2 { background: var(--l2); }
 .sq.l3 { background: var(--l3); color: #fff; }
 .sq.l4 { background: var(--l4); color: #fff; }
-a.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.sq { padding: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
+button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* A viewed hunk's square carries a tick, sized to sit inside the square. */
 .sq.seen::after { content: "✓"; }
-/* The strips are for finding the next chapter, not for reading the current one: while
-   reading they fade to grey, except the current chapter's; hovering the sidebar lights
-   them all up. */
-#nav > ol > li > .heat {
-  padding: 0 1.25rem .6rem 2.4rem; gap: 4px;
-  opacity: .3; filter: saturate(0); transition: opacity .15s, filter .15s;
-}
-#nav > ol > li[aria-current] > .heat, #nav:hover > ol > li > .heat { opacity: 1; filter: none; }
-
 /* A beat's list of its hunks, in the prose column: square, path, and one button for all
    of them. It stays in view while the hunks scroll, so it doubles as the beat's progress. */
 .changes { margin-top: 1.1rem; }
@@ -441,7 +431,6 @@ figure.hunk.lvl-skip .lvl { background: var(--l0); color: var(--muted); border-c
 figure.hunk.lvl-note .lvl { background: var(--l2); }
 figure.hunk.lvl-fishy .lvl { background: var(--l3); color: #fff; }
 figure.hunk.lvl-hot .lvl { background: var(--l4); color: #fff; }
-figure.hunk.seen .lvl::before { content: "✓ "; }
 
 /* Why the hunk got its level, in the worker's words, in the level's colour, between the
    sentence and the code. */
@@ -487,9 +476,15 @@ figcaption .tools { display: flex; align-items: center; gap: .4rem; }
 .tools .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
 .tools .tag.moved { color: var(--accent); border-color: var(--accent); }
 
-/* Marking a hunk viewed collapses its code; the tick in its badge and its square say so.
-   Clicking the path collapses without marking. The sentence and the reason stay visible
-   either way. */
+/* Marking a hunk viewed collapses its code and fades the whole hunk. When every hunk of
+   a beat is viewed its prose column fades too, and when every hunk of a chapter is viewed
+   so do the chapter's heading and intro. The three rules hit siblings, never an element
+   inside a faded one, so nothing fades twice. All of it is CSS, so unmarking a hunk brings
+   everything back. */
+figure.hunk.seen { opacity: .5; filter: saturate(0); }
+section.beat:has(figure.hunk):not(:has(figure.hunk:not(.seen))) > .say { opacity: .5; filter: saturate(0); }
+section.chapter:has(figure.hunk):not(:has(figure.hunk:not(.seen))) > h2,
+section.chapter:has(figure.hunk):not(:has(figure.hunk:not(.seen))) > .intro { opacity: .5; filter: saturate(0); }
 figure.hunk.collapsed > .card > pre,
 figure.hunk.collapsed > .card > .binary,
 figure.hunk.collapsed > .card > .ctx { display: none; }
