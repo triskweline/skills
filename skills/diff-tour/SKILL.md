@@ -290,7 +290,6 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 <p>...</p>
 
 <h2>How it was built</h2>
-<p>...</p>
 <ul><li><strong>Mechanism.</strong> ...</li>...</ul>
 
 <h2>The spectrum of solutions</h2>
@@ -314,7 +313,7 @@ At most 80 words. What is better after this change than before it, in the terms 
 
 ### How it was built
 
-At most 100 words. The two or three mechanisms that carry the change and how they fit together, one list item each: the mental model a reader needs before the chapters make sense. Not a list of what was touched; the shape of the solution.
+At most 100 words. The two or three mechanisms that carry the change, one list item each, and nothing before the list: no lead sentence. "Three mechanisms carry the load" tells the reader what they are about to read instead of reading it, and every such lead has been drivel. If the mechanisms interact in a way the bullets cannot show, say so in one sentence *after* the list, where it has something to point at. This is the mental model a reader needs before the chapters make sense: the shape of the solution, not a list of what was touched.
 
 ### The spectrum of solutions
 
