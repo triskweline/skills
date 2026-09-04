@@ -70,18 +70,15 @@
 <p class="standfirst">A fast, narrated tour through one change, for a human reviewing code they did not
 write. It groups the diff into topics and shows every hunk, each with a first-read attention level.
 Nothing was verified, and the judgement is yours.</p>
-<div class="legend">
-  <div class="row"><span class="sq l0"></span><b>skip</b><span>A tool could have written it, or it is fallout of another hunk. Trust the description.</span><button type="button" class="seen level" data-level="0">Mark viewed</button></div>
-  <div class="row"><span class="sq l1"></span><b>read</b><span>Ordinary hand-written code. Read it once.</span><button type="button" class="seen level" data-level="1">Mark viewed</button></div>
-  <div class="row"><span class="sq l2"></span><b>note</b><span>A choice or a nit to accept knowingly. The phrase says what to decide.</span><button type="button" class="seen level" data-level="2">Mark viewed</button></div>
-  <div class="row"><span class="sq l3"></span><b>fishy</b><span>It may be wrong. Verify before approving.</span><span></span></div>
-  <div class="row"><span class="sq l4"></span><b>hot</b><span>A mistake here would be silent or irreversible. Read every line, however it looks.</span><span></span></div>
 </div>
 <div class="summary">
 <h2>The problem</h2>
+<div class="problem">
 <p>Cache entries were keyed by resource id alone, so two tenants asking for resource <code>7</code>
 shared one entry. Support saw it as intermittent wrong data and could not reproduce it, because it
 needed two tenants to ask within the same cache window.</p>
+<p>One tenant could read another tenant's data, and nobody would know.</p>
+</div>
 <h2>What changes</h2>
 <table>
   <tr><th>Before</th><th>After</th></tr>
@@ -103,6 +100,14 @@ needed two tenants to ask within the same cache window.</p>
 <div class="row"><div class="lbl"><h3>Where this change sits</h3>
 </div><div class="prose"><p>Between the two: every key is threaded, but the cache store itself is untouched.</p></div></div>
 </div>
+</div>
+
+<div class="legend">
+  <div class="row"><span class="sq l1"></span><b>read</b><span>Ordinary hand-written code. Read it once.</span><button type="button" class="seen level" data-level="1">Mark viewed</button></div>
+  <div class="row"><span class="sq l2"></span><b>note</b><span>A choice or a nit to accept knowingly. The phrase says what to decide.</span><button type="button" class="seen level" data-level="2">Mark viewed</button></div>
+  <div class="row"><span class="sq l3"></span><b>fishy</b><span>It may be wrong. Verify before approving.</span><span></span></div>
+  <div class="row"><span class="sq l4"></span><b>hot</b><span>A mistake here would be silent or irreversible. Read every line, however it looks.</span><span></span></div>
+  <div class="row"><span class="sq l0"></span><b>skip</b><span>A tool could have written it, or it is fallout of another hunk. Trust the description.</span><button type="button" class="seen level" data-level="0">Mark viewed</button></div>
 </div>
 
 <section class="chapter" id="topic-1">

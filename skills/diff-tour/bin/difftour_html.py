@@ -198,12 +198,22 @@ def _arrow_column(summary_html):
     return ROW.sub(row, summary_html)
 
 
+PROBLEM_H2 = re.compile(r'(<h2[^>]*>\s*the problem\s*</h2>)(.*?)(?=<h2\b|$)', re.S | re.I)
+
+
+def _problem_block(summary_html):
+    """The problem is the one part of the summary whose job is to make the reader care, so
+    it is set larger than body copy; wrapping it lets the stylesheet find it."""
+    return PROBLEM_H2.sub(lambda m: m.group(1) + '\n<div class="problem">' + m.group(2).strip() + '</div>\n',
+                          summary_html, count=1)
+
+
 def _with_bylines(summary_html):
     def add(m):
         key = re.sub(r'<[^>]+>', '', m.group(3)).strip().lower().rstrip('.')
         line = BYLINES.get(key)
         return m.group(1) + ('\n<p class="byline">%s</p>' % line if line else '')
-    return _spectrum_rows(_arrow_column(HEADING.sub(add, summary_html)))
+    return _spectrum_rows(_arrow_column(_problem_block(HEADING.sub(add, summary_html))))
 
 
 SPECTRUM_H2 = re.compile(r'<h2[^>]*>\s*the spectrum of solutions\s*</h2>', re.I)
@@ -445,10 +455,12 @@ def render(hunks, texts, git_args, out_path=''):
     title = title or 'Diff tour'
     head = ['<h1>%s</h1>' % title,
             '<p class="meta">%s</p>' % _meta(hunks, repo, source),
-            '<p class="standfirst">%s</p>' % STANDFIRST,
-            legend()]
+            '<p class="standfirst">%s</p>' % STANDFIRST]
     if summary:
         head.append('<div class="summary">%s</div>' % summary)
+    # The legend sits between the summary and the first chapter: the reader meets the
+    # story first and the rules just before the first hunk they apply to.
+    head.append(legend())
 
     page = _read('layout.html')
     page = re.sub(r'<!--\s*\n  diff tour — the page shell.*?-->\n', '', page, count=1, flags=re.S)

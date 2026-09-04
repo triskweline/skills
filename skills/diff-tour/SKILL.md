@@ -288,6 +288,7 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 
 <h2>The problem</h2>
 <p>...</p>
+<p>The sting: one sentence, the whole change.</p>
 
 <h2>What changes</h2>
 <table>
@@ -318,7 +319,7 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 
 ### The problem
 
-One paragraph, at most 80 words, about the world *before* this change: what was wrong or missing, for whom, what it cost them, and what constraint shaped the solution that follows. For a user-facing change, what a user could not do or had to work around. For a refactoring, what was hard, slow or risky to work on, and for whom. For a performance change, what was slow and where that showed. It never describes the solution; the table under the next heading does that. The test for every sentence: if it could be a row in that table, it is one, and it comes out of this paragraph. If you cannot name a problem the change solves, say so; that is a finding.
+Two paragraphs, at most 80 words together, about the world *before* this change. The first: what was wrong or missing, for whom, what it cost them, and what constraint shaped the solution that follows. The second is **the sting**, one sentence on its own that is the whole change in a breath: "The identity provider, which knew the moment the person left, had no way to tell Cards." The page sets both large and the sting apart; it is the only part of the tour whose job is to make the reader care. For a user-facing change, what a user could not do or had to work around. For a refactoring, what was hard, slow or risky to work on, and for whom. For a performance change, what was slow and where that showed. It never describes the solution; the table under the next heading does that. The test for every sentence: if it could be a row in that table, it is one, and it comes out of this paragraph. If you cannot name a problem the change solves, say so; that is a finding.
 
 ### What changes
 
