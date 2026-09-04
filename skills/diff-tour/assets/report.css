@@ -322,8 +322,9 @@ p.standfirst {
    of the reader, and for skip, read and note a button that marks every hunk of that
    level viewed. That is how a reader chooses how deep to go: a skim marks skip, read
    and note viewed and leaves fishy and hot open. The squares are the strips' squares. */
+h2.legend-title { font-size: 1.37rem; line-height: 1.3; font-weight: 600; margin: 3rem 0 .6rem; color: var(--ink); }
 .legend {
-  max-width: 900px; margin: 3rem 0 0;
+  max-width: 900px; margin: 0;
   display: grid; grid-template-columns: auto auto 1fr auto; gap: .35rem .8rem; align-items: center;
   font-size: 14.5px; color: var(--ink-2);
 }

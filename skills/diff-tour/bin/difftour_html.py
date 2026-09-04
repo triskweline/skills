@@ -385,7 +385,7 @@ def legend():
                     % (lvl, name, text,
                        ('<button type="button" class="seen level" data-level="%d">Mark viewed</button>' % lvl)
                        if button else '<span></span>'))
-    return '<div class="legend">%s</div>' % ''.join(rows)
+    return '<h2 class="legend-title">How to read this tour</h2>\n<div class="legend">%s</div>' % ''.join(rows)
 
 
 def _git(*args):
