@@ -262,6 +262,7 @@ class Repo(RepoCase):
         self.assertEqual(page.count('<section class="chapter"'), 1)
         self.assertIn('<section class="chapter" id="topic-1">', page)
         self.assertIn('<div class="summary">', page)
+        self.assertLess(page.index('<div class="summary">'), page.index('<h2 class="legend-title">How to read this tour</h2>'))
         self.assertIn('<h2>What this change achieves</h2>', page)
         self.assertNotIn('<span class="t">What this change achieves</span>', page)
 
