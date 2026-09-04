@@ -2,7 +2,8 @@
 name: diff-tour
 description: >-
   Helps a human understand a code change they did not write but must review and take
-  responsibility for. Narrates the diff as a tour: chapters in a reading order that builds
+  responsibility for. Useful to screen large changes by colleagues or AI agents. Narrates the
+  diff as a tour: chapters in a reading order that builds
   understanding step by step, every hunk shown beside prose that says what it is for and how it
   connects to the rest, and a mark on each hunk saying how carefully it deserves to be read, so
   the reviewer can move quickly through the routine parts and slow down where a mistake would
