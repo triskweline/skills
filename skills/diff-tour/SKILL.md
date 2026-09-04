@@ -322,7 +322,7 @@ Then one line, **"Not changed, deliberately:"**, naming what the change leaves a
 
 ### How it was built
 
-At most 100 words. The two or three mechanisms that carry the change, one list item each, and nothing before the list: no lead sentence. "Three mechanisms carry the load" tells the reader what they are about to read instead of reading it, and every such lead has been drivel. If the mechanisms interact in a way the bullets cannot show, say so in one sentence *after* the list, where it has something to point at. This is the mental model a reader needs before the chapters make sense: the shape of the solution, not a list of what was touched.
+At most 100 words. The mechanisms that carry the change, one list item each, and nothing before the list: no lead sentence. As many as there really are, typically two to four; do not pad to three or merge two real ones to reach three. A change with one mechanism gets one sentence, not a list of one. "Three mechanisms carry the load" tells the reader what they are about to read instead of reading it, and every such lead has been drivel. If the mechanisms interact in a way the bullets cannot show, say so in one sentence *after* the list, where it has something to point at. This is the mental model a reader needs before the chapters make sense: the shape of the solution, not a list of what was touched.
 
 ### The spectrum of solutions
 
