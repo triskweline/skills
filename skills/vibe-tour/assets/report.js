@@ -106,28 +106,57 @@
     b.addEventListener('click', function () { setSeen(fig, !fig.classList.contains('seen')); });
     tools.appendChild(b);
     if (isSeen(fig)) { fig.classList.add('seen'); collapse(fig, true); }
+    /* A skip hunk opens folded: the reader was told not to read it. Not marked viewed. */
+    else if (fig.getAttribute('data-level') === '0') collapse(fig, true);
     paint(fig);
   });
 
-  /* ---- one control for a run of hunks read as a group. A lockfile can be forty
-     hunks under one paragraph; four is where clicking one at a time starts to nag. ---- */
-  [].slice.call(document.querySelectorAll('section.beat .show')).forEach(function (show) {
-    var own = [].slice.call(show.querySelectorAll('figure.hunk'));
-    if (own.length < 4) return;
-    var bar = document.createElement('div');
-    bar.className = 'groupbar';
+  /* ---- each beat lists its hunks in the prose column: a heat square, the path, and one
+     button that marks them all viewed. The list is sticky with the prose, so the reader
+     always sees how far through the beat they are. ---- */
+  [].slice.call(document.querySelectorAll('section.beat')).forEach(function (beat) {
+    var say = beat.querySelector('.say');
+    var own = [].slice.call(beat.querySelectorAll('.show figure.hunk'));
+    if (!say || !own.length) return;
+    var box = document.createElement('div');
+    box.className = 'changes';
+    var lbl = document.createElement('p');
+    lbl.className = 'lbl';
+    lbl.textContent = own.length === 1 ? 'One change:' : own.length + ' changes:';
+    box.appendChild(lbl);
+    var ol = document.createElement('ol');
+    own.forEach(function (fig) {
+      var li = document.createElement('li');
+      var lvl = fig.getAttribute('data-level') || '1';
+      var sq = document.createElement('a');
+      sq.className = 'sq l' + lvl;
+      sq.href = '#' + fig.id;
+      sq.setAttribute('data-for', fig.id);
+      var where = fig.querySelector('figcaption .where');
+      var loc = document.createElement('a');
+      loc.className = 'loc';
+      loc.href = '#' + fig.id;
+      var code = document.createElement('code');
+      code.textContent = where ? where.textContent.trim().split(' · ')[0] : fig.id;
+      loc.appendChild(code);
+      sq.title = loc.title = code.textContent;
+      li.appendChild(sq);
+      li.appendChild(loc);
+      ol.appendChild(li);
+    });
+    box.appendChild(ol);
+
     var b = document.createElement('button');
     b.type = 'button';
     b.className = 'seen group';
-
     function allSeen() {
       return own.every(function (f) { return f.classList.contains('seen'); });
     }
     function paintGroup() {
       var n = own.filter(function (f) { return f.classList.contains('seen'); }).length;
       b.textContent = allSeen()
-        ? 'All ' + own.length + ' viewed'
-        : 'Mark all ' + own.length + ' viewed' + (n ? ' (' + n + ' done)' : '');
+        ? (own.length === 1 ? '✓ viewed' : 'All ' + own.length + ' viewed')
+        : (own.length === 1 ? 'Mark viewed' : 'Mark all ' + own.length + ' viewed' + (n ? ' (' + n + ' done)' : ''));
       b.setAttribute('aria-pressed', allSeen() ? 'true' : 'false');
     }
     b.addEventListener('click', function () {
@@ -135,13 +164,10 @@
       own.forEach(function (f) { setSeen(f, to); });
       paintGroup();
     });
-    own.forEach(function (f) {
-      var ib = f.querySelector('button.seen');
-      if (ib) ib.addEventListener('click', paintGroup);
-    });
+    document.addEventListener('click', function () { setTimeout(paintGroup, 0); });
     paintGroup();
-    bar.appendChild(b);
-    show.insertBefore(bar, show.firstChild);
+    box.appendChild(b);
+    say.appendChild(box);
   });
 
   /* ---- navigation, built from the chapters themselves. Under each entry sits the
@@ -206,7 +232,7 @@
 
   /* A square dims once its hunk is marked viewed, so the strips double as progress. */
   function paintStrips() {
-    [].slice.call(document.querySelectorAll('.heat .sq')).forEach(function (sq) {
+    [].slice.call(document.querySelectorAll('.heat .sq, .changes .sq')).forEach(function (sq) {
       var fig = document.getElementById(sq.getAttribute('data-for'));
       sq.classList.toggle('seen', !!(fig && fig.classList.contains('seen')));
     });

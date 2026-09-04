@@ -210,21 +210,39 @@ body {
   margin: 0; padding: 0;
   list-style: none;
 }
-.heat .sq {
+/* One square = one hunk's heat, in the sidebar strips and in a beat's list of changes. */
+.sq {
   display: flex; align-items: center; justify-content: center;
-  width: 14px; height: 14px; border-radius: 3px;
+  width: 14px; height: 14px; border-radius: 3px; flex: 0 0 auto;
   background: var(--l1); border: 1px solid transparent;
   color: #1b1f24; text-decoration: none;
   font: 700 9px/1 var(--sans);
 }
-.heat .sq.l0 { background: var(--l0); border-color: var(--faint); }
-.heat .sq.l2 { background: var(--l2); }
-.heat .sq.l3 { background: var(--l3); color: #fff; }
-.heat .sq.l4 { background: var(--l4); color: #fff; }
-.heat .sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sq.l0 { background: var(--l0); border-color: var(--faint); }
+.sq.l2 { background: var(--l2); }
+.sq.l3 { background: var(--l3); color: #fff; }
+.sq.l4 { background: var(--l4); color: #fff; }
+a.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* A viewed hunk's square carries a tick, sized to sit inside the square. */
-.heat .sq.seen::after { content: "✓"; }
-#nav > ol > li > .heat { padding: 0 1.25rem .6rem 2.4rem; gap: 4px; }
+.sq.seen::after { content: "✓"; }
+/* The strips are for finding the next chapter, not for reading the current one: while
+   reading they fade to grey, except the current chapter's; hovering the sidebar lights
+   them all up. */
+#nav > ol > li > .heat {
+  padding: 0 1.25rem .6rem 2.4rem; gap: 4px;
+  opacity: .3; filter: saturate(0); transition: opacity .15s, filter .15s;
+}
+#nav > ol > li[aria-current] > .heat, #nav:hover > ol > li > .heat { opacity: 1; filter: none; }
+
+/* A beat's list of its hunks, in the prose column: square, path, and one button for all
+   of them. It stays in view while the hunks scroll, so it doubles as the beat's progress. */
+.changes { margin-top: 1.1rem; }
+.changes .lbl { margin: 0 0 .35rem; font-size: 13px; color: var(--muted); }
+.changes ol { list-style: none; margin: 0; padding: 0; }
+.changes li { display: flex; align-items: center; gap: .55rem; margin: .3rem 0; }
+.changes li a.loc { color: var(--ink-2); text-decoration: none; font: 12.5px/1.5 var(--mono); overflow-wrap: anywhere; }
+.changes li a.loc:hover { color: var(--accent); }
+.changes button { margin-top: .6rem; }
 
 #nav .nav-foot {
   border-top: 1px solid var(--line-2);
@@ -290,14 +308,6 @@ p.standfirst {
   font-size: 14.5px; color: var(--ink-2);
 }
 .legend .row { display: contents; }
-.legend .sq {
-  display: block; width: 14px; height: 14px; border-radius: 3px;
-  background: var(--l1); border: 1px solid transparent;
-}
-.legend .sq.l0 { background: var(--l0); border-color: var(--faint); }
-.legend .sq.l2 { background: var(--l2); }
-.legend .sq.l3 { background: var(--l3); }
-.legend .sq.l4 { background: var(--l4); }
 .legend b { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
 .legend button.level { justify-self: end; }
 .legend button.level[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
@@ -399,8 +409,7 @@ figure.hunk {
   border-left: 4px solid var(--l1);
 }
 figure.hunk:last-child { margin-bottom: 0; }
-figure.hunk.lvl-skip { border-left-color: var(--faint); opacity: .55; }
-figure.hunk.lvl-skip:hover { opacity: 1; }
+figure.hunk.lvl-skip { border-left-color: var(--faint); }
 figure.hunk.lvl-note { border-left-color: var(--l2); }
 figure.hunk.lvl-fishy { border-left-color: var(--l3); }
 figure.hunk.lvl-hot { border-left-color: var(--l4); }
@@ -462,10 +471,9 @@ figcaption .tools { display: flex; align-items: center; gap: .4rem; }
 .tools .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
 .tools .tag.moved { color: var(--accent); border-color: var(--accent); }
 
-/* Marking a hunk viewed collapses its code and gives the card a green edge, the way a
-   reviewed file behaves on a pull request. Clicking the path collapses without marking.
-   The sentence and the reason stay visible either way. */
-figure.hunk.seen > .card { border-color: var(--seen); }
+/* Marking a hunk viewed collapses its code; the tick in its badge and its square say so.
+   Clicking the path collapses without marking. The sentence and the reason stay visible
+   either way. */
 figure.hunk.collapsed > .card > pre,
 figure.hunk.collapsed > .card > .binary,
 figure.hunk.collapsed > .card > .ctx { display: none; }
@@ -474,9 +482,6 @@ figure.hunk.collapsed > .card > .ctx { display: none; }
 figure.hunk.collapsed > .card > figcaption { border-bottom: none; }
 figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 
-/* One control for a run of hunks read as a group — a lockfile's forty hunks. */
-.groupbar { margin: 0 0 .6rem; }
-button.seen.group { padding: .3rem .6rem; }
 button.seen.group[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
 
 .card .binary {
