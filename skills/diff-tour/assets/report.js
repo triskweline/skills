@@ -299,11 +299,6 @@
       wrap.setAttribute('role', 'status');
       flashBox = document.createElement('div');
       flashBox.className = 'box';
-      /* A click dismisses the card at once. It does not undo the scroll that came with it. */
-      flashBox.addEventListener('click', function () {
-        clearTimeout(flashTimer);
-        wrap.classList.remove('on');
-      });
       wrap.appendChild(flashBox);
       document.body.appendChild(wrap);
     }

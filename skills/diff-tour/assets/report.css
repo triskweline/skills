@@ -245,21 +245,21 @@ button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 .progress { position: fixed; left: 0; right: 0; bottom: 0; height: 7px; z-index: 20; pointer-events: none; }
 .progress i { display: block; height: 100%; width: var(--progress, 0%); background: var(--accent); transition: width .35s ease; }
 
-/* The flash: a card in the middle of the window when a chapter is finished, or the whole
-   tour. Shown for three seconds by report.js, never in the way of a click. */
+/* The flash: a big, translucent card in the middle of the window when a chapter is
+   finished, or the whole tour. Shown for three seconds by report.js. It takes no clicks:
+   whatever is under it stays clickable while it fades. */
 .flash {
   position: fixed; inset: 0; z-index: 30; pointer-events: none;
   display: flex; align-items: center; justify-content: center;
 }
 .flash .box {
-  background: var(--ink); color: var(--bg);
-  padding: 1.1rem 1.8rem; border-radius: 12px; text-align: center;
-  font-size: 15px; line-height: 1.5;
-  opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s;
-  cursor: pointer;
+  background: rgba(27, 31, 36, .78); color: #fff;
+  padding: 2.2rem 3.4rem; border-radius: 18px; text-align: center;
+  font-size: 22px; line-height: 1.4;
+  opacity: 0; transform: translateY(8px) scale(.97); transition: opacity .25s, transform .25s;
 }
-/* The card itself takes clicks, to dismiss it early; the space around it does not. */
-.flash.on .box { opacity: 1; transform: none; pointer-events: auto; }
+.flash.on .box { opacity: 1; transform: none; }
+.flash .box b { display: block; font-size: 34px; font-weight: 700; margin-bottom: .3rem; }
 
 /* The party: a few seconds of emoji falling past the finish flash. Purely decorative,
    so a reader who asked for reduced motion gets none of it. */
