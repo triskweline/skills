@@ -1,12 +1,16 @@
 ---
 name: vibe-tour
 description: >-
-  A fast, narrated tour of a code change for a human reviewer, tuned for generation speed over
-  depth. Clusters the diff into topics and narration beats, shows every hunk, and gives each hunk
-  a gut-feel heat level, from "skip" through "fishy" to "hot", instead of a verified finding. Use
-  when someone says "vibe-tour this branch", wants a quick walkthrough of a large or vibe-coded
-  change, or finds diff-tour too slow for the change at hand. Not a code review: it points, the
-  human judges.
+  Helps a human understand a code change they did not write but must review and take
+  responsibility for. Narrates the diff as a tour: chapters in a reading order that builds
+  understanding step by step, every hunk shown beside prose that says what it is for and how it
+  connects to the rest, and a mark on each hunk saying how carefully it deserves to be read, so
+  the reviewer can move quickly through the routine parts and slow down where a mistake would
+  hurt. Opens with what the change achieves and how it was built. Fast enough for large changes.
+  Use when someone wants to be walked through a diff, branch, commit, pull request or merge
+  request, or asks for help understanding or reviewing one: "tour this branch", "walk me through
+  this PR", "vibe-tour main..HEAD", "help me review these changes". Not a code review: it
+  verifies nothing and leaves the judgement to the human.
 metadata:
   version: 2.0.0
 ---
