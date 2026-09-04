@@ -9,7 +9,6 @@ description: >-
   human judges.
 metadata:
   version: 2.0.0
-disable-model-invocation: true
 ---
 
 # Vibe Tour
@@ -224,7 +223,9 @@ Three kinds of work have a fixed place in that order, and each topic's summary s
 
 ## Assign hunks to topics
 
-For each hunk, *quickly* guess which topic it belongs to, and assign it to the topic with the most apparent affinity. A hunk can belong to several topics (when one code range was touched by several bodies of work); it is then shown once per topic, and each worker is told so. There is no primary topic: the order in which the topics share it does not matter to anything, both workers show it and both say so.
+For each hunk, *quickly* guess which topic it belongs to, and assign it to the topic with the most apparent affinity. A hunk can belong to several topics (when one code range was touched by several bodies of work); it is then shown once per topic, and each worker is told so. There is no primary topic: the order in which the topics share it does not matter to anything, both workers show it and both say so. **Above about 60 lines, show a shared hunk once**: assign it to the topic where it matters most, and tell the other topics' workers on their "Shared with" line to link to it rather than place it, `Shared, shown in topic 3, link only: h24`. A 300-line spec printed three times helps nobody.
+
+**The hunk is the floor.** Clustering is by reason, but the assembler cannot split a hunk, so a hunk that serves two reasons goes to the topic whose reason dominates, and the other topic's worker refers to it by link where its own story needs it. Expect a beat now and then that can show only part of what it describes; say so in the beat prose rather than forcing the hunk in twice.
 
 A hunk that fits no topic in a glance goes to the **loose ends** topic: the last topic in reading order, holding whatever remains after honest clustering. It gets a worker like any other topic. Leave it out entirely if it is empty. Do not spend a call or invent a topic to avoid it.
 
@@ -259,7 +260,7 @@ Write your fragment to: /home/me/app/tmp/vibe-tour.sLxCWm/topic-02/fragment.html
 
 The "Topics in order" line is the same for every worker; it is what lets a worker link to another topic by number.
 
-For a worker holding several topics, repeat the block from "Topic N" through "Shared with" once per topic, in reading order, under one "Write your fragment to" line; the directory is named after the first topic. That is the whole briefing. Nothing about assembling, nothing about other topics, no path other than the worker's own file.
+For a worker holding several topics, repeat the block from "Topic N" through "Shared with" once per topic, in reading order, under one "Write your fragment to" line; the directory is named after the first topic. That does not skew the numbering: the script numbers chapters by `<h2>` order across all fragments, so a fragment in `topic-05/` holding topics 5 and 6 yields chapters 5 and 6, and the directory number only sorts the fragment into place. That is the whole briefing. Nothing about assembling, nothing about other topics, no path other than the worker's own file.
 
 What a worker does with this briefing is described in *Part 5: Worker, during fan-out*. Fork all workers in one message, then go straight on to Part 3 without waiting for them.
 
