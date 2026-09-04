@@ -74,6 +74,7 @@
       paint(other);
     });
     counts();
+    scheduleSettle();
   }
 
   /* The path in the header bar collapses the diff. Only the path, never the whole
@@ -251,13 +252,76 @@
       a.querySelector('.c').textContent = own.length ? n + '/' + own.length : '';
       a.classList.toggle('done', own.length > 0 && n === own.length);
     });
-    var bar = nav && nav.querySelector('.bar i');
+    var bar = document.querySelector('.progress i');
     if (bar) bar.style.width = hunks.length ? (100 * seen / hunks.length) + '%' : '0';
-    var tally = nav && nav.querySelector('.tally');
-    if (tally) tally.textContent = seen + '/' + hunks.length;
     paintStrips();
   }
   counts();
+
+  /* ---- finishing a chapter. A reader marking hunks viewed loses track of what is left
+     and scrolls up and down to find it. So when the last hunk of a chapter is marked, a
+     flash says which chapter is done and how many remain, and the page moves on to the
+     next chapter that still has unviewed hunks. When the last one is done, the flash says
+     so and the page returns to the top. Only a mark made by the reader fires this, never
+     the marks restored on load. ---- */
+  function chapterDone(ch) {
+    var own = [].slice.call(ch.querySelectorAll('figure.hunk'));
+    return own.length > 0 && own.every(function (f) { return f.classList.contains('seen'); });
+  }
+  function doneSet() {
+    var set = {};
+    chapters.forEach(function (ch) { if (chapterDone(ch)) set[ch.id] = true; });
+    return set;
+  }
+  var flashBox, flashTimer;
+  function flash(title, line) {
+    if (!flashBox) {
+      var wrap = document.createElement('div');
+      wrap.className = 'flash';
+      wrap.setAttribute('role', 'status');
+      flashBox = document.createElement('div');
+      flashBox.className = 'box';
+      wrap.appendChild(flashBox);
+      document.body.appendChild(wrap);
+    }
+    flashBox.innerHTML = '<b></b><span></span>';
+    flashBox.firstChild.textContent = title;
+    flashBox.lastChild.textContent = line;
+    flashBox.parentNode.classList.add('on');
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () { flashBox.parentNode.classList.remove('on'); }, 3000);
+  }
+  var wasDone = doneSet(), settling = false, ready = false;
+  function settle() {
+    settling = false;
+    var now = doneSet();
+    var newly = chapters.filter(function (ch) { return now[ch.id] && !wasDone[ch.id]; });
+    wasDone = now;
+    if (!ready || !newly.length) return;
+    var withHunks = chapters.filter(function (ch) { return ch.querySelector('figure.hunk'); });
+    var remaining = withHunks.filter(function (ch) { return !now[ch.id]; });
+    if (!remaining.length) {
+      flash('All chapters done', 'Tour completed');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    var last = newly[newly.length - 1];
+    var num = last.querySelector('h2 .n');
+    flash('Chapter ' + (num ? num.textContent : '') + ' done',
+          remaining.length + (remaining.length === 1 ? ' remaining' : ' remaining'));
+    /* The next unfinished chapter after this one, wrapping around to the first. */
+    var i = chapters.indexOf(last), next = null;
+    for (var k = 1; k <= chapters.length && !next; k++) {
+      var c = chapters[(i + k) % chapters.length];
+      if (remaining.indexOf(c) !== -1) next = c;
+    }
+    if (next) next.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function scheduleSettle() {
+    if (settling) return;
+    settling = true;
+    setTimeout(settle, 0);
+  }
 
   /* ---- the legend's buttons: one per lower level, marking every hunk of that level
      viewed (or, when all of them already are, unmarking them). A reader who wants a
@@ -352,4 +416,9 @@
   }
   addEventListener('hashchange', function () { lightAt(location.hash); });
   lightAt(location.hash);
+
+  /* Everything above restored state without announcing it; from here on, marks are the
+     reader's own and finishing a chapter is worth a flash. */
+  wasDone = doneSet();
+  ready = true;
 })();

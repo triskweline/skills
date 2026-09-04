@@ -28,8 +28,9 @@
     section.beat.solo              a beat with no hunks — full width
 
   Every control — the chapter nav with its heat stripes, the legend's mark-viewed
-  buttons, the beats' change lists, the viewed toggles, the theme switch — is injected
-  by report.js.
+  buttons, the beats' change lists, the viewed toggles, the theme switch, the flash that
+  announces a finished chapter — is injected by report.js. The progress bar along the
+  bottom edge is the one fixed element outside the nav.
 -->
 <html lang="en" data-uid="fixture">
 <head>
@@ -55,15 +56,12 @@
 <nav id="nav">
   <div class="nav-head">
     <b><!--NAVTITLE-->Layout fixture<!--/NAVTITLE--></b>
-  </div>
-  <ol></ol>
-  <div class="nav-foot">
-    <span class="tally">0/0</span>
-    <span class="bar"><i></i></span>
     <button class="plain reset" type="button" title="clear every viewed mark">reset</button>
     <button class="plain theme" type="button" title="light or dark">◐</button>
   </div>
+  <ol></ol>
 </nav>
+<div class="progress" aria-hidden="true"><i></i></div>
 
 <main>
 <!--REPORT-->

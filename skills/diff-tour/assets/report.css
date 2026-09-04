@@ -170,10 +170,12 @@ body {
   z-index: 10;
 }
 #nav .nav-head {
-  padding: 1.35rem 1.25rem 1rem;
+  padding: 1.1rem 1rem 1rem 1.25rem;
   border-bottom: 1px solid var(--line-2);
+  display: flex; align-items: center; gap: .4rem;
 }
-#nav .nav-head b { display: block; font-size: 13px; letter-spacing: .02em; }
+#nav .nav-head b { flex: 1; font-size: 13px; letter-spacing: .02em; }
+#nav .nav-head button.plain { padding: .2rem .45rem; }
 /* The chapter list shares the sidebar's height in proportion to chapter size: report.js
    sets each entry's flex-grow to its hunk count, so a forty-hunk chapter takes more room
    than a two-hunk one, and every entry keeps a minimum height so small chapters stay
@@ -235,16 +237,26 @@ button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 .changes li a.loc:hover { color: var(--accent); }
 .changes button { margin-top: .6rem; }
 
-#nav .nav-foot {
-  border-top: 1px solid var(--line-2);
-  padding: .7rem .85rem;
-  display: flex; gap: .4rem; align-items: center;
+/* Progress: one fat bar along the bottom edge of the window, the share of hunks marked
+   viewed. Its width animates, so a click is answered by movement the eye catches without
+   looking for a number. */
+.progress { position: fixed; left: 0; right: 0; bottom: 0; height: 7px; z-index: 20; pointer-events: none; }
+.progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .35s ease; }
+
+/* The flash: a card in the middle of the window when a chapter is finished, or the whole
+   tour. Shown for three seconds by report.js, never in the way of a click. */
+.flash {
+  position: fixed; inset: 0; z-index: 30; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
 }
-#nav .nav-foot .bar {
-  flex: 1; height: 4px; border-radius: 2px; background: var(--line);
-  overflow: hidden;
+.flash .box {
+  background: var(--ink); color: var(--bg);
+  padding: 1.1rem 1.8rem; border-radius: 12px; text-align: center;
+  font-size: 15px; line-height: 1.5;
+  opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s;
 }
-#nav .nav-foot .bar i { display: block; height: 100%; width: 0; background: var(--seen); }
+.flash.on .box { opacity: 1; transform: none; }
+.flash .box b { display: block; font-size: 17px; margin-bottom: .15rem; }
 
 /* Every button on the page, one style: quiet, bordered, no native chrome. */
 button.plain, button.seen {
@@ -256,7 +268,6 @@ button.plain, button.seen {
 }
 button.plain:hover, button.seen:hover { color: var(--ink); border-color: var(--muted); }
 button.plain:disabled, button.seen:disabled { opacity: .5; cursor: default; }
-#nav .nav-foot button.plain { padding: .2rem .45rem; }
 
 /* ---------------------------------------------------------------------- page */
 
