@@ -232,7 +232,35 @@ Write your fragment to: /tmp/vibe-tour.sLxCWm/topic-03/fragment.html
 
 That is the whole briefing. Nothing about assembling, nothing about other topics, no path other than the worker's own file.
 
-Fork all workers, then wait for all of them. If a worker fails or returns without having written its file, fork one replacement for that topic with the same briefing; do not touch the other workers' directories.
+Fork all workers, then write the tour summary (next section) while they run, then wait for all of them. If a worker fails or returns without having written its file, fork one replacement for that topic with the same briefing; do not touch the other workers' directories.
+
+## Write the tour summary while the workers run
+
+The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context. Nothing in it enumerates files, gems, columns or counts; the meta line has the counts and the chapters have the contents.
+
+It has three parts, each under its own `<h3>`.
+
+### What this change achieves
+
+What is better after this change than before it, in the terms of whoever benefits. For a user-facing change, what a user can now do. For a refactoring, what became simpler, safer or faster to work on, and for whom. For a performance change, what got faster and where that shows. One paragraph. If the change has no benefit you can name, say so; that is a finding.
+
+### How it was built
+
+The two or three mechanisms that carry the change, and how they fit together. This is the mental model a reader needs before the chapters make sense: not a list of what was touched, but the shape of the solution. One paragraph, two at most.
+
+### The spectrum of solutions
+
+The most useful thing a tour can give a reviewer is a sense of where this solution sits among the solutions that were possible. This part is worth real thought: **up to 10 tool calls and about 3 minutes of reasoning**, spent while the workers run, so it costs the tour no time. The tool calls are for looking at how this repository does things today, so the alternatives are grounded in this codebase rather than generic. Lay out a spectrum, an exercise borrowed from [Caleb Porzio's deconstructed pull requests](https://calebporzio.com/):
+
+- **The minimal solution.** The smallest patch that gets by: minimal blast radius, possibly incomplete scope, possibly code nobody would be proud of.
+- **The maximal solution.** The pure, fundamental fix that solves the problem completely, restructuring other parts of the system where they stand in the way, to leave a thorough and harmonious new world.
+- **The evaporating solution.** A change somewhere else in the system that makes the problem not arise in the first place.
+
+Each of the three has to be a realistic, workable change to *this* repository, one a competent colleague could propose in a design meeting. Not a strawman: the maximal solution may be heavy and risky, but it does not rewrite the codebase in another language, and the evaporating solution has to name the actual place the problem would evaporate from. For each, say what its key changes would be and what it trades: scope, risk, effort, what it leaves for later.
+
+Then place the toured change on that spectrum, in a few sentences: which of the three it is closest to, where it deviates, and what that position means for the reviewer. A minimal change invites the question "what did it leave out"; a maximal one invites "was all of this necessary"; a change that sits between them invites both, at the seams.
+
+The spectrum is context, not judgement. You are not saying the author chose wrong. You are giving the reviewer the room the author was standing in when they chose.
 
 ## Worker instructions per topic
 
@@ -265,6 +293,18 @@ Separate preparatory work from the main change. Separate clean up work from the 
 Assign each topic hunk to exactly one narration beat.
 
 Don't do a deep analysis to assign hunks to beats. In particular, don't pay additional tool calls to better understand the codebase. When you're unsure, assign based on intuition.
+
+### Narrate for a reader who zooms
+
+The tour has three layers of prose, chapter, beat and hunk, and they are zoom levels. A hurried reader reads the chapter summaries and stops. A careful one opens the beats. Only the most careful opens hunks, and reading a hunk always costs more than reading a sentence about it. Every layer has the same job: **tell the reader what they would find one level down, well enough to decide whether to go there.** The layers overlap, and that is fine; a reader who zooms in expects to meet the same thing again, closer up.
+
+What no layer does is spell the code out in prose: naming each column a migration adds, each method a trait defines, each field a form has. That is the diff again, only harder to read, and the real diff sits one glance below. The test for a sentence: after reading it, would the reader still want to open the diff? Good. Would they no longer need to? Then the sentence is doing the diff's job. Cut it.
+
+**Chapter summary.** One paragraph. What this body of work achieves and the one decision in it, so a reader who stops here still knows what changed. End with where the weight lies: the beat to open if they open only one.
+
+**Beat prose.** Always present. What these hunks do together and why they are one step; how this step follows from the previous beat when it does. Give the gist of what the hunks would show, and say "nothing surprising below" when that is true. This is where a reader decides whether to open the hunks.
+
+**Hunk sentence.** Always present, one sentence, also on skip hunks. What the hunk is about, roughly, so the reader knows what they would be opening. "The migration adding the three 2FA columns", not the three column names and their types. For note, fishy and hot, the badge already carries the reason; do not repeat it, add to it if there is more.
 
 ### Give each hunk an attention level
 
@@ -321,9 +361,9 @@ The rules that matter:
 
 - **Never type out a diff.** Put `<!-- hunk h17 -->` where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page.
 - Every hunk id you were given appears exactly once as a placeholder.
-- The paragraph **after** a placeholder describes that hunk and is rendered right above its diff. The prose **before** the first placeholder of a beat is the beat's narration and sits beside the hunks.
+- The paragraph **after** a placeholder is that hunk's one sentence, rendered right above its diff. The prose **before** the first placeholder of a beat is the beat's prose and sits beside the hunks.
 - No numbers in headings, no `<section>`, no ids, no styling. The script numbers chapters by fragment order and builds the sidebar; anything you add there is stripped or, worse, disagrees with it.
-- The topic summary is the summary of all its beats. The beat summary is the summary of all its hunks.
+- Chapter summary, beat prose and hunk sentence each follow "Narrate for a reader who zooms" above.
 
 ### You are done
 
@@ -331,9 +371,7 @@ Once `fragment.html` is written, you are done. Return to the orchestrating agent
 
 ## Assemble the tour
 
-Once all workers have returned, write the opening fragment `<working dir>/00-intro.html`: the `<h1>` headline and one or two summary paragraphs built from the topic summaries the workers returned. Nothing else; the script builds the sidebar and the meta line.
-
-Then assemble, in one command:
+Once all workers have returned and the tour summary is written, assemble, in one command:
 
 ```
 <skill dir>/bin/vibe-hunks.py --assemble <working dir>/vibe-tour.html [--untracked] -- <git diff args> ++ <working dir>
