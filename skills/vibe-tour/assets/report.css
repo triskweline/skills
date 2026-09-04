@@ -320,6 +320,16 @@ p.standfirst {
    way on every tour, so a returning reader knows the labels at a glance. */
 .summary .byline { margin: 0 0 .5rem; font-size: 14px; font-style: italic; color: var(--muted); }
 .summary ul li { margin: .35rem 0; }
+/* The spectrum: one row per solution, the label and its byline on the left, the prose on
+   the right, so the four read as a table the eye can scan down. */
+.summary .spectrum { display: grid; grid-template-columns: minmax(170px, 240px) 1fr; gap: 0 1.6rem; margin-top: .6rem; }
+.summary .spectrum .row { display: contents; }
+.summary .spectrum .lbl, .summary .spectrum .prose { padding: .8rem 0; border-top: 1px solid var(--line-2); }
+.summary .spectrum .lbl h3 { margin: 0 0 .25rem; }
+.summary .spectrum .lbl .byline { margin: 0; font-size: 13px; }
+.summary .spectrum .prose > :first-child { margin-top: 0; }
+.summary .spectrum .prose > :last-child { margin-bottom: 0; }
+@media (max-width: 1100px) { .summary .spectrum { grid-template-columns: 1fr; gap: 0; } .summary .spectrum .prose { border-top: none; padding-top: 0; } }
 .summary ul { margin: .8rem 0; padding-left: 1.35rem; }
 
 section.chapter { margin-top: 4.5rem; scroll-margin-top: 1.5rem; }

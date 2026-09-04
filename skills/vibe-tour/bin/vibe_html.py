@@ -187,7 +187,35 @@ def _with_bylines(summary_html):
         key = re.sub(r'<[^>]+>', '', m.group(3)).strip().lower().rstrip('.')
         line = BYLINES.get(key)
         return m.group(1) + ('\n<p class="byline">%s</p>' % line if line else '')
-    return HEADING.sub(add, summary_html)
+    return _spectrum_rows(HEADING.sub(add, summary_html))
+
+
+SPECTRUM_H2 = re.compile(r'<h2[^>]*>\s*the spectrum of solutions\s*</h2>', re.I)
+H3_SPLIT = re.compile(r'(<h3[^>]*>.*?</h3>)', re.S | re.I)
+BYLINE_P = re.compile(r'^\s*(<p class="byline">.*?</p>)', re.S)
+
+
+def _spectrum_rows(summary_html):
+    """Lay the spectrum's four blocks out as rows of two columns: label and byline on the
+    left, the orchestrator's prose on the right."""
+    m = SPECTRUM_H2.search(summary_html)
+    if not m:
+        return summary_html
+    head = summary_html[:m.end()]
+    rest = summary_html[m.end():]
+    nxt = re.search(r'<h2\b', rest, re.I)
+    section, tail = (rest[:nxt.start()], rest[nxt.start():]) if nxt else (rest, '')
+    parts = H3_SPLIT.split(section)
+    if len(parts) < 3:
+        return summary_html
+    rows = []
+    for i in range(1, len(parts), 2):
+        heading, body = parts[i], parts[i + 1]
+        bm = BYLINE_P.match(body)
+        byline, prose = (bm.group(1), body[bm.end():]) if bm else ('', body)
+        rows.append('<div class="row"><div class="lbl">%s\n%s</div><div class="prose">%s</div></div>'
+                    % (heading, byline, prose.strip()))
+    return head + parts[0] + '<div class="spectrum">\n' + '\n'.join(rows) + '\n</div>\n' + tail
 
 
 def parse_fragments(texts):

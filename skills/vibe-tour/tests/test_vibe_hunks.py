@@ -273,8 +273,13 @@ class Repo(RepoCase):
         self.assertIn('<h3>The minimal solution</h3>\n<p class="byline">The smallest patch', page)
         self.assertIn('<h3>The Maximal Solution</h3>\n<p class="byline">The thorough fix', page)
         self.assertIn('<h3>The evaporating solution</h3>\n<p class="byline">Make the problem not arise', page)
-        self.assertIn('<h3>Where this change sits</h3>\n<p>Between.</p>', page)
         self.assertEqual(page.count('class="byline"'), 4)
+        # The four blocks become two-column rows: label and byline left, prose right.
+        self.assertEqual(page.count('<div class="row"><div class="lbl">'), 4)
+        self.assertIn('<div class="lbl"><h3>The minimal solution</h3>\n<p class="byline">The smallest patch', page)
+        self.assertIn('</div><div class="prose"><p>Patch it.</p></div></div>', page)
+        self.assertIn('<div class="lbl"><h3>Where this change sits</h3>\n</div><div class="prose"><p>Between.</p></div>', page)
+        self.assertLess(page.index('<h2>The spectrum of solutions</h2>\n<p class="byline">'), page.index('<div class="spectrum">'))
 
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')

@@ -83,11 +83,14 @@ Nothing was verified, and the judgement is yours.</p>
 shared one entry. Now every key carries the tenant, and the entries already written are backfilled.</p>
 <h2>The spectrum of solutions</h2>
 <p class="byline">Three other ways this could have been built, so you can see the room the author was standing in. Then where this change sits.</p>
-<h3>The minimal solution</h3>
-<p class="byline">The smallest patch that gets by: least blast radius, possibly incomplete, possibly not pretty.</p>
-<p>Prefix the tenant id in the one reader that leaks. Two lines, and the other readers keep leaking.</p>
-<h3>Where this change sits</h3>
-<p>Between the two: every key is threaded, but the cache store itself is untouched.</p>
+<div class="spectrum">
+<div class="row"><div class="lbl"><h3>The minimal solution</h3>
+<p class="byline">The smallest patch that gets by: least blast radius, possibly incomplete, possibly not pretty.</p></div><div class="prose"><p>Prefix the tenant id in the one reader that leaks. Two lines, and the other readers keep leaking.</p></div></div>
+<div class="row"><div class="lbl"><h3>The maximal solution</h3>
+<p class="byline">The thorough fix: solves the problem completely, restructuring whatever stands in the way.</p></div><div class="prose"><p>Give the cache a tenant-scoped namespace at the store level, so no reader can build an unscoped key. Touches the store adapter and every reader.</p></div></div>
+<div class="row"><div class="lbl"><h3>Where this change sits</h3>
+</div><div class="prose"><p>Between the two: every key is threaded, but the cache store itself is untouched.</p></div></div>
+</div>
 </div>
 
 <section class="chapter" id="ch1">
