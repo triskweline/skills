@@ -315,7 +315,7 @@ p.standfirst {
 
 .summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
 .summary > :first-child { margin-top: 0; }
-.summary h2 { font-size: 1.15rem; line-height: 1.3; font-weight: 600; margin: 1.6rem 0 .3rem; color: var(--ink); }
+.summary h2 { font-size: 1.37rem; line-height: 1.3; font-weight: 600; margin: 2.4rem 0 .3rem; color: var(--ink); }
 .summary h3 { font-size: 1rem; line-height: 1.3; font-weight: 600; margin: 1.2rem 0 .15rem; color: var(--ink); }
 /* The fixed line under a fixed heading: what this part of the summary is, said the same
    way on every tour, so a returning reader knows the labels at a glance. */
