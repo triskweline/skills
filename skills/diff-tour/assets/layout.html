@@ -78,9 +78,11 @@ Nothing was verified, and the judgement is yours.</p>
   <div class="row"><span class="sq l4"></span><b>hot</b><span>A mistake here would be silent or irreversible. Read every line, however it looks.</span><span></span></div>
 </div>
 <div class="summary">
-<h2>What this change achieves</h2>
+<h2>The problem</h2>
 <p>Cache entries were keyed by resource id alone, so two tenants asking for resource <code>7</code>
-shared one entry. Now every key carries the tenant, and the entries already written are backfilled.</p>
+shared one entry. Support saw it as intermittent wrong data and could not reproduce it, because it
+needed two tenants to ask within the same cache window.</p>
+<h2>What changes</h2>
 <table>
   <tr><th>Before</th><th>After</th></tr>
   <tr><td>Two tenants requesting the same resource id could read each other's cached copy</td><td>Each tenant reads only entries written under its own id</td></tr>

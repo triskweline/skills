@@ -7,7 +7,7 @@ description: >-
   understanding step by step, every hunk shown beside prose that says what it is for and how it
   connects to the rest, and a mark on each hunk saying how carefully it deserves to be read, so
   the reviewer can move quickly through the routine parts and slow down where a mistake would
-  hurt. Opens with what the change achieves and how it was built. Fast enough for large changes.
+  hurt. Opens with the problem, what changes, and how it was built. Fast enough for large changes.
   Use when someone wants to be walked through a diff, branch, commit, pull request or merge
   request, or asks for help understanding or reviewing one: "tour this branch", "walk me through
   this PR", "diff-tour main..HEAD", "help me review these changes". Not a code review: it
@@ -286,8 +286,10 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 ```html
 <h1>Tour headline</h1>
 
-<h2>What this change achieves</h2>
+<h2>The problem</h2>
 <p>...</p>
+
+<h2>What changes</h2>
 <table>
   <tr><th>Before</th><th>After</th></tr>
   <tr><td>...</td><td>...</td></tr>
@@ -312,11 +314,13 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 <p>...</p>
 ```
 
-### What this change achieves
+### The problem
 
-Three parts. First a paragraph of at most 80 words: what is better after this change than before it, in the terms of whoever benefits. For a user-facing change, what a user can now do. For a refactoring, what became simpler, safer or faster to work on, and for whom. For a performance change, what got faster and where that shows. If the change has no benefit you can name, say so; that is a finding.
+One paragraph, at most 80 words, about the world *before* this change: what was wrong or missing, for whom, what it cost them, and what constraint shaped the solution that follows. For a user-facing change, what a user could not do or had to work around. For a refactoring, what was hard, slow or risky to work on, and for whom. For a performance change, what was slow and where that showed. It never describes the solution; the table under the next heading does that. The test for every sentence: if it could be a row in that table, it is one, and it comes out of this paragraph. If you cannot name a problem the change solves, say so; that is a finding.
 
-Then a **before/after table**: one row per behaviour that a user, an API consumer or the data itself would notice, at most eight rows, each cell a phrase. Rows are behaviours someone can observe ("booking a taken parking spot crashed with a server error" / "rejected with a validation message"), never files, classes or methods. A change nobody outside the code can observe, a pure refactoring, gets the single line "Nothing a user or API sees changes" instead of a table.
+### What changes
+
+A **before/after table**: one row per behaviour that a user, an API consumer or the data itself would notice, at most eight rows, each cell a phrase. Rows are behaviours someone can observe ("booking a taken parking spot crashed with a server error" / "rejected with a validation message"), never files, classes or methods. A change nobody outside the code can observe, a pure refactoring, gets the single line "Nothing a user or API sees changes" instead of a table.
 
 Then one line, **"Not changed, deliberately:"**, naming what the change leaves alone that a reviewer would otherwise wonder about: a notification not sent, a check not applied, a path not touched. It answers the question before the reviewer carries it through nine chapters. Leave the line out if there is nothing to say.
 
