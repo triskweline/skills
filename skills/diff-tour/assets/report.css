@@ -236,7 +236,8 @@ button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 .changes li { display: flex; align-items: center; gap: .55rem; margin: .3rem 0; }
 .changes li a.loc { color: var(--ink-2); text-decoration: none; font: 12.5px/1.5 var(--mono); overflow-wrap: anywhere; }
 .changes li a.loc:hover { color: var(--accent); }
-.changes button { margin-top: .6rem; }
+/* Only the group button below the list; the squares inside it are buttons too. */
+.changes > button { margin-top: .6rem; }
 
 /* Progress: one fat bar along the bottom edge of the window, the share of hunks marked
    viewed. Its width animates, so a click is answered by movement the eye catches without
