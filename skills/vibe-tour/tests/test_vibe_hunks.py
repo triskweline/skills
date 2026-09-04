@@ -147,6 +147,8 @@ class Repo(unittest.TestCase):
         self.assertIn('A binary file', page)
         self.assertIn('h2 h4', err)
         self.assertIn('(4 hunks, 2 placed by fragments, 2 appended)', out)
+        self.assertTrue(out.startswith('file:///'), out)
+        self.assertIn(out_path if False else 'tour.html', out)
         # Assets are inlined: no external requests.
         self.assertIn('window.Prism', page)
         self.assertIn('.heat .sq', page)

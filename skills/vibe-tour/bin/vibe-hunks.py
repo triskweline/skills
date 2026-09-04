@@ -174,8 +174,11 @@ def assemble(out_path, hunks, fragments, git_args):
     if dupes:
         sys.stderr.write('%d hunk(s) were placed more than once (fine if shared between topics): %s\n'
                          % (len(dupes), ' '.join(dupes)))
-    print('%s  (%d hunks, %d placed by fragments, %d appended)'
-          % (out_path, len(hunks), report['placed'], len(missing)))
+    # A file:// URL, not a path: terminals make it clickable, and the orchestrator hands
+    # this line to the human verbatim.
+    from urllib.request import pathname2url
+    print('file://%s  (%d hunks, %d placed by fragments, %d appended)'
+          % (pathname2url(os.path.abspath(out_path)), len(hunks), report['placed'], len(missing)))
 
 
 def main(argv):
