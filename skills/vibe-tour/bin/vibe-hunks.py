@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Number the hunks of a git diff, and assemble a tour from HTML fragments.
+"""Number the hunks of a git diff, set up a tour, and assemble one from fragments.
 
-  vibe-hunks.py [--untracked] -- <git diff args>
-      Print the diff with a marker line before every hunk:  ### h17  path:line
-      This is the one full read of the diff. Read this, not `git diff`.
-
-  vibe-hunks.py --ids [--untracked] -- <git diff args>
-      Only the marker lines. Cheap: one line per hunk.
-
-  vibe-hunks.py --only h17,h20 [--untracked] -- <git diff args>
-      Only those hunks, with their file headers.
+  vibe-hunks.py --setup <target>
+      Resolve a tour target (dirty, staged, uncommitted, branch, <range>, <commit>,
+      <branch>, <PR/MR number>, <PR/MR URL>), create the working directory with its
+      topic folders, and write the numbered diff into it. Prints WORK=, ARGS= (to paste
+      into --assemble), the commit list, the stat, and DIFF=. Exit 3 with one line
+      saying what went wrong when the target cannot be resolved.
 
   vibe-hunks.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT|DIR...
       Lay the fragments out, in order (a directory means every .html under it, in
@@ -20,17 +17,29 @@
       stderr, so the page always shows every hunk. Exit status is 0 either way;
       2 on a broken invocation. The layout itself lives in vibe_html.py.
 
-`--untracked` adds files git does not track yet, as additions. Use it for the
-`dirty` and `uncommitted` targets, where `git diff` alone would miss them.
+  vibe-hunks.py [--untracked] -- <git diff args>
+      Print the diff with a marker line before every hunk:  ### h17  path:line
+      This is what --setup writes to diff.txt. Read that file, not `git diff`.
 
-A file with no text hunk (binary, mode change, pure rename) gets one marker
-of its own, so it is shown too.
+  vibe-hunks.py --ids [--untracked] -- <git diff args>
+      Only the marker lines. For tests and for checking a tour by hand.
 
-Standard library only. Works on Python 3.8+.
+  vibe-hunks.py --only h17,h20 [--untracked] -- <git diff args>
+      Only those hunks, with their file headers. For a worker that lost a hunk from
+      its context, and for tests.
+
+`--untracked` adds files git does not track yet, as additions. --setup passes it for
+the `dirty` and `uncommitted` targets, where `git diff` alone would miss them.
+
+A file with no text hunk (binary, mode change, pure rename) gets one marker of its
+own, so it is shown too.
+
+Standard library only. Works on Python 3.10+.
 """
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -181,9 +190,183 @@ def assemble(out_path, hunks, fragments, git_args):
           % (pathname2url(os.path.abspath(out_path)), len(hunks), report['placed'], len(missing)))
 
 
+def full_text(hunks):
+    """The numbered read: file headers once, then a marker line and the body per hunk."""
+    out, last_header = [], None
+    for h in hunks:
+        if h.header is not last_header:
+            out.append('\n'.join(h.header))
+            last_header = h.header
+        out.append('\n'.join([h.marker()] + h.body))
+    return '\n'.join(out) + ('\n' if out else '')
+
+
+class SetupError(Exception):
+    pass
+
+
+def git_out(*args, ok=(0,)):
+    """stdout of a git command, or None when it exits with a code not in `ok`."""
+    r = subprocess.run(['git'] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if r.returncode not in ok:
+        return None
+    return r.stdout.decode('utf-8', 'replace').strip()
+
+
+def default_branch():
+    head = git_out('symbolic-ref', '-q', 'refs/remotes/origin/HEAD')
+    if head:
+        return head.replace('refs/remotes/', '', 1)
+    for name in ('origin/main', 'origin/master', 'main', 'master'):
+        if git_out('rev-parse', '--verify', '-q', name + '^{commit}'):
+            return name
+    raise SetupError('cannot find the default branch: no origin/HEAD, and no main or master')
+
+
+def is_branch(name):
+    return bool(git_out('show-ref', '--verify', '-q', 'refs/heads/' + name) is not None
+                or git_out('show-ref', '--verify', '-q', 'refs/remotes/' + name) is not None
+                or git_out('show-ref', '--verify', '-q', 'refs/remotes/origin/' + name) is not None)
+
+
+def branch_range(tip, label):
+    base = default_branch()
+    if git_out('rev-parse', tip + '^{commit}') == git_out('rev-parse', base + '^{commit}'):
+        raise SetupError('%s is the default branch (%s); there is no branch point to diff against' % (label, base))
+    merge_base = git_out('merge-base', base, tip)
+    if not merge_base:
+        raise SetupError('no merge base between %s and %s' % (label, base))
+    return '%s..%s' % (merge_base[:12], tip)
+
+
+def fetch_pr(number, kind=None):
+    """Fetch a pull or merge request head into a local ref and return the ref name.
+    `kind` is 'pull' or 'merge-requests' when the URL said which; None asks the remote."""
+    candidates = ['refs/pull/%s/head' % number, 'refs/merge-requests/%s/head' % number]
+    if kind == 'pull':
+        candidates = candidates[:1]
+    elif kind == 'merge-requests':
+        candidates = candidates[1:]
+    if git_out('remote', 'get-url', 'origin') is None:
+        raise SetupError('no remote named origin, so PR/MR %s cannot be fetched' % number)
+    listed = git_out('ls-remote', 'origin', *candidates)
+    if listed is None:
+        raise SetupError('git ls-remote origin failed; is the remote reachable?')
+    found = [line.split('\t')[1] for line in listed.splitlines() if '\t' in line]
+    local = 'refs/vibe-tour/pr-%s' % number
+    if found:
+        if git_out('fetch', '-q', 'origin', '%s:%s' % (found[0], local)) is None:
+            raise SetupError('fetching %s from origin failed' % found[0])
+        return local
+    # Neither forge ref exists. gh or glab may still know the source branch.
+    for tool, args, key in (('gh', ['pr', 'view', number, '--json', 'headRefName', '-q', '.headRefName'], None),
+                            ('glab', ['mr', 'view', number, '-F', 'json'], 'source_branch')):
+        if shutil.which(tool) is None:
+            continue
+        r = subprocess.run([tool] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if r.returncode != 0:
+            continue
+        text = r.stdout.decode('utf-8', 'replace').strip()
+        if key:
+            m = re.search(r'"%s"\s*:\s*"([^"]+)"' % key, text)
+            text = m.group(1) if m else ''
+        if text and git_out('fetch', '-q', 'origin', '%s:%s' % (text, local)) is not None:
+            return local
+    raise SetupError('PR/MR %s: origin lists neither refs/pull/%s/head nor refs/merge-requests/%s/head, '
+                     'and gh/glab could not name its branch. Fetch its branch yourself, then run --setup <branch>.'
+                     % (number, number, number))
+
+
+def resolve_target(target):
+    """-> (untracked, git diff args, log range or None)."""
+    t = target.strip()
+    if t == 'dirty':
+        return True, [], None
+    if t == 'staged':
+        return False, ['--cached'], None
+    if t == 'uncommitted':
+        return True, ['HEAD'], None
+    if t == 'branch':
+        rng = branch_range('HEAD', 'HEAD')
+        return False, [rng], rng
+    m = re.search(r'/(pull|pulls)/(\d+)', t) if '://' in t else None
+    if m:
+        ref = fetch_pr(m.group(2), 'pull')
+        rng = branch_range(ref, 'PR ' + m.group(2))
+        return False, [rng], rng
+    m = re.search(r'/merge_requests/(\d+)', t) if '://' in t else None
+    if m:
+        ref = fetch_pr(m.group(1), 'merge-requests')
+        rng = branch_range(ref, 'MR ' + m.group(1))
+        return False, [rng], rng
+    if '://' in t:
+        raise SetupError('URL %s is not a GitHub pull request or GitLab merge request URL' % t)
+    if '..' in t:
+        if git_out('rev-list', '-n', '1', t) is None:
+            raise SetupError('git does not understand the range %s' % t)
+        return False, [t], t
+    if t.isdigit() and not is_branch(t) and git_out('rev-parse', '--verify', '-q', t + '^{commit}') is None:
+        ref = fetch_pr(t)
+        rng = branch_range(ref, 'PR/MR ' + t)
+        return False, [rng], rng
+    if is_branch(t):
+        rng = branch_range(t, 'branch ' + t)
+        return False, [rng], rng
+    if git_out('rev-parse', '--verify', '-q', t + '^{commit}') is not None:
+        rng = '%s~1..%s' % (t, t)
+        if git_out('rev-parse', '--verify', '-q', t + '~1^{commit}') is None:
+            raise SetupError('%s has no parent to diff against' % t)
+        return False, [rng], rng
+    import difflib
+    names = (git_out('branch', '-a', '--format=%(refname:short)') or '').split()
+    close = difflib.get_close_matches(t, names, n=5, cutoff=0.5)
+    hint = ('; similar branches: ' + ', '.join(close)) if close else ''
+    raise SetupError('%s is not a branch, commit, range, PR/MR number or URL here%s' % (t, hint))
+
+
+def setup(target):
+    import tempfile
+    if git_out('rev-parse', '--show-toplevel') is None:
+        raise SetupError('not inside a git repository')
+    untracked, args, log_range = resolve_target(target)
+    text = run_git(args)
+    if untracked:
+        text += untracked_diff()
+    hunks = parse(text)
+    if not hunks:
+        raise SetupError('the diff for %s is empty; nothing to tour' % target)
+    work = tempfile.mkdtemp(prefix='vibe-tour.')
+    for n in range(1, 13):
+        os.makedirs(os.path.join(work, 'topic-%02d' % n))
+    diff_path = os.path.join(work, 'diff.txt')
+    body = full_text(hunks)
+    with open(diff_path, 'w', encoding='utf-8') as f:
+        f.write(body)
+    print('WORK=%s' % work)
+    print(('ARGS=%s-- %s' % ('--untracked ' if untracked else '', ' '.join(args))).rstrip())
+    print('COMMITS:')
+    if log_range:
+        print(git_out('log', '--oneline', '--no-decorate', log_range) or '(none)')
+    else:
+        print('(none: working tree)')
+    print('STAT:')
+    print(git_out('diff', '--stat', *args) or '(no stat)')
+    print('DIFF=%s  (%d lines, %d hunks)' % (diff_path, body.count('\n'), len(hunks)))
+
+
 def main(argv):
     mode, arg, untracked = 'full', None, False
     args = list(argv)
+    if args[:1] == ['--setup']:
+        if len(args) != 2:
+            sys.stderr.write('usage: vibe-hunks.py --setup <target>\n')
+            return 2
+        try:
+            setup(args[1])
+        except SetupError as e:
+            sys.stderr.write('vibe-hunks: %s\n' % e)
+            return 3
+        return 0
     if '--' not in args:
         sys.stderr.write(__doc__)
         return 2
@@ -223,12 +406,7 @@ def main(argv):
     elif mode == 'assemble':
         assemble(arg, hunks, fragments, rest)
     else:
-        last_header = None
-        for h in hunks:
-            if h.header is not last_header:
-                sys.stdout.write('\n'.join(h.header) + '\n')
-                last_header = h.header
-            sys.stdout.write('\n'.join([h.marker()] + h.body) + '\n')
+        sys.stdout.write(full_text(hunks))
     return 0
 
 

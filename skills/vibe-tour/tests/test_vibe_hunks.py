@@ -28,7 +28,8 @@ def hunks(cwd, *args):
     return r.returncode, r.stdout, r.stderr
 
 
-class Repo(unittest.TestCase):
+class RepoCase(unittest.TestCase):
+    """A throwaway repository with two committed files, a binary, edits and an untracked file."""
     def setUp(self):
         self.dir = tempfile.mkdtemp(prefix='vibe-hunks-')
         d = self.dir
@@ -53,6 +54,9 @@ class Repo(unittest.TestCase):
         mode = 'wb' if isinstance(content, bytes) else 'w'
         with open(os.path.join(self.dir, name), mode) as f:
             f.write(content)
+
+
+class Repo(RepoCase):
 
     def test_full_read_numbers_every_hunk_and_binary_file(self):
         code, out, err = hunks(self.dir, '--', 'HEAD')
@@ -250,6 +254,15 @@ class Repo(unittest.TestCase):
         self.assertEqual(uids[0], uids[2])      # the same tour re-assembled keeps its marks
         self.assertNotEqual(uids[0], 'fixture')
 
+    def test_intro_headings_are_summary_not_chapters(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1>\n<h2>What this change achieves</h2>\n<p>Better.</p>\n<h2>How it was built</h2>\n<p>Thus.</p>',
+            '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertEqual(page.count('<section class="chapter"'), 1)
+        self.assertIn('<div class="summary">', page)
+        self.assertIn('<h2>What this change achieves</h2>', page)
+        self.assertNotIn('<span class="t">What this change achieves</span>', page)
+
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)
@@ -278,6 +291,88 @@ class Repo(unittest.TestCase):
         code, out, err = hunks(self.dir, 'HEAD')
         self.assertEqual(code, 2)
         self.assertIn('vibe-hunks.py', err)
+
+
+def setup(cwd, target):
+    r = sh(cwd, sys.executable, SCRIPT, '--setup', target)
+    facts = dict(line.split('=', 1) for line in r.stdout.splitlines() if re.match(r'^[A-Z]+=', line))
+    return r.returncode, facts, r.stdout, r.stderr
+
+
+class Setup(RepoCase):
+    """--setup resolves every target spelling into a working directory and a numbered diff."""
+
+    def test_working_tree_targets(self):
+        code, facts, out, err = setup(self.dir, 'dirty')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(facts['ARGS'], '--untracked --')
+        self.assertTrue(os.path.isdir(os.path.join(facts['WORK'], 'topic-12')))
+        self.assertIn('### h5  new.txt:1', read(os.path.join(facts['WORK'], 'diff.txt')))
+        self.assertIn('(none: working tree)', out)
+        self.assertRegex(facts['DIFF'], r'diff\.txt  \(\d+ lines, 5 hunks\)$')
+        sh(self.dir, 'git', 'add', 'b.txt')
+        code, facts, out, err = setup(self.dir, 'staged')
+        self.assertEqual(facts['ARGS'], '-- --cached')
+        self.assertIn('1 hunks', facts['DIFF'])
+        code, facts, out, err = setup(self.dir, 'uncommitted')
+        self.assertEqual(facts['ARGS'], '--untracked -- HEAD')
+        self.assertIn('5 hunks', facts['DIFF'])
+        shutil.rmtree(facts['WORK'])
+
+    def test_commit_range_branch_and_pr_targets(self):
+        d = self.dir
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'second')
+        # A feature branch two commits off main, and a bare origin that knows both plus
+        # a pull-request ref, the way GitHub and GitLab expose them.
+        sh(d, 'git', 'checkout', '-q', '-b', 'feature/x')
+        self.write('f.txt', 'feature\n')
+        sh(d, 'git', 'add', 'f.txt')
+        sh(d, 'git', 'commit', '-q', '-m', 'feature work')
+        origin = tempfile.mkdtemp(prefix='vibe-origin-')
+        sh(origin, 'git', 'init', '-q', '--bare')
+        sh(d, 'git', 'remote', 'add', 'origin', origin)
+        sh(d, 'git', 'push', '-q', 'origin', 'main', 'feature/x')
+        sh(origin, 'git', 'symbolic-ref', 'HEAD', 'refs/heads/main')
+        sh(origin, 'git', 'update-ref', 'refs/pull/7/head', 'refs/heads/feature/x')
+        sh(d, 'git', 'fetch', '-q', 'origin')
+        sh(d, 'git', 'remote', 'set-head', 'origin', 'main')
+        try:
+            code, facts, out, err = setup(d, 'HEAD~1')
+            self.assertEqual(code, 0, err)
+            self.assertEqual(facts['ARGS'], '-- HEAD~1~1..HEAD~1')
+            self.assertIn('second', out)
+            code, facts, out, err = setup(d, 'main..feature/x')
+            self.assertEqual(code, 0, err)
+            self.assertIn('feature work', out)
+            self.assertIn('1 hunks', facts['DIFF'])
+            code, facts, out, err = setup(d, 'branch')
+            self.assertEqual(code, 0, err)
+            self.assertRegex(facts['ARGS'], r'^-- [0-9a-f]{12}\.\.HEAD$')
+            code, facts, out, err = setup(d, 'feature/x')
+            self.assertEqual(code, 0, err)
+            self.assertRegex(facts['ARGS'], r'^-- [0-9a-f]{12}\.\.feature/x$')
+            code, facts, out, err = setup(d, '7')
+            self.assertEqual(code, 0, err)
+            self.assertIn('..refs/vibe-tour/pr-7', facts['ARGS'])
+            self.assertIn('feature work', out)
+            code, facts, out, err = setup(d, 'https://github.com/acme/repo/pull/7')
+            self.assertEqual(code, 0, err)
+            self.assertIn('feature work', out)
+            # Failures name the problem and stop.
+            sh(d, 'git', 'checkout', '-q', 'main')
+            code, facts, out, err = setup(d, 'branch')
+            self.assertEqual(code, 3)
+            self.assertIn('default branch', err)
+            code, facts, out, err = setup(d, 'feature/y')
+            self.assertEqual(code, 3)
+            self.assertIn('not a branch, commit, range', err)
+            self.assertIn('feature/x', err)
+            code, facts, out, err = setup(d, '99')
+            self.assertEqual(code, 3)
+            self.assertIn('refs/pull/99/head', err)
+        finally:
+            shutil.rmtree(origin)
 
 
 if __name__ == '__main__':

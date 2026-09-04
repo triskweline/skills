@@ -11,7 +11,7 @@ two-column layout, the figures with the real diff bytes, syntax highlighting, th
 sidebar with its heat strips. Nothing in this file decides anything about the tour;
 it only lays out what the workers wrote.
 
-Standard library only. Works on Python 3.8+.
+Standard library only. Works on Python 3.10+.
 """
 
 import datetime
@@ -173,9 +173,15 @@ def parse_fragments(texts):
         text = WRAPPERS.sub('', text)
         m = H1.search(text)
         if m:
+            # The fragment with the <h1> is the intro. Everything else in it is the tour
+            # summary, whatever headings it uses; only fragments without an <h1> hold
+            # chapters.
             if not title:
                 title = m.group(1).strip()
-            text = text[:m.start()] + text[m.end():]
+            rest = text[:m.start()] + text[m.end():]
+            if rest.strip():
+                summary.append(_prose(rest))
+            continue
         parts = H2.split(text)
         lead = parts[0]
         if PLACEHOLDER.search(lead):
