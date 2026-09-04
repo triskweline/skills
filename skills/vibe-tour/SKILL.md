@@ -116,7 +116,7 @@ Beat # One narration beat within a topic
 
 Hunk # One annotated diff hunk
 + id: string                 # h17, minted by the script
-+ sentence: html             # one sentence, always present, in a <p>
++ sentence: html             # always present, in a <p>; one sentence, up to three for note/fishy/hot
 + heat_level: 'skip' | none | 'note' | 'fishy' | 'hot'  # one word in the placeholder
 + heat_reason: text          # required for note, fishy and hot; lives in the placeholder
 + diff_content: text         # spliced in by the script, never typed by an agent
@@ -394,13 +394,17 @@ Don't do a deep analysis to form beats. Don't pay tool calls to understand the c
 
 The tour has three layers of prose, chapter, beat and hunk, and they are zoom levels. A hurried reader reads the chapter summaries and stops. A careful one opens the beats. Only the most careful opens hunks, and reading a hunk always costs more than reading a sentence about it. Every layer has the same job: **tell the reader what they would find one level down, well enough to decide whether to go there.** The layers overlap, and that is fine; a reader who zooms in expects to meet the same thing again, closer up.
 
-What no layer does is spell the code out in prose: naming each column a migration adds, each method a trait defines, each field a form has. That is the diff again, only harder to read, and the real diff sits one glance below. The test for a sentence: after reading it, would the reader still want to open the diff? Good. Would they no longer need to? Then the sentence is doing the diff's job. Cut it.
+What no layer does is spell the code out in prose: naming each column a migration adds, each key a settings block sets, each method a trait defines, each step a test takes. That is the diff again, only harder to read, and the real diff sits one glance below. The test for a sentence: after reading it, would the reader still want to open the diff? Good. Would they no longer need to? Then the sentence is doing the diff's job. Cut it.
 
 **Chapter summary** (the paragraph under your `<h2>`). One paragraph. What this body of work achieves and the one decision in it, so a reader who stops here still knows what changed. Say which kind of work it is when that matters: preparation for a later chapter, clean-up after an earlier one, or unrelated to the main change. End with where the weight lies: the beat to open if they open only one.
 
 **Beat prose** (the paragraph under your `<h3>`). Always present. What these hunks do together and why they are one step; how this step follows from the previous beat when it does. Give the gist of what the hunks would show, and say "nothing surprising below" when that is true. This is where a reader decides whether to open the hunks.
 
-**Hunk sentence** (the paragraph after each placeholder). Always present, one sentence, also on skip hunks. What the hunk is about, roughly, so the reader knows what they would be opening. "The migration adding the three 2FA columns", not the three column names and their types. For note, fishy and hot, the badge already carries the reason; do not repeat it, add to it if there is more. If your briefing says a hunk is shared with another topic, say so in this sentence, in a few words.
+**Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. It says what the hunk is about so the reader knows what they would be opening, and for note, fishy and hot it says what to look for beyond the badge reason. If your briefing says a hunk is shared with another topic, say so here, in a few words.
+
+Length follows the level. Skip and read: one sentence. Note, fishy and hot: up to three sentences, because the reader has been told to stop here and this is where you tell them why.
+
+Whatever the length, never list what the hunk contains. Not the columns a migration adds, not the keys of a settings block, not the methods of a trait, not the steps of a test, not the sections of a template. "The migration adding the three 2FA columns", not the three column names and their types. "The four knobs that configure the feature", not the four keys in order. The reader has the diff one glance below; a sentence that lists its contents makes them read the change twice. For note, fishy and hot, the badge already carries the reason; do not repeat it, add to it if there is more.
 
 ## Give each hunk a heat level
 
@@ -438,16 +442,16 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 <p>Beat prose.</p>
 
 <!-- hunk h3 -->
-<p>Hunk sentence.</p>
+<p>One sentence.</p>
 
 <!-- hunk h4 fishy: what feels off, in one phrase or sentence -->
-<p>Hunk sentence.</p>
+<p>One to three sentences.</p>
 
 <!-- hunk h5 skip -->
-<p>Hunk sentence.</p>
+<p>One sentence.</p>
 
 <!-- hunk h6 hot: the gate on every request -->
-<p>Hunk sentence.</p>
+<p>One to three sentences.</p>
 
 <h3>Next beat</h3>
 ...
