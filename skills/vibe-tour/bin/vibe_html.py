@@ -219,7 +219,17 @@ def _key(h):
     return hashlib.md5(('\n'.join(h.body) or (h.path + '\n'.join(h.header))).encode('utf-8')).hexdigest()[:10]
 
 
-def figure(h, ident, level, reason):
+FLAG_LABEL = {
+    'note': 'A choice to accept knowingly',
+    'fishy': 'May be wrong',
+    'hot': 'Silent or irreversible if wrong',
+}
+
+
+def figure(h, ident, level, reason, note=''):
+    """One hunk: its sentence with the level badge in front, the level's reason if any,
+    then the diff card. The whole thing is one figure with the level as its left edge, so
+    the hunks of a beat form a vertical line striped by attention level."""
     kind = _kind(h)
     add = sum(1 for l in h.body[1:] if l.startswith('+'))
     rem = sum(1 for l in h.body[1:] if l.startswith('-'))
@@ -232,17 +242,22 @@ def figure(h, ident, level, reason):
     if kind in ('added', 'deleted', 'moved'):
         tags.append('<span class="tag %s">%s</span>' % (kind, kind))
     name = level or 'plain'
-    # The level sits at the left of the header bar, before the path, so it is the first
-    # thing the eye meets; the figure's edge carries the same colour.
     badge = '<span class="lvl">%s</span>' % (level if level else 'read')
+    # The badge opens the hunk's sentence, so the level is the first thing the eye meets
+    # and the sentence reads as "FISHY: what this hunk is about".
+    note = note or '<p></p>'
+    note = re.sub(r'<p\b[^>]*>', lambda m: m.group(0) + badge, note, count=1)
     out = ['<figure class="hunk lvl-%s%s" id="%s" data-key="%s" data-level="%d"%s>'
            % (name, ' file' if not h.body else '', ident, _key(h), LEVELS[level],
               (' data-reason="%s"' % html.escape(reason, quote=True)) if reason else ''),
-           '<figcaption>%s<span class="where">%s</span><span class="tools">%s</span></figcaption>'
-           % (badge, where, ''.join(tags))]
+           '<div class="note">%s</div>' % note]
     if level in ('note', 'fishy', 'hot'):
-        out.append('<aside class="flag %s"><p>%s</p></aside>'
-                   % (level, html.escape(reason) if reason else 'Please check this change.'))
+        out.append('<p class="flag %s"><b>%s:</b> %s</p>'
+                   % (level, FLAG_LABEL[level],
+                      html.escape(reason) if reason else 'please check this change'))
+    out.append('<div class="card">')
+    out.append('<figcaption><span class="where">%s</span><span class="tools">%s</span></figcaption>'
+               % (where, ''.join(tags)))
     if h.body:
         # The @@ line is not shown: its numbers are in the header bar already. Git's
         # function context after the second @@, the nearest declaration above the hunk,
@@ -255,6 +270,7 @@ def figure(h, ident, level, reason):
                    % (language_of(h.path, h.body), html.escape('\n'.join(h.body[1:]))))
     else:
         out.append('<div class="binary">%s</div>' % NO_BODY[kind])
+    out.append('</div>')
     out.append('</figure>')
     return '\n'.join(out)
 
@@ -313,7 +329,7 @@ def render(hunks, texts, git_args, out_path=''):
     by_id = dict((h.id, h) for h in hunks)
     seen, unknown, dupes = {}, [], []
 
-    def fig(hid, level, reason):
+    def fig(hid, level, reason, note=''):
         if hid not in by_id:
             unknown.append(hid)
             return '<p class="missing"><strong>Unknown hunk %s</strong></p>' % html.escape(hid)
@@ -321,7 +337,7 @@ def render(hunks, texts, git_args, out_path=''):
         seen[hid] = n
         if n > 1:
             dupes.append(hid)
-        return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), level, reason)
+        return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), level, reason, note)
 
     body = []
     for n, ch in enumerate(chapters, 1):
@@ -381,9 +397,7 @@ def _beat_html(beat, fig):
         say.append(beat['say'])
     show = []
     for hid, level, reason, note in beat['items']:
-        if note:
-            show.append('<div class="note">%s</div>' % note)
-        show.append(fig(hid, level, reason))
+        show.append(fig(hid, level, reason, note))
     if not show:
         return '<section class="beat solo"><div class="say">%s</div></section>' % '\n'.join(say)
     return ('<section class="beat"><div class="say">%s</div><div class="show">%s</div></section>'

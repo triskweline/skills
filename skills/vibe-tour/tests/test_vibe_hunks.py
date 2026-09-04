@@ -129,13 +129,17 @@ class Repo(unittest.TestCase):
         self.assertIn('<p>Beat prose.</p>', page)
         # Prose before a placeholder belongs to the beat; prose after it is the hunk's note.
         self.assertRegex(page, r'(?s)<div class="say">[^<]*<h3>First beat</h3>.*Beat prose.*Desc of h1.*</div><div class="show">')
-        self.assertIn('<div class="note"><p>Desc of h3.</p></div>\n<figure class="hunk lvl-fishy" id="h3"', page)
+        self.assertIn('<figure class="hunk lvl-fishy" id="h3"', page)
         self.assertIn('data-level="3" data-reason="the greeting lost its exclamation"', page)
-        self.assertIn('<figcaption><span class="lvl">fishy</span><span class="where">b.txt:1', page)
-        self.assertIn('<aside class="flag fishy"><p>the greeting lost its exclamation</p></aside>', page)
+        # The sentence opens with the badge, the reason follows in the level's colour, then the card.
+        self.assertIn('<div class="note"><p><span class="lvl">fishy</span>Desc of h3.</p></div>\n'
+                      '<p class="flag fishy"><b>May be wrong:</b> the greeting lost its exclamation</p>\n'
+                      '<div class="card">\n<figcaption><span class="where">b.txt:1', page)
         self.assertIn('<figure class="hunk lvl-plain" id="h1" data-key="', page)
         self.assertIn('data-level="1"', page)
-        self.assertIn('<figcaption><span class="lvl">read</span><span class="where">a.py:1', page)
+        # "Desc of h1." sits before h1's placeholder, so it is beat prose; h1 itself has no sentence.
+        self.assertIn('<div class="note"><p><span class="lvl">read</span></p></div>\n<div class="card">', page)
+        self.assertNotIn('<aside', page)
         self.assertIn('language-diff-python diff-highlight', page)
         self.assertIn('+CHANGED &lt;b&gt;&amp;', page)
         self.assertNotIn('<!-- hunk h1 -->', page)
@@ -178,7 +182,7 @@ class Repo(unittest.TestCase):
             'Intro line.\n\n<!-- hunk h1 -->\nabout h1\n<h3>Later</h3>\n<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<span class="t">Topic 1</span>', page)
         self.assertIn('<div class="intro"><p>Intro line.</p></div>', page)
-        self.assertIn('<div class="note"><p>about h1</p></div>', page)
+        self.assertIn('<div class="note"><p><span class="lvl">read</span>about h1</p></div>', page)
         self.assertIn('<h3>Later</h3>', page)
 
     def test_a_directory_expands_to_its_fragments_in_path_order(self):
@@ -217,6 +221,8 @@ class Repo(unittest.TestCase):
         self.assertEqual(code, 0, err)
         page = read(out_path)
         self.assertIn('<div class="ctx">def alpha():</div>\n<pre class="diff">', page)
+        # A hunk with no sentence still opens with its badge.
+        self.assertIn('<div class="note"><p><span class="lvl">read</span></p></div>', page)
         # The @@ line itself is not shown; the diff starts with the first context line.
         self.assertNotIn('@@ -3,6', page)
         self.assertIn('diff-highlight">     b = 2\n', page)
@@ -246,7 +252,7 @@ class Repo(unittest.TestCase):
 
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
-        self.assertIn('<aside class="flag fishy"><p>Please check this change.</p></aside>', page)
+        self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)
 
     def test_all_five_levels_render(self):
         page, out, err = self.assemble(
@@ -256,17 +262,17 @@ class Repo(unittest.TestCase):
         self.assertIn('<figure class="hunk lvl-skip" id="h1" data-key="', page)
         self.assertIn('data-level="0"', page)
         self.assertIn('<span class="lvl">skip</span>', page)
-        self.assertNotIn('<aside class="flag skip"', page)
+        self.assertNotIn('class="flag skip"', page)
         self.assertIn('<figure class="hunk lvl-note" id="h2"', page)
-        self.assertIn('<aside class="flag note"><p>a default worth a conscious yes</p></aside>', page)
+        self.assertIn('<p class="flag note"><b>A choice to accept knowingly:</b> a default worth a conscious yes</p>', page)
         self.assertIn('<figure class="hunk lvl-hot" id="h3"', page)
         self.assertIn('data-level="4" data-reason="verification runs on every request"', page)
-        self.assertIn('<aside class="flag hot"><p>verification runs on every request</p></aside>', page)
+        self.assertIn('<p class="flag hot"><b>Silent or irreversible if wrong:</b> verification runs on every request</p>', page)
         self.assertIn('<figure class="hunk lvl-plain file" id="h4"', page)
         # Reasons are escaped into the attribute and the aside alike.
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 note: uses <b> & "quotes" --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('data-reason="uses &lt;b&gt; &amp; &quot;quotes&quot;"', page)
-        self.assertIn('<p>uses &lt;b&gt; &amp; &quot;quotes&quot;</p>', page)
+        self.assertIn(' uses &lt;b&gt; &amp; &quot;quotes&quot;</p>', page)
 
     def test_missing_double_dash_prints_usage(self):
         code, out, err = hunks(self.dir, 'HEAD')

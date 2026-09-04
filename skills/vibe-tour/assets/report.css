@@ -360,7 +360,6 @@ section.chapter > h2 + .beat { border-top: none; padding-top: 0; }
 div.note { margin: 0 0 .6rem; }
 div.note > :first-child { margin-top: 0; }
 div.note > :last-child { margin-bottom: 0; }
-figure.hunk + div.note { margin-top: 1.4rem; }
 .say p, .note p, .summary p, .intro p { margin: .8rem 0; }
 .say ul, .say ol, .note ul, .note ol, .summary ul, .intro ul { margin: .8rem 0; padding-left: 1.35rem; }
 .say li, .note li, .summary li, .intro li { margin: .3rem 0; }
@@ -388,40 +387,56 @@ p.missing { color: var(--fishy); }
 
 /* --------------------------------------------------------------------- hunks */
 
+/* A hunk is one figure holding its sentence, its reason if any, and the diff card. The
+   figure's left edge is the attention level, so the hunks of a beat stack into one
+   vertical line striped by level, and the badge opens the sentence so the level is the
+   first word the reader meets. The card below is only the code. */
 figure.hunk {
-  margin: 0 0 1.4rem;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
+  margin: 0 0 1.6rem;
+  padding: 0 0 0 .9rem;
+  border-left: 4px solid var(--l1);
 }
 figure.hunk:last-child { margin-bottom: 0; }
-/* The level is the figure's left edge, the same colour as its square in the strips. */
-figure.hunk { border-left-width: 4px; border-left-color: var(--l1); }
 figure.hunk.lvl-skip { border-left-color: var(--faint); opacity: .55; }
 figure.hunk.lvl-skip:hover { opacity: 1; }
 figure.hunk.lvl-note { border-left-color: var(--l2); }
 figure.hunk.lvl-fishy { border-left-color: var(--l3); }
 figure.hunk.lvl-hot { border-left-color: var(--l4); }
 
-/* No caption: the worker's prose is the .note above the figure. What is left is a
-   thin bar: the level first, then where the hunk is, then its tools. */
-figure.hunk > figcaption {
-  padding: .45rem .85rem;
-  border-bottom: 1px solid var(--line-2);
-  background: var(--panel-2);
-  display: flex; align-items: center; gap: .6rem;
-}
-figcaption .lvl {
+figure.hunk > .note { margin: 0 0 .6rem; }
+.lvl {
+  display: inline-block; vertical-align: .12em; margin-right: .5rem;
   font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
   padding: .3rem .42rem; border-radius: 4px; color: #1b1f24; background: var(--l1);
   border: 1px solid transparent;
 }
 figure.hunk.lvl-skip .lvl { background: var(--l0); color: var(--muted); border-color: var(--line); }
-figure.hunk.seen .lvl::before { content: "✓ "; }
 figure.hunk.lvl-note .lvl { background: var(--l2); }
 figure.hunk.lvl-fishy .lvl { background: var(--l3); color: #fff; }
 figure.hunk.lvl-hot .lvl { background: var(--l4); color: #fff; }
+figure.hunk.seen .lvl::before { content: "✓ "; }
+
+/* Why the hunk got its level, in the worker's words, in the level's colour, between the
+   sentence and the code. */
+figure.hunk > p.flag { margin: -.2rem 0 .7rem; font-size: 14.5px; max-width: 900px; }
+figure.hunk > p.flag b { font-weight: 600; }
+figure.hunk > p.flag.note { color: var(--l2-ink); }
+figure.hunk > p.flag.fishy { color: var(--l3-ink); }
+figure.hunk > p.flag.hot { color: var(--l4-ink); }
+
+/* The diff card: a thin header bar with where the hunk is and its tools, then the code. */
+figure.hunk > .card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.card > figcaption {
+  padding: .45rem .85rem;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--panel-2);
+  display: flex; align-items: center; gap: .6rem;
+}
 figcaption .where {
   flex: 1;
   font: 12px/1.5 var(--mono); color: var(--muted);
@@ -445,43 +460,24 @@ figcaption .tools { display: flex; align-items: center; gap: .4rem; }
 .tools .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
 .tools .tag.moved { color: var(--accent); border-color: var(--accent); }
 
-/* Why a hunk got its level, in the worker's words, above the diff it is about. */
-aside.flag {
-  margin: 0; padding: .55rem .85rem;
-  border-bottom: 1px solid var(--line-2);
-  font-size: 14.5px; color: var(--ink-2);
-}
-aside.flag p { margin: 0; }
-aside.flag::before {
-  display: block;
-  font: 600 10.5px/1 var(--sans);
-  letter-spacing: .09em; text-transform: uppercase;
-  margin-bottom: .3rem;
-}
-aside.flag.note::before { content: "note — a choice to accept knowingly"; color: var(--l2-ink); }
-aside.flag.fishy::before { content: "fishy — may be wrong"; color: var(--l3-ink); }
-aside.flag.hot::before { content: "hot — a mistake here would be silent or irreversible"; color: var(--l4-ink); }
-
-/* Marking a hunk viewed collapses it and gives it a green edge, the way a reviewed
-   file behaves on a pull request. Clicking the path collapses without marking. */
-figure.hunk.seen { border-color: var(--seen); }
-/* A collapsed figure is only its header bar, whose bottom rule would sit on the figure's
+/* Marking a hunk viewed collapses its code and gives the card a green edge, the way a
+   reviewed file behaves on a pull request. Clicking the path collapses without marking.
+   The sentence and the reason stay visible either way. */
+figure.hunk.seen > .card { border-color: var(--seen); }
+figure.hunk.collapsed > .card > pre,
+figure.hunk.collapsed > .card > .binary,
+figure.hunk.collapsed > .card > .ctx { display: none; }
+/* A collapsed card is only its header bar, whose bottom rule would sit on the card's
    own bottom border and read as one line twice as thick. */
-figure.hunk.collapsed > figcaption { border-bottom: none; }
-figure.hunk.collapsed > pre,
-figure.hunk.collapsed > .binary,
-figure.hunk.collapsed > .ctx,
-figure.hunk.collapsed > aside.flag { display: none; }
+figure.hunk.collapsed > .card > figcaption { border-bottom: none; }
 figure.hunk.seen button.seen { color: var(--seen); border-color: var(--seen); }
 
 /* One control for a run of hunks read as a group — a lockfile's forty hunks. */
 .groupbar { margin: 0 0 .6rem; }
 button.seen.group { padding: .3rem .6rem; }
-button.seen.group[aria-pressed="true"] {
-  color: var(--seen); border-color: var(--seen);
-}
+button.seen.group[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }
 
-figure.hunk .binary {
+.card .binary {
   padding: .8rem .85rem; color: var(--muted); font-size: 14.5px;
 }
 
@@ -489,13 +485,13 @@ figure.hunk .binary {
    so it sits in the code column in the code font, but faint, led by an ellipsis and
    closed with a dashed seam: there may be any number of lines between it and the
    first line of the diff. */
-figure.hunk .ctx {
+.card .ctx {
   font: 12.5px/1.58 var(--mono); color: var(--faint);
   padding: .3rem .85rem;
   border-bottom: 1px dashed var(--line);
   white-space: pre; overflow-x: auto;
 }
-figure.hunk .ctx::before { content: "⋯ "; }
+.card .ctx::before { content: "⋯ "; }
 
 /* ------------------------------------------------------------------ the diff */
 
