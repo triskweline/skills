@@ -433,19 +433,12 @@ p.missing { color: var(--fishy); }
 /* --------------------------------------------------------------------- hunks */
 
 /* A hunk is one figure holding its sentence, its reason if any, and the diff card. The
-   figure's left edge is the attention level, so the hunks of a beat stack into one
-   vertical line striped by level, and the badge opens the sentence so the level is the
-   first word the reader meets. The card below is only the code. */
+   badge opens the sentence, so the level is the first word the reader meets; nothing else
+   on the figure repeats it. The card below is only the code. */
 figure.hunk {
   margin: 0 0 1.6rem;
-  padding: 0 0 0 .9rem;
-  border-left: 4px solid var(--l1);
 }
 figure.hunk:last-child { margin-bottom: 0; }
-figure.hunk.lvl-skip { border-left-color: var(--faint); }
-figure.hunk.lvl-note { border-left-color: var(--l2); }
-figure.hunk.lvl-fishy { border-left-color: var(--l3); }
-figure.hunk.lvl-hot { border-left-color: var(--l4); }
 
 figure.hunk > .note { margin: 0 0 .6rem; }
 .lvl {
