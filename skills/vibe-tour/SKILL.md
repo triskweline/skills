@@ -227,7 +227,7 @@ For each hunk, *quickly* guess which topic it belongs to, and assign it to the t
 
 A hunk that fits no topic in a glance goes to the **loose ends** topic: the last topic in reading order, holding whatever remains after honest clustering. It gets a worker like any other topic. Leave it out entirely if it is empty. Do not spend a call or invent a topic to avoid it.
 
-Write the assignment down as ids, one line per topic, in reading order, loose ends last. This is what the workers get, so keep it compact:
+Write the assignment down as ids, one line per topic, in reading order, loose ends last, numbered 1 to N without gaps. The numbers are final: they name the directories, the chapters on the page, and the link targets workers use to refer to each other's topics. This is what the workers get, so keep it compact:
 
 ```
 1. Thread the tenant id into the cache key: h3 h4 h9 h10 h11 h17
@@ -248,12 +248,15 @@ Forks inherit your context, so a worker already holds the numbered diff. Do not 
 ```
 You are a vibe-tour worker. Your instructions are Part 1 and Part 5 of the vibe-tour skill.
 
-Topic 3: Thread the tenant id into the cache key
+Topics in order: 1 Add the tenant column; 2 Thread the tenant id into the cache key; 3 Drop the legacy CSV export; 4 Loose ends
+Topic 2: Thread the tenant id into the cache key
 Beat ideas: the key builder; the two call sites; the backfill migration
 Hunks: h3 h4 h9 h10 h11 h17
-Shared with topic 5: h9 h11
-Write your fragment to: /tmp/vibe-tour.sLxCWm/topic-03/fragment.html
+Shared with topic 3: h9 h11
+Write your fragment to: /home/me/app/tmp/vibe-tour.sLxCWm/topic-02/fragment.html
 ```
+
+The "Topics in order" line is the same for every worker; it is what lets a worker link to another topic by number.
 
 For a worker holding several topics, repeat the block from "Topic N" through "Shared with" once per topic, in reading order, under one "Write your fragment to" line; the directory is named after the first topic. That is the whole briefing. Nothing about assembling, nothing about other topics, no path other than the worker's own file.
 
@@ -394,17 +397,21 @@ Don't do a deep analysis to form beats. Don't pay tool calls to understand the c
 
 The tour has three layers of prose, chapter, beat and hunk, and they are zoom levels. A hurried reader reads the chapter summaries and stops. A careful one opens the beats. Only the most careful opens hunks, and reading a hunk always costs more than reading a sentence about it. Every layer has the same job: **tell the reader what they would find one level down, well enough to decide whether to go there.** The layers overlap, and that is fine; a reader who zooms in expects to meet the same thing again, closer up.
 
-What no layer does is spell the code out in prose: naming each column a migration adds, each key a settings block sets, each method a trait defines, each step a test takes. That is the diff again, only harder to read, and the real diff sits one glance below. The test for a sentence: after reading it, would the reader still want to open the diff? Good. Would they no longer need to? Then the sentence is doing the diff's job. Cut it.
+What no layer does is spell the code out in prose: naming each column a migration adds, each key a settings block sets, each method a trait defines, each case a test checks. That is the diff again, only harder to read, and the real diff sits one glance below. The test for a sentence: after reading it, would the reader still want to open the diff? Good. Would they no longer need to? Then the sentence is doing the diff's job. Cut it.
 
 **Chapter summary** (the paragraph under your `<h2>`). One paragraph. What this body of work achieves and the one decision in it, so a reader who stops here still knows what changed. Say which kind of work it is when that matters: preparation for a later chapter, clean-up after an earlier one, or unrelated to the main change. End with where the weight lies: the beat to open if they open only one.
 
-**Beat prose** (the paragraph under your `<h3>`). Always present. What these hunks do together and why they are one step; how this step follows from the previous beat when it does. Give the gist of what the hunks would show, and say "nothing surprising below" when that is true. This is where a reader decides whether to open the hunks.
+**Say why only when you have seen why.** A motivation may come from anything you have actually seen: a comment or a commit message, a test name, a constraint removed elsewhere in the diff, something a tool call returned. State those plainly. When you are connecting dots instead, say so in the sentence: "presumably to let the admin form reopen a booking; the diff does not say." When you have neither, name the gap: "the diff does not say why the indexes go." A reason stated as fact that nothing supports is the one thing a summary must never contain; a reviewer trusts the summary instead of reading, and a wrong reason on the riskiest chapter sends them the wrong way.
+
+**Beat prose** (the paragraph under your `<h3>`). Always present. What these hunks do together and why they are one step; how this step follows from the previous beat when it does. Give the gist of what the hunks would show, and say "nothing surprising below" when that is true. This is where a reader decides whether to open the hunks. When a beat holds test hunks, its prose says in one clause what the tests cover and in one clause what they do not; that is the value of a test to a reviewer, and the hunk sentences below must not try to deliver it by listing cases.
+
+**Refer to other topics and hunks in your own words, as links.** Free prose is better than titles, and a link makes it exact: `<a href="#topic-4">the locking chapter</a>`, `<a href="#h17">the migration</a>`. Topic numbers are on the "Topics in order" line of your briefing; hunk ids are in the diff. A nickname without a link leaves the reader guessing which of eight sidebar entries you meant.
 
 **Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. It says what the hunk is about so the reader knows what they would be opening, and for note, fishy and hot it says what to look for beyond the badge reason. If your briefing says a hunk is shared with another topic, say so here, in a few words.
 
 Length follows the level. Skip and read: one sentence. Note, fishy and hot: up to three sentences, because the reader has been told to stop here and this is where you tell them why.
 
-Whatever the length, never list what the hunk contains. Not the columns a migration adds, not the keys of a settings block, not the methods of a trait, not the steps of a test, not the sections of a template. "The migration adding the three 2FA columns", not the three column names and their types. "The four knobs that configure the feature", not the four keys in order. The reader has the diff one glance below; a sentence that lists its contents makes them read the change twice. For note, fishy and hot, the badge already carries the reason; do not repeat it, add to it if there is more.
+Whatever the length, never list what the hunk contains. Not the columns a migration adds, not the keys of a settings block, not the methods of a trait, not the cases a test checks, not the sections of a template. For a test hunk the sentence says what the test is for; which cases it runs through is the diff's job. "The migration adding the three 2FA columns", not the three column names and their types. "The four knobs that configure the feature", not the four keys in order. The reader has the diff one glance below; a sentence that lists its contents makes them read the change twice. For note, fishy and hot, the badge already carries the reason; do not repeat it, add to it if there is more.
 
 ## Give each hunk a heat level
 
@@ -422,13 +429,13 @@ Every hunk gets one of five heat levels. The scale is not "how suspicious" but *
 
 Hot is about the cost of a mistake, not about how important or how public the code is. A broken public method fails loudly and a revert fixes it; that is fishy at most, and if the method is rarely used it gets no level. Hot is an auth or permission check that would fail open silently, a verification that would accept bad input without complaint, a gate on every request, a data rewrite, a delete, a payment, a sent email. Do not classify by file type or by category of code; ask the question.
 
-Note collects three things that all get the same reviewer action: nitpicks (naming, a hardcoded string, a stray comment, an unused dependency), decisions the author made that the reviewer must accept knowingly (a default that changes behaviour for everyone, a deliberately omitted exemption, an input limit), and missing coverage for something significant.
+Note collects three things that all get the same reviewer action: nitpicks (naming, a hardcoded string, a stray comment, an unused dependency), decisions the author made that the reviewer must accept knowingly (a default that changes behaviour for everyone, a deliberately omitted exemption, an input limit), and missing coverage for something significant. A note's reason names what is different from before: a new cost, a changed default, a dropped check, a missing test. A property the code already had is not a note. When a change keeps cost or behaviour the same where a reader might fear otherwise, say that in the hunk sentence instead; unchanged is information too.
 
 Skip is lockfiles, schema dumps, renames, `include` lines, locale strings, path helpers, and any hunk that exists only because another hunk exists. It is the one level that saves the reader time, so use it freely where it is true.
 
 This is not a code review! You do not verify anything; work on intuition and what you already know about the code base. If a level is wrong, no worries: the judgement remains with the human.
 
-**Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. For hot the reason names what a mistake would cost: `hot: the gate on every request`. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
+**Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. The reason says what goes wrong when this hunk is wrong, not where the line is: `hot: a missing cast here lets the desk check fail open with no error`, not `hot: the line that switches the check on`. The sidebar and the beat's list show only the reason, so it has to carry the danger by itself. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
 
 ## Write the topic fragment
 
@@ -450,14 +457,14 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 <!-- hunk h5 skip -->
 <p>One sentence.</p>
 
-<!-- hunk h6 hot: the gate on every request -->
+<!-- hunk h6 hot: a wrong early return here lets every request through unchallenged -->
 <p>One to three sentences.</p>
 
 <h3>Next beat</h3>
 ...
 ```
 
-A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>` and hunk placeholders. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
+A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, and hunk placeholders. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
 
 - **Never type out a diff.** Put the placeholder where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page.
 - Every hunk id you were given appears exactly once as a placeholder.

@@ -399,7 +399,7 @@ def render(hunks, texts, git_args, out_path=''):
 
     body = []
     for n, ch in enumerate(chapters, 1):
-        body.append('<section class="chapter" id="ch%d">' % n)
+        body.append('<section class="chapter" id="topic-%d">' % n)
         body.append('<h2><span class="n">%d</span><span class="t">%s</span></h2>' % (n, ch['title']))
         if ch['intro']:
             body.append('<div class="intro">%s</div>' % ch['intro'])
@@ -410,7 +410,7 @@ def render(hunks, texts, git_args, out_path=''):
     missing = [h for h in hunks if h.id not in seen]
     placed = len(seen)
     if missing:
-        body.append('<section class="chapter" id="ch%d">' % (len(chapters) + 1))
+        body.append('<section class="chapter" id="topic-%d">' % (len(chapters) + 1))
         body.append('<h2><span class="n">%d</span><span class="t">Unsorted hunks</span></h2>'
                     % (len(chapters) + 1))
         body.append('<div class="intro"><p>These hunks were not placed in any topic. '

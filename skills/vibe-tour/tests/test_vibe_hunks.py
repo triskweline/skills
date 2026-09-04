@@ -259,6 +259,7 @@ class Repo(RepoCase):
             '<h1>T</h1>\n<h2>What this change achieves</h2>\n<p>Better.</p>\n<h2>How it was built</h2>\n<p>Thus.</p>',
             '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertEqual(page.count('<section class="chapter"'), 1)
+        self.assertIn('<section class="chapter" id="topic-1">', page)
         self.assertIn('<div class="summary">', page)
         self.assertIn('<h2>What this change achieves</h2>', page)
         self.assertNotIn('<span class="t">What this change achieves</span>', page)
@@ -280,6 +281,16 @@ class Repo(RepoCase):
         self.assertIn('</div><div class="prose"><p>Patch it.</p></div></div>', page)
         self.assertIn('<div class="lbl"><h3>Where this change sits</h3>\n</div><div class="prose"><p>Between.</p></div>', page)
         self.assertLess(page.index('<h2>The spectrum of solutions</h2>\n<p class="byline">'), page.index('<div class="spectrum">'))
+
+    def test_cross_reference_links_survive_into_the_page(self):
+        page, out, err = self.assemble(
+            '<h2>First</h2><p>See <a href="#topic-2">the other one</a> and <a href="#h3">the greeting</a>.</p>'
+            '<!-- hunk h1 --><p>Pairs with <a href="#h2">its sibling</a>.</p><!-- hunk h2 -->',
+            '<h2>Second</h2><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<section class="chapter" id="topic-2">', page)
+        self.assertIn('<a href="#topic-2">the other one</a>', page)
+        self.assertIn('<a href="#h3">the greeting</a>', page)
+        self.assertIn('<p><span class="lvl">read</span>Pairs with <a href="#h2">its sibling</a>.</p>', page)
 
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')

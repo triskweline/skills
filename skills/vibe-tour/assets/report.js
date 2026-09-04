@@ -204,7 +204,7 @@
     chapters.forEach(function (ch, i) {
       var h2 = ch.querySelector('h2');
       if (!h2) return;
-      if (!ch.id) ch.id = 'ch' + (i + 1);
+      if (!ch.id) ch.id = 'topic-' + (i + 1);
       var num = h2.querySelector('.n');
       var title = h2.querySelector('.t') || h2;
       var li = document.createElement('li');
