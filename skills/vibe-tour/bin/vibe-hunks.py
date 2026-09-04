@@ -161,7 +161,7 @@ def assemble(out_path, hunks, fragments, git_args):
     for frag in fragments:
         with open(frag, encoding='utf-8') as f:
             texts.append(f.read())
-    page, report = vibe_html.render(hunks, texts, git_args)
+    page, report = vibe_html.render(hunks, texts, git_args, out_path)
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(page)
     missing, unknown, dupes = report['missing'], report['unknown'], report['dupes']

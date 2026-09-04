@@ -229,6 +229,21 @@ class Repo(unittest.TestCase):
         h2 = re.search(r'<figure class="hunk lvl-plain" id="h2".*?</figure>', page, re.S).group(0)
         self.assertIn('<div class="ctx">line6</div>', h2)
 
+    def test_each_tour_gets_its_own_uid_for_viewed_marks(self):
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        uids = []
+        for name in ('one', 'two', 'one'):
+            out_path = os.path.join(self.dir, name, 'vibe-tour.html')
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '++', frag)
+            self.assertEqual(code, 0, err)
+            uids.append(re.search(r'data-uid="([0-9a-f]+)"', read(out_path)).group(1))
+        self.assertNotEqual(uids[0], uids[1])   # a different tour, different marks
+        self.assertEqual(uids[0], uids[2])      # the same tour re-assembled keeps its marks
+        self.assertNotEqual(uids[0], 'fixture')
+
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<aside class="flag fishy"><p>Please check this change.</p></aside>', page)

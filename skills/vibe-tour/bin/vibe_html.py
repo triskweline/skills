@@ -307,7 +307,7 @@ def _read(name):
         return f.read()
 
 
-def render(hunks, texts, git_args):
+def render(hunks, texts, git_args, out_path=''):
     """-> (page html, report dict with placed / missing / unknown / duplicate ids)."""
     title, summary, chapters = parse_fragments(texts)
     by_id = dict((h.id, h) for h in hunks)
@@ -348,7 +348,10 @@ def render(hunks, texts, git_args):
     top = _git('rev-parse', '--show-toplevel')
     repo = os.path.basename(top) if top else ''
     source = ' '.join(a for a in git_args if a) or 'working tree'
-    uid = hashlib.md5((top + '\0' + source).encode('utf-8')).hexdigest()[:10]
+    # The uid scopes the reader's viewed marks in the browser to this one tour. It comes
+    # from the output path: the working directory is minted per tour, so two tours never
+    # share marks, while re-assembling the same tour keeps them.
+    uid = hashlib.md5(os.path.abspath(out_path or 'vibe-tour.html').encode('utf-8')).hexdigest()[:10]
     title = title or 'Vibe tour'
     head = ['<h1>%s</h1>' % title,
             '<p class="meta">%s</p>' % _meta(hunks, repo, source),
