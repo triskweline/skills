@@ -107,7 +107,7 @@ Topic # One cohesive topic or "body of work" in the diff range. One fragment fil
 + beat_ideas: string[]  # drafted by the orchestrator, refined by the worker
 + beats: Beat[]
 + topic_hunks: HunkId[]
-+ shared_hunks: Map<HunkId, TopicId>  # hunks of this topic that another topic also shows
++ shared_hunks: Set<HunkId>  # hunks of this topic that another topic also shows; no direction, both show it
 
 Beat # One narration beat within a topic
 + title: string
@@ -172,7 +172,8 @@ COMMITS:                                        the commit list, or "(none: work
 ...
 STAT:                                           git diff --stat
 ...
-DIFF=/tmp/vibe-tour.sLxCWm/diff.txt  (1527 lines, 61 hunks)
+TOPICS=topic-01 topic-02 ... topic-12           the empty topic folders inside WORK
+DIFF=/home/me/app/tmp/vibe-tour.sLxCWm/diff.txt  (1527 lines, 61 hunks)
 ```
 
 The script covers the common cases and can fail at the edges: a branch name that does not exist, a PR number the origin remote does not serve, a repository with no default branch, an empty diff. It then prints one line saying what went wrong and exits non-zero. **Make one attempt to fix what that line names, then run the command again. If it fails a second time, stop and ask the human.** Do not resolve targets by hand, and do not run `git diff` yourself.
@@ -189,7 +190,7 @@ So glance at the commit list in case it does give a good signal. The final selec
 
 ## Read the full diff
 
-The numbered diff is in `$WORK/diff.txt`. **Read that file with the Read tool**, not by printing it in a shell: a shell result is capped and a long diff would be truncated, saved elsewhere and read back in pieces, which is three calls where one will do. The Read tool takes up to 2000 lines per call; the `DIFF=` line told you how many calls that is. If it is more than one, read with an offset, back to back, nothing in between.
+The numbered diff is in `$WORK/diff.txt`. **Read that file with the Read tool**, not by printing it in a shell: a shell result is capped and a long diff would be truncated, saved elsewhere and read back in pieces, which is three calls where one will do. The Read tool's limit is tokens, not lines, and a diff is token-dense: expect roughly one Read per 1000 to 1300 diff lines. The `DIFF=` line gives the line count. Read with offsets, back to back, nothing in between, until you have seen the last line of the file.
 
 Every hunk has a marker line `### h17  path:line` before it. From here on, everybody refers to hunks by that id. Binary files show up as a marker with no diff body. For those you only need to know that they were added, changed, removed or moved, which the file header tells you.
 
@@ -223,7 +224,7 @@ Three kinds of work have a fixed place in that order, and each topic's summary s
 
 ## Assign hunks to topics
 
-For each hunk, *quickly* guess which topic it belongs to, and assign it to the topic with the most apparent affinity. A hunk can belong to several topics (when one code range was touched by several bodies of work); it is then shown once per topic, and the worker is told so.
+For each hunk, *quickly* guess which topic it belongs to, and assign it to the topic with the most apparent affinity. A hunk can belong to several topics (when one code range was touched by several bodies of work); it is then shown once per topic, and each worker is told so. There is no primary topic: the order in which the topics share it does not matter to anything, both workers show it and both say so.
 
 A hunk that fits no topic in a glance goes to the **loose ends** topic: the last topic in reading order, holding whatever remains after honest clustering. It gets a worker like any other topic. Leave it out entirely if it is empty. Do not spend a call or invent a topic to avoid it.
 
@@ -241,7 +242,7 @@ Don't do a deep analysis to assign hunks. In particular, don't pay tool calls to
 
 Fork one worker per topic. Large topics get a dedicated worker. Several small topics can go to one worker; that worker writes them into one fragment, in reading order.
 
-Every worker gets its own directory, `<working dir>/topic-<NN>/`, one of the twelve the setup command created, numbered by the first topic the worker holds and zero-padded so the shell sorts them in reading order. If a tour has more than twelve topics, create the missing directories in one `mkdir` before forking. The worker writes exactly one file there, `fragment.html`, and never looks anywhere else. Workers cannot see each other's output, so they have nothing to react to.
+Every worker gets its own directory, `<working dir>/topic-<NN>/`, one of the twelve the setup command created and listed on its `TOPICS=` line, numbered by the first topic the worker holds and zero-padded so the shell sorts them in reading order. If a tour has more than twelve topics, create the missing directories in one `mkdir` before forking. The worker writes exactly one file there, `fragment.html`, and never looks anywhere else. Workers cannot see each other's output, so they have nothing to react to.
 
 Forks inherit your context, so a worker already holds the numbered diff. Do not paste hunks into the fork prompt. The prompt is short and always has the same shape. Its first line is fixed; it is what tells the fork that it is a worker and that *Part 5: Worker, during fan-out* is its instruction set:
 
@@ -327,13 +328,17 @@ Then, under **Where this change sits**, at most 80 words: which of the three the
 
 The spectrum is context, not judgement. You are not saying the author chose wrong. You are giving the reviewer the room the author was standing in when they chose.
 
+## Then wait, silently
+
+When the summary is written and workers are still running, wait. The harness wakes you when a worker returns; there is nothing to check in between and nothing to report. Do not post progress messages such as "four of seven have returned"; each one is a turn spent on nothing.
+
 # Part 4: Orchestrator, after fan-out
 
 You read this part if you are the orchestrator, the tour summary is written, and you are waiting for or have received the workers' returns.
 
 ## Collect the workers
 
-Wait for every worker. A worker returns its fragment path when it is done. Trust that return: a worker that returned a path has written its file. A worker that errored out, or returned without a path, is replaced by forking one new worker for its topic with the same briefing; do not touch the other workers' directories.
+Wait for every worker, silently; the harness wakes you as each one returns. A worker returns its fragment path when it is done. Trust that return: a worker that returned a path has written its file. A worker that errored out, or returned without a path, is replaced by forking one new worker for its topic with the same briefing; do not touch the other workers' directories.
 
 ## Assemble the tour
 

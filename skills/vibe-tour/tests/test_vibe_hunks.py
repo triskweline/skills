@@ -337,6 +337,8 @@ class Setup(RepoCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(facts['ARGS'], '--untracked --')
         self.assertTrue(os.path.isdir(os.path.join(facts['WORK'], 'topic-12')))
+        self.assertEqual(facts['TOPICS'].split()[0], 'topic-01')
+        self.assertEqual(facts['TOPICS'].split()[-1], 'topic-12')
         self.assertIn('### h5  new.txt:1', read(os.path.join(facts['WORK'], 'diff.txt')))
         self.assertIn('(none: working tree)', out)
         self.assertRegex(facts['DIFF'], r'diff\.txt  \(\d+ lines, 5 hunks\)$')

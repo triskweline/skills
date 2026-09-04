@@ -5,7 +5,7 @@
       Resolve a tour target (dirty, staged, uncommitted, branch, <range>, <commit>,
       <branch>, <PR/MR number>, <PR/MR URL>), create the working directory with its
       topic folders, and write the numbered diff into it. Prints WORK=, ARGS= (to paste
-      into --assemble), the commit list, the stat, and DIFF=. Exit 3 with one line
+      into --assemble), the commit list, the stat, TOPICS= (the folder names) and DIFF=. Exit 3 with one line
       saying what went wrong when the target cannot be resolved.
 
   vibe-hunks.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT|DIR...
@@ -357,6 +357,7 @@ def setup(target):
         print('(none: working tree)')
     print('STAT:')
     print(git_out('diff', '--stat', *args) or '(no stat)')
+    print('TOPICS=%s' % ' '.join('topic-%02d' % n for n in range(1, 13)))
     print('DIFF=%s  (%d lines, %d hunks)' % (diff_path, body.count('\n'), len(hunks)))
 
 
