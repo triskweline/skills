@@ -315,6 +315,11 @@ p.standfirst {
 .summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
 .summary > :first-child { margin-top: 0; }
 .summary h2 { font-size: 1.15rem; line-height: 1.3; font-weight: 600; margin: 1.6rem 0 .3rem; color: var(--ink); }
+.summary h3 { font-size: 1rem; line-height: 1.3; font-weight: 600; margin: 1.2rem 0 .15rem; color: var(--ink); }
+/* The fixed line under a fixed heading: what this part of the summary is, said the same
+   way on every tour, so a returning reader knows the labels at a glance. */
+.summary .byline { margin: 0 0 .5rem; font-size: 14px; font-style: italic; color: var(--muted); }
+.summary ul li { margin: .35rem 0; }
 .summary ul { margin: .8rem 0; padding-left: 1.35rem; }
 
 section.chapter { margin-top: 4.5rem; scroll-margin-top: 1.5rem; }

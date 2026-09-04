@@ -263,6 +263,19 @@ class Repo(RepoCase):
         self.assertIn('<h2>What this change achieves</h2>', page)
         self.assertNotIn('<span class="t">What this change achieves</span>', page)
 
+    def test_intro_fixed_headings_get_their_bylines(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1>\n<h2>The spectrum of solutions</h2>\n<h3>The minimal solution</h3>\n<p>Patch it.</p>\n'
+            '<h3>The Maximal Solution</h3>\n<p>Rebuild it.</p>\n<h3>The evaporating solution</h3>\n<p>Avoid it.</p>\n'
+            '<h3>Where this change sits</h3>\n<p>Between.</p>',
+            '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<h2>The spectrum of solutions</h2>\n<p class="byline">Three other ways', page)
+        self.assertIn('<h3>The minimal solution</h3>\n<p class="byline">The smallest patch', page)
+        self.assertIn('<h3>The Maximal Solution</h3>\n<p class="byline">The thorough fix', page)
+        self.assertIn('<h3>The evaporating solution</h3>\n<p class="byline">Make the problem not arise', page)
+        self.assertIn('<h3>Where this change sits</h3>\n<p>Between.</p>', page)
+        self.assertEqual(page.count('class="byline"'), 4)
+
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)

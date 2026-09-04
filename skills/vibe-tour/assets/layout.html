@@ -77,9 +77,18 @@ Nothing was verified, and the judgement is yours.</p>
   <div class="row"><span class="sq l3"></span><b>fishy</b><span>It may be wrong. Verify before approving.</span><span></span></div>
   <div class="row"><span class="sq l4"></span><b>hot</b><span>A mistake here would be silent or irreversible. Read every line, however it looks.</span><span></span></div>
 </div>
-<div class="summary"><p>Cache entries were keyed by resource id alone, so two tenants asking for
-resource <code>7</code> shared one entry. This threads the tenant through every key and adds a
-backfill for the entries already written.</p></div>
+<div class="summary">
+<h2>What this change achieves</h2>
+<p>Cache entries were keyed by resource id alone, so two tenants asking for resource <code>7</code>
+shared one entry. Now every key carries the tenant, and the entries already written are backfilled.</p>
+<h2>The spectrum of solutions</h2>
+<p class="byline">Three other ways this could have been built, so you can see the room the author was standing in. Then where this change sits.</p>
+<h3>The minimal solution</h3>
+<p class="byline">The smallest patch that gets by: least blast radius, possibly incomplete, possibly not pretty.</p>
+<p>Prefix the tenant id in the one reader that leaks. Two lines, and the other readers keep leaking.</p>
+<h3>Where this change sits</h3>
+<p>Between the two: every key is threaded, but the cache store itself is untouched.</p>
+</div>
 
 <section class="chapter" id="ch1">
   <h2><span class="n">1</span><span class="t">One accessor per field question</span></h2>

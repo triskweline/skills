@@ -166,6 +166,30 @@ def _chapter(title, raw):
     return {'title': _title(title), 'intro': _prose(intro), 'beats': beats}
 
 
+# Fixed lines under the intro's fixed headings, emitted here so they read identically on
+# every tour and the orchestrator writes only the paragraphs. Keyed by heading text.
+BYLINES = {
+    'the spectrum of solutions':
+        'Three other ways this could have been built, so you can see the room the author '
+        'was standing in. Then where this change sits.',
+    'the minimal solution':
+        'The smallest patch that gets by: least blast radius, possibly incomplete, possibly not pretty.',
+    'the maximal solution':
+        'The thorough fix: solves the problem completely, restructuring whatever stands in the way.',
+    'the evaporating solution':
+        'Make the problem not arise here at all, by changing something elsewhere.',
+}
+HEADING = re.compile(r'(<h([23])[^>]*>(.*?)</h\2>)', re.S | re.I)
+
+
+def _with_bylines(summary_html):
+    def add(m):
+        key = re.sub(r'<[^>]+>', '', m.group(3)).strip().lower().rstrip('.')
+        line = BYLINES.get(key)
+        return m.group(1) + ('\n<p class="byline">%s</p>' % line if line else '')
+    return HEADING.sub(add, summary_html)
+
+
 def parse_fragments(texts):
     """-> (title html, summary html, chapters). `texts` are fragment bodies in page order."""
     title, summary, chapters = '', [], []
@@ -180,7 +204,7 @@ def parse_fragments(texts):
                 title = m.group(1).strip()
             rest = text[:m.start()] + text[m.end():]
             if rest.strip():
-                summary.append(_prose(rest))
+                summary.append(_with_bylines(_prose(rest)))
             continue
         parts = H2.split(text)
         lead = parts[0]

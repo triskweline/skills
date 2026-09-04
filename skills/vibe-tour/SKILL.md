@@ -265,9 +265,13 @@ You read this part if you are the orchestrator and the workers are running.
 
 ## Write the tour summary while the workers run
 
-The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context. Nothing in it enumerates files, gems, columns or counts; the meta line has the counts and the chapters have the contents.
+The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context.
 
-The fragment has this shape. It is the only fragment with an `<h1>`, and that is how the script recognises it; its own headings are free, they never become chapters:
+**The whole summary is under 400 words.** The last tour's ran to 944 and read as a wall of text; a reader spent four minutes on it before the first chapter. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. No other markup, no emojis.
+
+**The enumeration guard applies here too, and matters most here**, because at this zoom level the reader has no diff beside the prose to anchor names to. Describe what a solution or a mechanism changes about the system, never the classes, methods or files it would touch. "Trusted devices become records instead of a cookie" is a mechanism; a list of the six classes that would change is not.
+
+The fragment has this shape. It is the only fragment with an `<h1>`, and that is how the script recognises it; its headings never become chapters. **The headings are fixed text, copy them verbatim**: the script adds a one-line byline under the spectrum heading and under each of the three solutions, the same on every tour, so a returning reader knows the labels at a glance. You write only the paragraphs.
 
 ```html
 <h1>Tour headline</h1>
@@ -277,18 +281,30 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 
 <h2>How it was built</h2>
 <p>...</p>
+<ul><li><strong>Mechanism.</strong> ...</li>...</ul>
 
 <h2>The spectrum of solutions</h2>
+
+<h3>The minimal solution</h3>
+<p>...</p>
+
+<h3>The maximal solution</h3>
+<p>...</p>
+
+<h3>The evaporating solution</h3>
+<p>...</p>
+
+<h3>Where this change sits</h3>
 <p>...</p>
 ```
 
 ### What this change achieves
 
-What is better after this change than before it, in the terms of whoever benefits. For a user-facing change, what a user can now do. For a refactoring, what became simpler, safer or faster to work on, and for whom. For a performance change, what got faster and where that shows. One paragraph. If the change has no benefit you can name, say so; that is a finding.
+At most 80 words. What is better after this change than before it, in the terms of whoever benefits. For a user-facing change, what a user can now do. For a refactoring, what became simpler, safer or faster to work on, and for whom. For a performance change, what got faster and where that shows. If the change has no benefit you can name, say so; that is a finding.
 
 ### How it was built
 
-The two or three mechanisms that carry the change, and how they fit together. This is the mental model a reader needs before the chapters make sense: not a list of what was touched, but the shape of the solution. One paragraph, two at most.
+At most 100 words. The two or three mechanisms that carry the change and how they fit together, one list item each: the mental model a reader needs before the chapters make sense. Not a list of what was touched; the shape of the solution.
 
 ### The spectrum of solutions
 
@@ -296,15 +312,15 @@ The most useful thing a tour can give a reviewer is a sense of where this soluti
 
 The budget is the limit, not the workers. If they return before you are done, finish the spectrum within the budget, then assemble. Never hand the reader a partial spectrum; two solutions and a missing third reads as a judgement that there is no third.
 
-Lay out a spectrum, an exercise borrowed from [Caleb Porzio's deconstructed pull requests](https://calebporzio.com/):
+Lay out three alternatives, an exercise borrowed from [Caleb Porzio's deconstructed pull requests](https://calebporzio.com/), under the three fixed headings above, **at most 60 words each**: what the alternative changes about the system, what it buys, what it costs.
 
 - **The minimal solution.** The smallest patch that gets by: minimal blast radius, possibly incomplete scope, possibly code nobody would be proud of.
 - **The maximal solution.** The pure, fundamental fix that solves the problem completely, restructuring other parts of the system where they stand in the way, to leave a thorough and harmonious new world.
 - **The evaporating solution.** A change somewhere else in the system that makes the problem not arise in the first place.
 
-Each of the three has to be a realistic, workable change to *this* repository, one a competent colleague could propose in a design meeting. Not a strawman: the maximal solution may be heavy and risky, but it does not rewrite the codebase in another language, and the evaporating solution has to name the actual place the problem would evaporate from. For each, say what its key changes would be and what it trades: scope, risk, effort, what it leaves for later.
+Each of the three has to be a realistic, workable change to *this* repository, one a competent colleague could propose in a design meeting. Not a strawman: the maximal solution may be heavy and risky, but it does not rewrite the codebase in another language, and the evaporating solution has to name the actual place the problem would evaporate from.
 
-Then place the toured change on that spectrum, in a few sentences: which of the three it is closest to, where it deviates, and what that position means for the reviewer. A minimal change invites the question "what did it leave out"; a maximal one invites "was all of this necessary"; a change that sits between them invites both, at the seams.
+Then, under **Where this change sits**, at most 80 words: which of the three the toured change is closest to, where it deviates, and what that position means for the reviewer. A minimal change invites the question "what did it leave out"; a maximal one invites "was all of this necessary"; a change that sits between them invites both, at the seams. It comes last because it refers to the three the reader has just met.
 
 The spectrum is context, not judgement. You are not saying the author chose wrong. You are giving the reviewer the room the author was standing in when they chose.
 
