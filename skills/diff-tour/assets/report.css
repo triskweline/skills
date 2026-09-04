@@ -206,6 +206,7 @@ body {
 #nav > ol > li[aria-current] > a { color: var(--accent); font-weight: 550; }
 #nav > ol > li[aria-current] > a .n { color: var(--accent); }
 #nav > ol > li > a.done .c { color: var(--seen); }
+#nav > ol > li > a.done .t { text-decoration: line-through; }
 
 /* ------------------------------------------------------------------ heat squares
    One square = one hunk's heat, in the legend and in a beat's list of changes. In the
@@ -254,8 +255,23 @@ button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
   padding: 1.1rem 1.8rem; border-radius: 12px; text-align: center;
   font-size: 15px; line-height: 1.5;
   opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s;
+  cursor: pointer;
 }
-.flash.on .box { opacity: 1; transform: none; }
+/* The card itself takes clicks, to dismiss it early; the space around it does not. */
+.flash.on .box { opacity: 1; transform: none; pointer-events: auto; }
+
+/* The party: a few seconds of emoji falling past the finish flash. Purely decorative,
+   so a reader who asked for reduced motion gets none of it. */
+.party { position: fixed; inset: 0; z-index: 29; pointer-events: none; overflow: hidden; }
+.party span {
+  position: absolute; top: -10vh; font-size: 28px;
+  animation: party-fall 3s linear forwards;
+}
+@keyframes party-fall {
+  from { transform: translateY(0) rotate(0deg); opacity: 1; }
+  to { transform: translateY(120vh) rotate(360deg); opacity: .9; }
+}
+@media (prefers-reduced-motion: reduce) { .party { display: none; } }
 .flash .box b { display: block; font-size: 17px; margin-bottom: .15rem; }
 
 /* Every button on the page, one style: quiet, bordered, no native chrome. */

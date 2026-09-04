@@ -281,6 +281,11 @@
       wrap.setAttribute('role', 'status');
       flashBox = document.createElement('div');
       flashBox.className = 'box';
+      /* A click dismisses the card at once. It does not undo the scroll that came with it. */
+      flashBox.addEventListener('click', function () {
+        clearTimeout(flashTimer);
+        wrap.classList.remove('on');
+      });
       wrap.appendChild(flashBox);
       document.body.appendChild(wrap);
     }
@@ -290,6 +295,24 @@
     flashBox.parentNode.classList.add('on');
     clearTimeout(flashTimer);
     flashTimer = setTimeout(function () { flashBox.parentNode.classList.remove('on'); }, 3000);
+  }
+  /* A few seconds of falling emoji when the whole tour is done. */
+  function party() {
+    var wrap = document.createElement('div');
+    wrap.className = 'party';
+    wrap.setAttribute('aria-hidden', 'true');
+    var glyphs = ['🥳', '🎉', '👏', '🎈', '🍻', '⭐', '🎊', '✨'];
+    for (var i = 0; i < 40; i++) {
+      var g = document.createElement('span');
+      g.textContent = glyphs[i % glyphs.length];
+      g.style.left = (Math.random() * 100) + 'vw';
+      g.style.animationDelay = (Math.random() * 1.2) + 's';
+      g.style.animationDuration = (2.2 + Math.random() * 1.3) + 's';
+      g.style.fontSize = (22 + Math.random() * 18) + 'px';
+      wrap.appendChild(g);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(function () { wrap.remove(); }, 4000);
   }
   var wasDone = doneSet(), settling = false, ready = false;
   function settle() {
@@ -302,6 +325,7 @@
     var remaining = withHunks.filter(function (ch) { return !now[ch.id]; });
     if (!remaining.length) {
       flash('All chapters done', 'Tour completed');
+      party();
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
