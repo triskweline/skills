@@ -267,9 +267,9 @@ class Repo(RepoCase):
 
     def test_the_problem_is_wrapped_for_pull_quote_styling(self):
         page, out, err = self.assemble(
-            '<h1>T</h1>\n<h2>The problem</h2>\n<p>Setup.</p>\n<p>Sting.</p>\n<h2>What changes</h2>\n<p>Nothing a user or API sees changes</p>',
+            '<h1>T</h1>\n<h2>The problem</h2>\n<p>Setup, then the sting.</p>\n<h2>What changes</h2>\n<p>Nothing a user or API sees changes</p>',
             '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
-        self.assertIn('<h2>The problem</h2>\n<div class="problem"><p>Setup.</p>\n<p>Sting.</p></div>\n<h2>What changes</h2>', page)
+        self.assertIn('<h2>The problem</h2>\n<div class="problem"><p>Setup, then the sting.</p></div>\n<h2>What changes</h2>', page)
 
     def test_before_after_table_gets_an_arrow_column(self):
         page, out, err = self.assemble(

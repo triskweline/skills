@@ -76,8 +76,8 @@ Nothing was verified, and the judgement is yours.</p>
 <div class="problem">
 <p>Cache entries were keyed by resource id alone, so two tenants asking for resource <code>7</code>
 shared one entry. Support saw it as intermittent wrong data and could not reproduce it, because it
-needed two tenants to ask within the same cache window.</p>
-<p>One tenant could read another tenant's data, and nobody would know.</p>
+needed two tenants to ask within the same cache window. One tenant could read another tenant's
+data, and nobody would know.</p>
 </div>
 <h2>What changes</h2>
 <table>
