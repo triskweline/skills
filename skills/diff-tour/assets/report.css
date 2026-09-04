@@ -337,14 +337,9 @@ button.seen[aria-pressed="true"] { color: var(--seen); border-color: var(--seen)
 .summary { max-width: 900px; margin-top: 2rem; font-size: 16px; color: var(--ink-2); }
 .summary > :first-child { margin-top: 0; }
 .summary h2 { font-size: 1.37rem; line-height: 1.3; font-weight: 600; margin: 2.4rem 0 .3rem; color: var(--ink); }
-/* The problem, at pull-quote scale on a narrow measure: the one part of the summary whose
-   job is to make the reader care. Its last paragraph is the sting, the one sentence that
-   is the whole change, set apart. */
-.summary .problem { max-width: 34em; }
-.summary .problem p { font-size: 22px; line-height: 1.45; color: var(--ink); margin: .6rem 0; }
-.summary .problem p:last-child:not(:only-child) {
-  font-weight: 600; margin-top: 1.1rem; padding-left: .9rem; border-left: 4px solid var(--l4);
-}
+/* The problem, larger than body copy: the one part of the summary whose job is to make the
+   reader care. Its last paragraph is the sting, one sentence on its own line. */
+.summary .problem p { font-size: 20px; line-height: 1.45; color: var(--ink); margin: .6rem 0; }
 .summary h3 { font-size: 1rem; line-height: 1.3; font-weight: 600; margin: 1.2rem 0 .15rem; color: var(--ink); }
 /* The fixed line under a fixed heading: what this part of the summary is, said the same
    way on every tour, so a returning reader knows the labels at a glance. */
