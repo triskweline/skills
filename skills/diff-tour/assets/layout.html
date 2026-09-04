@@ -87,8 +87,8 @@ data, and nobody would know.</p>
 </table>
 <h2>Not changed, deliberately</h2>
 <ul>
-  <li>The cache store itself and its expiry rules</li>
-  <li>Keys written by background jobs, which never carried a tenant and still do not</li>
+  <li>The cache store itself and its expiry rules; entries still live for the configured hour and are evicted by size</li>
+  <li>Keys written by background jobs never carried a tenant and still do not; those entries stay global and shared</li>
 </ul>
 <h2>The spectrum of solutions</h2>
 <p class="byline">Three other ways this could have been built, so you can see the room the author was standing in. Then where this change sits.</p>

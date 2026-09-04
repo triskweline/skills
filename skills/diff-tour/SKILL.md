@@ -326,7 +326,7 @@ A **before/after table**: one row per behaviour that a user, an API consumer or 
 
 ### Not changed, deliberately
 
-A bullet list of what the change leaves alone that a reviewer would otherwise wonder about: a notification not sent, a check not applied, a path not touched, a scope the author drew a line around. One bullet per item, one phrase each, at most six. It answers those questions before the reviewer carries them through nine chapters. Leave the whole heading out if there is nothing to say.
+A bullet list of what the change leaves alone that a reviewer would otherwise wonder about: a notification not sent, a check not applied, a path not touched, a scope the author drew a line around. Each bullet names the thing and says briefly what still happens there, so the reader learns the prevailing behaviour, not just that it prevails: "No Slack notification for an admin booking; the user finds it on their dashboard as before", not "No Slack notification". One bullet per item, one sentence each, at most six. It answers those questions before the reviewer carries them through nine chapters. Leave the whole heading out if there is nothing to say.
 
 ### How it was built
 
