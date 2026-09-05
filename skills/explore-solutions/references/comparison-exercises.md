@@ -64,7 +64,7 @@ Inverts the frame from "here are options, you rank them" to "here is the rule":
        one-way
 ```
 
-Worth it only when the two dimensions genuinely dominate, but it shows dominance and the Pareto frontier in a way tables don't. Which leads to the highest-value compression available:
+Worth it only when the two dimensions genuinely dominate, but it shows dominance and the Pareto frontier in a way tables don't.
 
 ## Phase bars for incrementality
 
@@ -159,7 +159,7 @@ Solution C failed because migration complexity consumed far more effort than exp
 
 This is much better than generic "risks" because you're forced to construct a believable failure story.
 
-A nice exercise to pari with "success-mortem"
+Pairs well with the success-mortem.
 
 
 ## Success-mortem
@@ -168,7 +168,7 @@ Imagine it's six months later and this solution turned out to be an unusually go
 
 This is a good exercise to prevent risk analysis from systematically favoring conservative solutions.
 
-Example results count be:
+Example results could be:
 
 ```
 A succeeded because requirements stabilized and we never needed more abstraction.
@@ -218,11 +218,11 @@ This isn't simply "simplicity"; it tests conceptual integrity.
 
 ## Steelman each solution
 
-Require the agent to make the strongest credible case for every candidate—including the ugly-looking one.
+Make the strongest credible case for every candidate, including the ugly-looking one.
 
 Assume a very competent engineer deliberately chose this. Why might they be right?
 
-This guards against the LLM generating:
+This guards against generating a rigged spectrum like:
 
 ```
 A: horrible hack
@@ -230,7 +230,7 @@ B: reasonable compromise
 C: elegant architecture ♥
 ```
 
-which is a real danger with the Porzio spectrum.
+which is a real danger with the minimum/maximum spectrum generator.
 
 A useful extension of steelmanning can be to **Find the world where each wins**, e.g.
 

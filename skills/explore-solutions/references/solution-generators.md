@@ -2,13 +2,13 @@
 
 Below you can find a number of strategies to come up with new ideas for possible solutions or approaches.
 
-Do not mechanically produce one solution for every generator. Inspect the problem and repository, choose the generator that expose genuinely different approaches, and stop when additional candidates are merely permutations of existing ideas.
+Do not mechanically produce one solution for every generator. Inspect the problem and repository, choose the generators that expose genuinely different approaches, and stop when additional candidates are merely permutations of existing ideas.
 
 ## Your agent's intuition
 
 As a refined coding agent you already have some intuition for ways to implement the requirement.
 
-Describe the solution you would be build if the human asked you to one-shot the implementation without further instructions.
+Describe the solution you would build if the human asked you to one-shot the implementation without further instructions.
 
 ## The Porzio Spectrum
 
@@ -16,9 +16,9 @@ This is [Caleb Porzio](https://calebporzio.com/)'s "deconstructed PR" idea.
 
 Define a spectrum of solutions:
 
-- Define a miminum, patchy solution to get by, with minimum blast radius but potentially incomplete scope or poorly written code.
-- Define a maxmium, pure and fundamental solution that solves the the problem in the most complete way, restructuring other parts of the system if need be, to create a harmonious and thorough new world.
-- Define a "evaporate the problem" solution, where some other of the world is reconstructed so this problem doesn't happen in the first place.
+- Define a minimum, patchy solution to get by, with minimum blast radius but potentially incomplete scope or poorly written code.
+- Define a maximum, pure and fundamental solution that solves the problem in the most complete way, restructuring other parts of the system if need be, to create a harmonious and thorough new world.
+- Define a "evaporate the problem" solution, where some other part of the world is reconstructed so this problem doesn't happen in the first place.
 
 Each solution should represent a realistic, workable change to this repository, and not be a strawman parody of its approach. E.g. the maximum solution may contain heavy and risky changes to the code, but should not suggest rewriting the entire codebase in a new programming language.
 
@@ -49,7 +49,7 @@ For example, "We need the dashboard to show the current count" could mean either
 
 This is valuable because requirements often accidentally imply guarantees far stronger than users actually need.
 
-## Local precendence
+## Local precedence
 
 Find where this repo already solved a structurally similar problem and propose the consistent version of that.
 
@@ -64,7 +64,7 @@ Suppose matching external records is difficult:
 - Simple matching + admin correction UI.
 - Import everything and provide reconciliation afterwards.
 
-This is one of my favorite engineering moves:
+This is one of the strongest engineering moves:
 
 > What if we made the common case extremely simple and invested in a good escape hatch?
 
@@ -72,7 +72,7 @@ It often beats clever automation.
 
 ## Change the abstraction level
 
-I like forcing three variants:
+Force three variants:
 
 - Special case: implement exactly this requirement.
 - Shared mechanism: identify 2–3 existing similar cases and introduce a reusable abstraction.
@@ -90,7 +90,7 @@ Importantly, none is automatically superior. The general capability may be absur
 
 For example: The user wants to implement OAuth authentication. There are many levels of how much of this we build ourselves, for example:
 
-- Build it outselves in the repo. Lots of new code to build and maintain. Easy to bridge with existing code and maximum flexibility for future requirements.
+- Build it ourselves in the repo. Lots of new code to build and maintain. Easy to bridge with existing code and maximum flexibility for future requirements.
 - Integrate an existing OAuth library that provides the necessary routing and crypto. Will probably have some friction with existing auth code.
 - Delegate authentication to an external service that already supports OAuth. Probably means replacing the entire existing auth system and a painful data migration, but reduces the amount of code we need to maintain in the future.
 - Fork/vendor an existing library in and patch it. Then either maintain the entire thing or try to get your change merged upstream.

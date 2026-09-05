@@ -8,6 +8,7 @@ Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow.
 
 | Skill | What it does |
 | --- | --- |
+| [`explore-solutions`](skills/explore-solutions/SKILL.md) | Explore the solution space for a requirement before planning: generate distinct approaches, compare their trade-offs from a birdseye view, and narrow down to a set of candidates. |
 | [`agree-on-everything`](skills/agree-on-everything/SKILL.md) | Turn requirements into an autonomously executable plan by resolving every open decision with the user before any code is written. |
 | [`implement-autonomously`](skills/implement-autonomously/SKILL.md) | End-to-end workflow for implementing a full set of requirements on your own: confirm requirements, branch, test, verify, self-review, then hand off. |
 | [`self-review`](skills/self-review/SKILL.md) | Have a sub-agent review your changes against the requirements, then reconcile and apply valid feedback. |
