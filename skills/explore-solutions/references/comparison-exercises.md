@@ -10,6 +10,8 @@ This is a great way to introduce a new set of candidates.
 
 Options as columns, dimensions as rows, and drop every row where all options score the same.
 
+Keep estimates relative (small/medium/large, or ranked) unless you have grounds for a number. Absolute days and dollar amounts look precise and are usually invented.
+
 ```
                   A: Patch        B: Refactor     C: Delegate
 Time to ship      2d              2w              6w

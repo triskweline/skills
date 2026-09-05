@@ -1,6 +1,13 @@
 ---
 name: explore-solutions
-description: Use when the user wants to explore the solution space for a given software requirement. Finds different approaches and compares trade-offs. Provides a high-level, birdseye view of your options, and helps you center on a set of solution candidates. Use other skills for detailed alignment afterwards.
+description: >-
+  Explore the solution space for a given software requirement before committing to a plan.
+  Finds genuinely different approaches, compares their trade-offs from a birdseye view, and
+  helps the user narrow down to a set of solution candidates worth aligning on. Use when the
+  user is still undecided about how to approach a requirement, or says things like "what are
+  my options", "how could we approach this", "compare approaches", "what would it take to
+  build this", or "explore solutions". Not for detailed alignment on one chosen approach;
+  use an alignment skill for that afterwards.
 ---
 
 # Explore solutions
@@ -8,6 +15,8 @@ description: Use when the user wants to explore the solution space for a given s
 ## Your mission
 
 Your human has been handed some software requirements.
+If they haven't given them to you yet, ask for them before doing anything else. Accept prose, a file path or a ticket reference.
+
 The human is unsure what it will take to implement them. They want to know which approaches are workable, and at what cost.
 You will help the human by generating, comparing and discussing different solution ideas.
 
@@ -161,9 +170,17 @@ Present your findings in three parts:
   This is especially important when terminology seems to match on the surface, but the
   implemented behavior is incompatible with the new requirements.
 
+### Let the human correct the picture
+
+End your turn here. Ask the human whether this picture matches their understanding, and wait for their answer.
+
+This is the one moment where the human likely knows more than you do. A misread codebase, e.g. a similarly named concept mistaken for reusable prior work, would otherwise shape every solution in the first round.
+Only generate solution ideas after the human has confirmed or corrected the picture.
+
 ## Generate solution ideas
 
-Present the human with 4 approaches that *you* think would be a good fit for the solution.
+Present the human with 2-4 approaches that *you* think would be a good fit for the solution.
+Four candidates can still be held in a human's head comfortably. More than five start to blur together, and some comparisons can no longer be shown in a compact format.
 
 For a list of strategies to generate new solution ideas, read the file `references/solution-generators.md` (in this skill's directory).
 Read the file in full. Do not skim or partially read it, every line is required knowledge.
@@ -204,10 +221,13 @@ Use a table to track what solutions are being discussed, and what feedback you r
 
 For fast and unambiguous identification, each generated solution should have a unique one-letter code (`A`, `B`, `C`, ...).
 In the rare occasion where you would exhaust the alphabet, label like spreadsheet columns (`AA`, `AB`, `AC`, ...).
+A code is never reused, even after its solution has been removed from the table.
 
-New solutions start in state `none`, meaning that we haven't yet seen any signal from the human.
-The human can change a state to `kill`, indicating that they don't want to explore it further.
-The human can change a state to `keep`, indicating that this solution is worthwhile to further explore or possibly implement.
+New solutions start in state `open`, meaning that we haven't yet seen any signal from the human.
+The human can change a state to `killed`, indicating that they don't want to explore it further.
+The human can change a state to `kept`, indicating that this solution is worthwhile to further explore or possibly implement.
+
+States are adjectives. The actions that change them are the verbs `kill` and `keep`, e.g. `kill D`.
 
 The table should have the following columns.
 
@@ -215,7 +235,7 @@ The table should have the following columns.
 - Short title
 - Top strength in 4 words or less
 - Top weakness in 4 words or less
-- Decision state (`none` | `kill` | `keep`)
+- Decision state (`open` | `killed` | `kept`)
 
 Use emojis to visualize the decision state.
 
@@ -236,17 +256,19 @@ This usually involves researching, comparing and mutating the candidate table in
 
 You will repeatedly ask the human for the next turn's action until they are happy with the result set, or until they explicitly quit the exploration.
 
-### Listing available options
+### Offering the next action
 
 Below is a list of typical actions the human can choose.
 
-In the first turn, inform the human of what actions are available.
-For subsequent turns, you only list a few actions that seem the most relevant at the time.
-The human can always ask to see the whole list of actions again.
+Never print the whole list unprompted. On every turn, including the first, offer only the three or four actions that seem the most relevant at the time, plus a way to see the whole list.
+The human can always ask to see the whole list of actions.
+
+When a multiple-choice widget is available, offer the actions through it: the recommended action first, one line per option saying what you would do, and the preview of the recommended action (see below).
+Without a widget, print the same choices as a compact list.
 
 When an action is parameterized with a candidate solution, allow the human to reference a solution's letter code from the prompt line, e.g. `kill D`. If the human doesn't pass a reference but the action requires it, let the human choose a reference using a multiple-choice widget (if available).
 
-In addition to picking one of the listed actions, the human can type arbitrary requests into the chat.
+In addition to picking one of the offered actions, the human can always type arbitrary requests into the chat. Say so when you offer the actions.
 
 ### Recommend a next action
 
@@ -254,7 +276,7 @@ When you ask the human for the next turn's action, always recommend an action th
 
 When recommending an action, also include a preview of what you would do exactly.
 E.g. don't just say you would run a comparison exercise, say which exercise would be the most helpful.
-E.g. don't just say you would autokill a solution, say which one seems the weakest to you.
+E.g. don't just say you would kill the weakest solution, say which one seems the weakest to you.
 
 ### Action: Run a comparison exercise
 
@@ -269,12 +291,12 @@ For each turn, pick one or two exercises that seem the most helpful at this poin
 
 It can be useful to run two exercises in a single turn, when two exercises complement each other by slicing twice across orthogonal axes or viewpoints.
 
-Only compare candidates in `none` or `keep` states, never candidates in `kill`.
+Only compare `open` or `kept` candidates, never `killed` ones.
 
 ### Action: Keep a solution
 
 Hold a solution that the human would like to keep as a candidate.
-Changes a candidate's state to `keep`.
+Changes a candidate's state to `kept`.
 
 This is not a final decision, just a signal that this solution is a worthwhile candidate.
 
@@ -283,20 +305,20 @@ Reprint the candidates table afterwards.
 ### Action: Kill a solution
 
 Kill a solution that the human doesn't like.
-Changes a candidate's state to `kill`.
+Changes a candidate's state to `killed`.
 
 Killed solutions remain visible in the table, as a history trace to aid orientation.
 Also our result sets include killed solutions.
 
 Reprint the candidates table afterwards.
 
-### Action: Autokill a solution
+### Action: Kill the weakest solution
 
 Quickly reduces a candidate space that has grown too large.
 
 Pick the weakest solution yourself, confirm your reasoning with the human once, then kill it.
 
-Occasionally recommend this action if you have more than 5 non-`killed` solutions in the table.
+Occasionally recommend this action if you have more than 5 `open` or `kept` solutions in the table.
 
 ### Action: Revise a candidate
 
@@ -315,13 +337,13 @@ Reprint the candidates table afterwards.
 
 Generate new solution ideas and add them to the candidates table.
 
-Generally we should try to keep a maximum of 5 non-`killed` candidates in the table, and warn the human against adding more. The human is free to insist, but this will hurt overviews and comparisons.
+Generally we should try to keep a maximum of 5 `open` or `kept` candidates in the table, and warn the human against adding more. The human is free to insist, but this will hurt overviews and comparisons.
 
 ### Action: Manually add a new candidate
 
 The human can describe the new idea in prose.
 
-The human can also ask you to mix and match properties from the existing solutions. If that results in a "merged" solution, ask whether the original source solutions should remain in the table or be removed (truly remove, not put in `kill` state)
+The human can also ask you to mix and match properties from the existing solutions. If that results in a "merged" solution, ask whether the original source solutions should remain in the table or be removed (truly remove, not put in `killed` state)
 
 ### Action: Zoom in
 
@@ -338,13 +360,27 @@ Reprints the candidates table in full.
 
 Ends the exploration loop and moves to the hand-off.
 
+Before you hand off, every candidate must be `killed` or `kept`. If any candidate is still `open`, ask the human to decide each one now.
+An undecided candidate carries no signal of substance, and passing it on would give the alignment session a wrong impression.
+
 You can recommend this action when you believe the human has decided on one or two candidates, or when the generators don't produce new distinct solutions.
 
 ## Hand-off and good-bye
 
-Print an overview of the result set (`kill` | `keep`).
-Recommend that the human now makes an alignment pass to align on every detail required for an implementation plan. Check if you have access to an alignment skill like `/agree-on-everything` or `/grill-me`.
+Print an overview of the result set (`killed` | `kept`).
+Recommend that the human now makes an alignment pass to align on every detail required for an implementation plan.
+Check which alignment skills the human has installed and name them in your recommendation. Popular examples are `/agree-on-everything` and `/grill-me`, but the human may have others or none. If none is installed, recommend the alignment pass without naming a skill.
 
 Also offer to write a more detailed hand-off to a file, in case the human wants to align in a new session.
+Write it to a temporary file and print its path. It is up to the human to hand that file to the alignment session.
+
+The hand-off file contains:
+
+- The requirements as you understood them.
+- The findings from the preamble: what exists, what is missing, what will rub.
+- The final candidates table.
+- For each `kept` candidate: a paragraph on how it works, its key strengths and weaknesses, and what the human said about it.
+- For each `killed` candidate: one line on why it was killed.
+- Open questions that surfaced during the exploration and were deliberately left for alignment.
 
 
