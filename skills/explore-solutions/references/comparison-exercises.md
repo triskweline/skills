@@ -14,11 +14,11 @@ Keep estimates relative (small/medium/large, or ranked) unless you have grounds 
 
 ```
                   A: Patch        B: Refactor     C: Delegate
-Time to ship      2d              2w              6w
+Effort            small           medium          large
 Reversibility     easy            easy            one-way (data)
 Blast radius      1 module        4 modules       auth path + db
 Next change       harder          easier          easier
-Ongoing cost      +1 quirk        neutral         $200/mo, vendor
+Ongoing cost      +1 quirk        neutral         vendor fee, vendor
 
 Same for all: correctness, p99 latency, API compat, security review.
 ```
@@ -29,12 +29,12 @@ Same for all: correctness, p99 latency, API compat, security review.
 ```
                     A     B     C
 Ship speed         ++     o    --
-Maintenance         -     +    ++
-Regression risk     +     o     ?
-Cognitive load     ++     +    --
+Maintainability     -     +    ++
+Safety              +     o     ?
+Simplicity         ++     +    --
 ```
 
-Fixed-width, no legend needed beyond "+ is good", and polarity is uniform so a column of pluses reads as a good option at a glance. Note the inversion: the row is "regression risk" but + means low risk. Always phrase rows so more-is-better, or rename the row ("safety" rather than "risk").
+Fixed-width, no legend needed beyond "+ is good", and polarity is uniform so a column of pluses reads as a good option at a glance. Always phrase rows so more-is-better: "safety" rather than "regression risk", "simplicity" rather than "cognitive load". A `?` marks an unknown; see "Cheapest experiment" for how to resolve it.
 
 Bars work too and carry magnitude better, but only for genuinely ordinal things:
 
@@ -44,7 +44,7 @@ Ship speed    A ████░  B ██░░░  C █░░░░
 
 ## Conditional recommendations
 
-Inverts the frame from "here are options, you rank them" to "here is the rule":
+Inverts the frame from "here are options, you rank them" to "here is the rule". This is often better than recommending one absolute winner: you're deriving decision boundaries.
 
 ```
 → A if the deadline is real and you accept revisiting in Q3.
@@ -81,34 +81,27 @@ C  ░░░░▓▓▓▓▓▓░░░░░░▓▓     ships, then 3w mig
 ## Trade-offs
 
 Useful when only a few candidates are left in the table.
-A large table would produce too many permutations.
+A large table would produce too many pairs.
+
+One block per pair. The reverse direction is the mirror image and adds nothing.
 
 ```
-### A over B
+### B over A
 
 Costs:
 - larger change
 - introduces a new abstraction
+- migration with a high regression surface
 
 Buys:
 + removes two existing special cases
 + cleaner ownership
 + likely follow-up requirement becomes straightforward
-
-### B over A
-
-Costs:
-- migration
-- high regression surface
-- considerably more work
-
-Buys:
-+ eliminates the underlying modeling limitation
 ```
 
 ## Stakeholder walkthrough
 
-Make multiple persona answer concrete questions for each solution, e.g.:
+Make multiple personas answer concrete questions for each solution, e.g.:
 
 - **End user:** What gets easier? What becomes surprising? What failure would I notice?
 - **Product owner:** Which requirements become easy/hard to change?
@@ -202,7 +195,7 @@ Sometimes the technically inferior solution is rational because it keeps future 
 
 Imagine someone joins the project a year later.
 
-Give yourself 60 seconds:
+In three sentences:
 
 > Explain why this system works this way and where they need to make changes.
 
@@ -234,20 +227,7 @@ C: elegant architecture ♥
 
 which is a real danger with the minimum/maximum spectrum generator.
 
-A useful extension of steelmanning can be to **Find the world where each wins**, e.g.
-
-```
-Choose A if:
-  requirements are unlikely to expand and minimizing change dominates.
-
-Choose B if:
-  similar cases are likely and we expect continued development here.
-
-Choose C if:
-  the current model is already blocking multiple known requirements.
-```
-
-This is often better than recommending one absolute winner. You're deriving decision boundaries.
+Steelmanning pairs well with "Conditional recommendations" above: once you know the world in which each candidate wins, state it as a rule.
 
 ## Cheapest experiment
 

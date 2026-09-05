@@ -2,7 +2,7 @@
 name: explore-solutions
 description: >-
   Explore the solution space for a given software requirement before committing to a plan.
-  Finds genuinely different approaches, compares their trade-offs from a birdseye view, and
+  Finds genuinely different approaches, compares their trade-offs from a bird's-eye view, and
   helps the user narrow down to a set of solution candidates worth aligning on. Use when the
   user is still undecided about how to approach a requirement, or says things like "what are
   my options", "how could we approach this", "compare approaches", "what would it take to
@@ -21,7 +21,7 @@ The human is unsure what it will take to implement them. They want to know which
 You will help the human by generating, comparing and discussing different solution ideas.
 
 This is not an alignment for implementation details, which is much better handled by dedicated skills like `/agree-on-everything`.
-Instead we need to get the human oriented, so they can make informed decisions in a later, separate alignment session.
+Instead you need to get the human oriented, so they can make informed decisions in a later, separate alignment session.
 
 It's accepted (and expected) that an exploration ends while there are still open questions.
 They will all be answered in a later alignment session, and the human can revisit the solution exploration if needed.
@@ -33,13 +33,13 @@ Ideally this skill finds these two *result sets*:
 
 Both sets are a useful input signal for a separate alignment skill, which can then ask much more targeted questions.
 
-The skill's mission is **not** to decide on a single solution. A later alignment might reveal details that cause solutions to be re-valued, and a set of multiple candidates gives us the wiggle room required.
+The skill's mission is **not** to decide on a single solution. A later alignment might reveal details that cause solutions to be re-valued, and a set of multiple candidates gives the human the wiggle room required.
 
 ## How you communicate
 
 ### Only provide overviews, and be brief
 
-Your job is to provide a high-level, birdseye exploration of the solutions available to the human.
+Your job is to provide a high-level, bird's-eye exploration of the solutions available to the human.
 
 Your most important consideration is to provide compact overviews.
 Focus on core facts during this entire conversation. Make sure every solution is characterized by its primary features and distinct trade-offs.
@@ -69,7 +69,7 @@ You become a more active guide when you believe the human is lost, when explicit
 - Help organize the space. Offer to kill weak ideas. Say when many variations hinge on the same few decisions.
 - Say when the human is overthinking it, or when a decision is of little importance.
 - Offer to take a step back, clarify priorities and make a freshly oriented attempt.
-- Try to find a test or experiment whose results would help with a difficult decision. Think what fact or preference would change the decision?
+- Try to find a test or experiment whose results would help with a difficult decision. Ask yourself which fact or preference would change the decision.
 
 Note that sometimes the human has already decided and wants a check, or they want permission, or they're uneasy about something they haven't named.
 If the human is circling back to one option's downside, the useful move is to ask what's bothering them about it, rather than re-running the comparison a third time.
@@ -85,8 +85,8 @@ You should be very willing to have opinions about:
 - which one appears over-engineered or under-engineered,
 - which one matches existing abstractions,
 - which risks look real versus speculative,
-- which trade-off appears to dominate the choice.
-- when the human makes a clearly poor trade-off.
+- which trade-off appears to dominate the choice,
+- whether the human is making a clearly poor trade-off.
 
 The pattern that keeps authority with the human isn't withholding the recommendation, it's making the recommendation cheap to reject. Give the reason at a level where the human can attack it, and name the condition that flips it.
 
@@ -111,7 +111,7 @@ This gives the human useful orientation without pretending every architectural j
 
 ## Preamble: Establish a base
 
-Before we do anything else, the human must get an idea of the dimensions of this change.
+Before anything else, the human must get an idea of the dimensions of this change.
 The human might not be fully familiar with the code base, so they cannot connect every requirement detail
 to existing functionality. Also the requirements might not distinguish between existing, changed and new functionality.
 
@@ -138,13 +138,13 @@ We must dig one level deeper and check if the existing behavior is compatible wi
 At least there must be a workable path to adapt it, by changing behavior and migrating legacy data.
 Existing but incompatible concepts are more likely to cause friction than they are to help.
 
-### Show the human where we stand
+### Show the human where the exploration stands
 
-Now that you have explored the codebase, show to the human where we stand.
+Now that you have explored the codebase, show the human where the exploration stands.
 
 It's OK to talk in hypotheticals at this point, because a lot will depend on the solution picked later.
-The goal of this orientation is to show the human the shape and size of the hole that our change needs to fill.
-We cannot yet know how we're going to fill it.
+The goal of this orientation is to show the human the shape and size of the hole that the change needs to fill.
+Nobody can yet know how it will be filled.
 
 Present your findings in three parts:
 
@@ -179,30 +179,30 @@ Only generate solution ideas after the human has confirmed or corrected the pict
 
 ## Generate solution ideas
 
-Present the human with 2-4 approaches that *you* think would be a good fit for the solution.
-Four candidates can still be held in a human's head comfortably. More than five start to blur together, and some comparisons can no longer be shown in a compact format.
-
 For a list of strategies to generate new solution ideas, read the file `references/solution-generators.md` (in this skill's directory).
 Read the file in full. Do not skim or partially read it, every line is required knowledge.
 
+Then present the human with 2-4 approaches that *you* think would be a good fit for the solution.
+Four candidates can still be held in a human's head comfortably. More than five start to blur together, and some comparisons can no longer be shown in a compact format.
+
 ## Present solution ideas
 
-Present every idea with a *short* breakdown of how they would work. Briefly explain the externally visible behavior and what would change in the code.
+Present every idea with a *short* breakdown of how it would work. Briefly explain the externally visible behavior and what would change in the code.
 
 Also present each idea with a *short* list of the key strengths and weaknesses. Be brief, and only name 1-2 of the most significant strengths and 1-2 of the most significant weaknesses for each solution.
 
 Here are some dimensions that can be useful to characterize or compare solutions:
 
-- **Requirements fit:**	How well does it actually solve the problem?
-- **Correctness:**	How strong and robust are its guarantees?
-- **Simplicity:**	How much conceptual complexity does it introduce?
-- **Architectural fit:**	How naturally does it fit the existing system?
-- **Change blast radius:**	How much existing behavior/code must be disturbed?
-- **Regression risk:**	How likely are unintended consequences?
-- **Implementation effort:**	How hard is it to build and verify?
-- **Operational burden:**	How much production machinery and maintenance does it add?
-- **Future flexibility:**	How well does it accommodate plausible next requirements?
-- **Reversibility:**	How expensive is it to change our mind?
+- **Requirements fit:** How well does it actually solve the problem?
+- **Correctness:** How strong and robust are its guarantees?
+- **Simplicity:** How much conceptual complexity does it introduce?
+- **Architectural fit:** How naturally does it fit the existing system?
+- **Change blast radius:** How much existing behavior/code must be disturbed?
+- **Regression risk:** How likely are unintended consequences?
+- **Implementation effort:** How hard is it to build and verify?
+- **Operational burden:** How much production machinery and maintenance does it add?
+- **Future flexibility:** How well does it accommodate plausible next requirements?
+- **Reversibility:** How expensive is it to change one's mind?
 
 This is not an exhaustive list. You can add problem-specific dimensions when they materially distinguish the candidates.
 You can also add dimensions when you notice that the human cares about one quality in particular.
@@ -213,7 +213,7 @@ In later stages, this skill will ask you to compare solutions by one or more dim
 
 Never list *all* dimensions in a comparison. Only pick discriminating dimensions. A dimension on which all options score the same is noise.
 
-Also watch for correlated dimensions. Diff size, review cost, regression risk, and blast radius all move together.
+Also watch for correlated dimensions. Diff size, review cost, regression risk, and blast radius all move together. Show only one dimension of a correlated group.
 
 ## The candidates table
 
@@ -223,11 +223,12 @@ For fast and unambiguous identification, each generated solution should have a u
 In the rare occasion where you would exhaust the alphabet, label like spreadsheet columns (`AA`, `AB`, `AC`, ...).
 A code is never reused, even after its solution has been removed from the table.
 
-New solutions start in state `open`, meaning that we haven't yet seen any signal from the human.
+New solutions start in state `open`, meaning that you haven't yet seen any signal from the human.
 The human can change a state to `killed`, indicating that they don't want to explore it further.
 The human can change a state to `kept`, indicating that this solution is worthwhile to further explore or possibly implement.
 
 States are adjectives. The actions that change them are the verbs `kill` and `keep`, e.g. `kill D`.
+Any state can move to any other state, e.g. `keep D` revives a killed candidate.
 
 The table should have the following columns.
 
@@ -242,8 +243,8 @@ Use emojis to visualize the decision state.
 Re-print the entire table when:
 
 - the initial round of solution candidates is generated.
-- a solution is added, removed or changed.
-- when you haven't printed the table in a while.
+- a solution is added, removed or changed, including a change of state.
+- when you haven't printed the table for three turns.
 - when the human seems to have lost track of the current exploration space.
 - when the human asks to see it.
 
@@ -251,7 +252,7 @@ Always print the table in full. Skip no rows.
 
 ## The main exploration loop
 
-You have now reached the main body of our exploration work.
+You have now reached the main body of the exploration.
 This usually involves researching, comparing and mutating the candidate table in multiple turns of *actions*.
 
 You will repeatedly ask the human for the next turn's action until they are happy with the result set, or until they explicitly quit the exploration.
@@ -300,17 +301,13 @@ Changes a candidate's state to `kept`.
 
 This is not a final decision, just a signal that this solution is a worthwhile candidate.
 
-Reprint the candidates table afterwards.
-
 ### Action: Kill a solution
 
 Kill a solution that the human doesn't like.
 Changes a candidate's state to `killed`.
 
 Killed solutions remain visible in the table, as a history trace to aid orientation.
-Also our result sets include killed solutions.
-
-Reprint the candidates table afterwards.
+The result sets in the hand-off include killed solutions.
 
 ### Action: Kill the weakest solution
 
@@ -322,34 +319,33 @@ Occasionally recommend this action if you have more than 5 `open` or `kept` solu
 
 ### Action: Revise a candidate
 
-Ask the human what should be changed.
+If the human hasn't said what should be changed, ask.
 
 Analyze how the changed solution would behave differently, and explain the effects briefly.
 Challenge changes that cannot work technically, or have logical conflicts.
 
-Then update the candidate.
+Then update the candidate. It keeps its letter code. After a substantial change, reset its state to `open` and say so.
 
 Note that when a candidate is changed substantially, it might be worthwhile to later re-run previous comparison exercises, to see if they perform differently after the change.
-
-Reprint the candidates table afterwards.
 
 ### Action: Generate new candidates
 
 Generate new solution ideas and add them to the candidates table.
+New candidates, whether generated or proposed by the human, start `open` and are presented like the initial round.
 
-Generally we should try to keep a maximum of 5 `open` or `kept` candidates in the table, and warn the human against adding more. The human is free to insist, but this will hurt overviews and comparisons.
+Try to keep a maximum of 5 `open` or `kept` candidates in the table, and warn the human against adding more. The human is free to insist, but this will hurt overviews and comparisons.
 
 ### Action: Manually add a new candidate
 
 The human can describe the new idea in prose.
 
-The human can also ask you to mix and match properties from the existing solutions. If that results in a "merged" solution, ask whether the original source solutions should remain in the table or be removed (truly remove, not put in `killed` state)
+The human can also ask you to mix and match properties from the existing solutions. If that results in a "merged" solution, ask whether the original source solutions should remain in the table or be removed (truly remove, not put in `killed` state).
 
 ### Action: Zoom in
 
 Present the idea in more detail: Behavior, implementation, trade-offs.
 
-This is the one action where you can temporarily leave your "birdseye only" directive and dive deeper. You should still present your information in parseable "screens", by limiting your printing to about 40 lines at a time. If that isn't sufficient, you can begin with an overview and allow the human to zoom in further.
+This is the one action where you can temporarily leave your "bird's-eye only" directive and dive deeper. You should still present your information in digestible screens, by limiting your printing to about 40 lines at a time. If that isn't sufficient, you can begin with an overview and allow the human to zoom in further.
 The human can always zoom out again, back to the exploration space.
 
 ### Action: Reprint candidates table

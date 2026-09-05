@@ -4,9 +4,9 @@ Below you can find a number of strategies to come up with new ideas for possible
 
 Do not mechanically produce one solution for every generator. Inspect the problem and repository, choose the generators that expose genuinely different approaches, and stop when additional candidates are merely permutations of existing ideas.
 
-## Your agent's intuition
+## Your own intuition
 
-As a refined coding agent you already have some intuition for ways to implement the requirement.
+As an experienced coding agent you already have some intuition for ways to implement the requirement.
 
 Describe the solution you would build if the human asked you to one-shot the implementation without further instructions.
 
@@ -14,11 +14,11 @@ Describe the solution you would build if the human asked you to one-shot the imp
 
 This is [Caleb Porzio](https://calebporzio.com/)'s "deconstructed PR" idea.
 
-Define a spectrum of solutions:
+The spectrum has three poles. Propose the ones that are realistic here:
 
 - Define a minimum, patchy solution to get by, with minimum blast radius but potentially incomplete scope or poorly written code.
 - Define a maximum, pure and fundamental solution that solves the problem in the most complete way, restructuring other parts of the system if need be, to create a harmonious and thorough new world.
-- Define a "evaporate the problem" solution, where some other part of the world is reconstructed so this problem doesn't happen in the first place.
+- Define an "evaporate the problem" solution, where some other part of the world is reconstructed so this problem doesn't happen in the first place.
 
 Each solution should represent a realistic, workable change to this repository, and not be a strawman parody of its approach. E.g. the maximum solution may contain heavy and risky changes to the code, but should not suggest rewriting the entire codebase in a new programming language.
 
@@ -49,7 +49,7 @@ For example, "We need the dashboard to show the current count" could mean either
 
 This is valuable because requirements often accidentally imply guarantees far stronger than users actually need.
 
-## Local precedence
+## Local precedent
 
 Find where this repo already solved a structurally similar problem and propose the consistent version of that.
 
@@ -72,7 +72,7 @@ It often beats clever automation.
 
 ## Change the abstraction level
 
-Force three variants:
+The abstraction level has three poles. Propose the ones that are realistic here:
 
 - Special case: implement exactly this requirement.
 - Shared mechanism: identify 2–3 existing similar cases and introduce a reusable abstraction.
@@ -88,7 +88,7 @@ Importantly, none is automatically superior. The general capability may be absur
 
 ## Build or buy
 
-For example: The user wants to implement OAuth authentication. There are many levels of how much of this we build ourselves, for example:
+For example: The human wants to implement OAuth authentication. There are many levels of how much of this we build ourselves, for example:
 
 - Build it ourselves in the repo. Lots of new code to build and maintain. Easy to bridge with existing code and maximum flexibility for future requirements.
 - Integrate an existing OAuth library that provides the necessary routing and crypto. Will probably have some friction with existing auth code.
