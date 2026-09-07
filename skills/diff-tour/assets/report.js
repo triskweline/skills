@@ -402,8 +402,9 @@
 
   /* Wrap every line of a highlighted block in its own span, splitting tokens that span
      lines and reopening them on the next line, so a line can be styled on its own. Prism
-     keeps every newline as text, so line N of the hunk is the Nth wrapper. Only blocks
-     with marks pay for this. */
+     keeps every newline as text, so line N of the hunk is the Nth wrapper. Every block
+     is wrapped: the first and last line paint the block's vertical padding in their own
+     background, and the marks address lines by number. */
   function wrapLines(code) {
     var html = code.innerHTML, out = '<span class="ln">', open = [];
     var re = /<\/span>|<span\b[^>]*>|\n|[^<\n]+/g, tokens = [], m;
@@ -429,7 +430,6 @@
   function markLines(fig, code) {
     var focus = fig.getAttribute('data-focus'), dim = fig.getAttribute('data-dim');
     if (!focus && !dim) return;
-    wrapLines(code);
     var lines = [].slice.call(code.querySelectorAll(':scope > .ln'));
     function apply(spec, cls) {
       (spec || '').split(',').forEach(function (range) {
@@ -439,6 +439,29 @@
     }
     apply(dim, 'dim');
     apply(focus, 'focus');
+    lines.forEach(function (ln) { if (ln.classList.contains('dim')) hoverDim(ln); });
+  }
+
+  /* Hovering a dimmed line lifts its whole run, the adjacent dimmed lines, back to full
+     strength, so a reader who wants to read it after all can. The run is found from the
+     siblings each time; there is no container for it. Moving between two lines of the same
+     run fires a leave and an enter too, so the leave looks at where the pointer went. */
+  function dimRun(ln) {
+    var run = [ln], p = ln, n = ln;
+    while ((p = p.previousElementSibling) && p.classList.contains('dim')) run.unshift(p);
+    while ((n = n.nextElementSibling) && n.classList.contains('dim')) run.push(n);
+    return run;
+  }
+  function hoverDim(ln) {
+    ln.addEventListener('mouseenter', function () {
+      dimRun(ln).forEach(function (l) { l.classList.add('lit'); });
+    });
+    ln.addEventListener('mouseleave', function (e) {
+      var to = e.relatedTarget && e.relatedTarget.closest ? e.relatedTarget.closest('.ln.dim') : null;
+      var run = dimRun(ln);
+      if (to && run.indexOf(to) >= 0) return;
+      run.forEach(function (l) { l.classList.remove('lit'); });
+    });
   }
 
   function light(el) {
@@ -447,6 +470,7 @@
     if (window.Prism) {
       try { Prism.highlightElement(el); } catch (e) {}
     }
+    wrapLines(el);
     var fig = el.closest('figure.hunk');
     if (fig) markLines(fig, el);
   }

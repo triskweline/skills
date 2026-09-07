@@ -346,8 +346,8 @@ class Repo(RepoCase):
         page = read(out_path)
         self.assertIn('data-focus="6-6"', page)
         self.assertNotIn('data-dim', page.split('<main>')[1].split('</main>')[0])   # the inlined script mentions the attribute; the figures must not
-        self.assertIn('matches 3 times at lines 2, 4, 6; add @N', err)
-        self.assertIn('took line 6 (hint 6)', err)
+        self.assertIn('matches 3 times at lines 2, 4, 6 and carries no @N; dropped', err)
+        self.assertNotIn('hint', err)   # a hint that resolved a tie is not a problem
         self.assertIn('quoted block not found', err)
 
     def test_line_marks_edge_cases(self):

@@ -249,12 +249,10 @@ def resolve_marks(h, marks):
             continue
         if len(starts) > 1:
             if hint is None:
-                problems.append('%s in %s: quoted block matches %d times at lines %s; add @N to pick one'
+                problems.append('%s in %s: quoted block matches %d times at lines %s and carries no @N; dropped'
                                 % (kind, h.id, len(starts), ', '.join(str(w + 1) for w in starts)))
                 continue
             w = min(starts, key=lambda w: abs(w + 1 - hint))
-            problems.append('%s in %s: quoted block matches %d times, took line %d (hint %d)'
-                            % (kind, h.id, len(starts), w + 1, hint))
         else:
             w = starts[0]
         ranges[kind].append((w + 1, w + n))

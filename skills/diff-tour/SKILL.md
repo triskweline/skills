@@ -374,7 +374,7 @@ Assemble in one command, pasting the `ARGS=` value from the setup command verbat
 
 Given the working directory, the script takes every `.html` file under it in path order, which puts `00-intro.html` first and the workers' `topic-NN/fragment.html` after it in reading order; the output file itself is skipped. The script splices every placeholder, and appends any hunk no fragment placed in a final "Unsorted hunks" chapter, listing those ids on stderr. That is the completeness rule, enforced without anyone re-reading the diff. It also lists placeholders that name no hunk, and hunks placed more than once; the latter is expected for shared hunks.
 
-A few unplaced hunks are acceptable for speed: they are shown. Lines starting `line mark:` are informational: a worker's focus or dim block that the script could not place, or placed by its `@N` hint; the mark is simply absent from the page, and nothing needs doing. If the unplaced list is long and its hunks all belong to one topic, that worker's fragment is missing; fork a replacement for that topic and assemble again. Never edit a fragment by hand.
+A few unplaced hunks are acceptable for speed: they are shown. Lines starting `line mark:` are informational: a worker's focus or dim block that the script could not place; the mark is simply absent from the page, and nothing needs doing. If the unplaced list is long and its hunks all belong to one topic, that worker's fragment is missing; fork a replacement for that topic and assemble again. Never edit a fragment by hand.
 
 ## Hand over the tour
 
@@ -386,7 +386,7 @@ Say the word and I will open it in your browser.
 file:///tmp/diff-tour.sLxCWm/diff-tour.html
 ```
 
-The first line exists only for the exceptional: trouble obtaining the diff, a worker that had to be replaced, hunks that ended up unsorted. The message does **not** summarise the tour and does **not** point at code worth a closer look; the page does both, with far better presentation, and every extra line makes the URL harder to find. In the normal case the message is the offer and the URL.
+The first line exists only for the exceptional: trouble obtaining the diff, a worker that had to be replaced, hunks that ended up unsorted. Unplaced line marks never count. The message does **not** summarise the tour and does **not** point at code worth a closer look; the page does both, with far better presentation, and every extra line makes the URL harder to find. In the normal case the message is the offer and the URL.
 
 **Always a `file://` URL, never a bare path.** A URL is what the terminal turns into a link the human can click; a path is not. The assemble command prints the URL in exactly this form as the first thing on its result line; copy it from there. The URL is the last line of the message, alone, with nothing after it.
 
@@ -468,39 +468,43 @@ This is not a code review! You do not verify anything; work on intuition and wha
 
 ## Mark lines inside a hunk, rarely
 
-A hunk normally reads as one thing at one level of attention. Two marks exist for the hunk that does not: **focus** for the few lines a reader must not miss, **dim** for a run of lines a reader of this topic can pass over. They are an extra signal for large hunks, for hunks that mix very different importance, and for hot spots. Used on every hunk they are no signal at all, so the default is no marks: at most one marked hunk in five, and never more than one in a topic of fewer than five hunks.
+A hunk normally reads as one thing at one level of attention. Two marks exist for the hunk that does not: **focus** for the few lines a reader must not miss, **dim** for a run of lines a reader of this topic can pass over. Used on every hunk they are no signal at all, so the default is no marks: at most one marked hunk in five, and never more than one in a topic of fewer than five hunks.
 
-**Focus** goes on the lines a heat reason is about, when the hunk is long enough that a reader would otherwise hunt for them: usually one range of one to five lines, never more than two ranges. A six-line hunk needs no focus; the reason already points at it. Skip and read hunks never get one.
+**Focus** goes on the lines a heat reason is about, when the hunk is long enough that a reader would otherwise hunt for them: usually one range of one to five lines, never more than two ranges. A six-line hunk needs no focus, and skip and read hunks never get one.
 
-**Dim** goes on a run of lines that carries nothing for this topic: boilerplate, a block that belongs to another topic in a shared hunk, generated or repeated lines, a long argument list. It is for lines a reader would otherwise read carefully and gain nothing from. It is not for closing braces, `end`, blank lines or a two-line import; a programmer scans those without help, and dimming them is noise. A dim run is at least five lines and, as a rule, less than half the hunk: if most of a hunk carries nothing, the hunk is a skip, or the sentence says which part matters. The exception is a hunk shared with another topic, where the other topic's part may be the larger one; dim it, so the reader of this topic sees at once which lines are theirs.
+**Dim** goes on a run of at least five lines that carries nothing for this topic: boilerplate, generated or repeated lines, a long argument list, the other topic's part of a shared hunk. Not closing braces, `end`, blank lines or a two-line import; a programmer scans those without help. A dim run is less than half the hunk, except in a shared hunk, where the other topic's part may be the larger one. If most of a hunk carries nothing, the hunk is a skip.
 
-**A mark needs a contrast.** Marks say "these lines, not those", so a hunk with marks always has marked and unmarked lines. Never dim a whole hunk: a skip hunk already says it is boring, and its lines get no marks at all. Never focus a whole hunk: a hot hunk already says to read every line, and a focus that covers it adds nothing. If you cannot leave a meaningful part of the hunk unmarked, the level and the sentence are the right tools, and the hunk gets no marks.
-
-Marks describe importance, not agreement. A dim run is not "fine", a focus range is not "wrong"; the heat level and its reason carry that. The test before adding either: would a reader who has the sentence and the heat reason still spend time on the wrong lines of this hunk? Only then.
+A hunk with marks always keeps unmarked lines; if you cannot leave a meaningful part unmarked, the level and the sentence are the right tools. Marks say where to look, not what is right: a dim run is not "fine" and a focus range is not "wrong", the heat reason carries that. The test before adding either: would a reader who has the sentence and the reason still spend time on the wrong lines of this hunk? Only then.
 
 ### How to write a mark
 
-A mark is a comment directly after the hunk's placeholder, before its sentence. Inside it, quote the lines to mark, whole and contiguous, as they stand in the diff; the diff's `+`/`-` column and indentation do not matter, the script ignores both. Quoting the whole block, rather than a phrase, is what makes the match unique in a long hunk:
+A mark is a comment after the hunk's placeholder. Inside it, quote the lines to mark, whole and contiguous, exactly as they stand in the numbered diff; the `+`/`-` column and the indentation do not matter, and `<` and `&` stay as they are. The script finds the block in the hunk and marks those lines. Given this hunk:
+
+```
+### h24 app/models/user.rb:31
+@@ -31,5 +31,9 @@ class User
+   def validate_authentication_code_with_user
+-    totp.verify(authentication_code)
++    totp.verify(
++      authentication_code.delete(" "),
++      drift_behind: 30,
++      drift_ahead: 30,
++    )
+   end
+```
+
+the mark is:
 
 ```html
 <!-- hunk h24 hot: the accept-or-reject decision for every code -->
 <!-- focus:
-totp.verify(
-  authentication_code.delete(" "),
-  drift_behind: 30,
-  drift_ahead: 30,
-)
++      drift_behind: 30,
++      drift_ahead: 30,
 -->
-<!-- dim:
-attribute :authentication_code, :string
-
-validates :authentication_code, presence: true
-validate :validate_authentication_code_with_user
--->
-<p>The code validation trait. ...</p>
+<p>...</p>
 ```
 
-The script finds the block in the hunk and marks those lines. A block it cannot find, or one that matches in several places, is dropped and reported on stderr, never guessed. When your block is short or made of common lines (`end`, `raise`, a one-line focus), add `@N` with your guess at its first line, counting the hunk's lines from 1 below the `@@` line: `<!-- focus @9: ... -->`. The number is used only to choose between several matches, so a rough guess is fine. Quote lines raw, `<` and `&` included; the script matches text, not HTML. The lines you cannot quote are ones containing `-->` or `<!--`, because they end or restart the comment; start or end your block on the line next to them. Focus and dim never overlap; where they would, focus wins.
+A dim is written the same way with `dim:`. Quoting the block is all it takes in nearly every case. Only when the very same lines could stand twice in the hunk, a lone `end` or `raise`, a repeated generated line, add `@N` with the line number of your block's first line, counting from 1 at the line below `@@`: in the hunk above `end` is line 8, so `<!-- focus @8: end -->`. Count carefully; the script uses the number only to choose between the matches and takes the nearest. Never quote more lines than you mean to mark: a mark covers exactly the lines quoted.
 
 ## Write the topic fragment
 
@@ -535,7 +539,7 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 
 A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, hunk placeholders, and the focus and dim comments described in *Mark lines inside a hunk, rarely*. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
 
-- **Never type out a diff.** Put the placeholder where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page.
+- **Never type out a diff.** Put the placeholder where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page. The only diff text in a fragment is the few lines quoted inside a focus or dim comment, which the script uses only to find the range.
 - Every hunk id you were given appears exactly once as a placeholder.
 - The paragraph **after** a placeholder is that hunk's sentence, rendered right above its diff. The prose **before** the first placeholder of a beat is the beat's prose and sits beside the hunks.
 - A worker holding several topics writes one `<h2>` block per topic, in the order of its briefing, into the same fragment.

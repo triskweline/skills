@@ -562,9 +562,10 @@ figure.hunk.collapsed > .card > figcaption { border-bottom: none; }
 /* ------------------------------------------------------------------ the diff */
 
 pre.diff {
+  --pad-y: .5rem;   /* the block's vertical padding, painted by its first and last line */
   margin: 0;
   overflow-x: auto;
-  padding: .5rem 0;
+  padding: 0;
   font: 12.5px/1.58 var(--mono);
   tab-size: 2;
 }
@@ -581,16 +582,23 @@ pre.diff > code > .token.inserted:not(.prefix), pre.diff .ln > .token.inserted:n
 pre.diff > code > .token.deleted:not(.prefix), pre.diff .ln > .token.deleted:not(.prefix),
 pre.diff > code > .token.unchanged:not(.prefix), pre.diff .ln > .token.unchanged:not(.prefix) {
   display: block;
-  padding: 0 .85rem;
+  padding: var(--line-pt, 0) .85rem var(--line-pb, 0);
 }
 pre.diff > code > .token.inserted:not(.prefix), pre.diff .ln > .token.inserted:not(.prefix) { background: var(--add-bg); }
 pre.diff > code > .token.deleted:not(.prefix), pre.diff .ln > .token.deleted:not(.prefix) { background: var(--del-bg); }
-pre.diff > code > .token.coord, pre.diff .ln > .token.coord { display: block; padding: 0 .85rem 0 calc(var(--gutter-w) + .85rem); }
+pre.diff > code > .token.coord, pre.diff .ln > .token.coord { display: block; padding: var(--line-pt, 0) .85rem var(--line-pb, 0) calc(var(--gutter-w) + .85rem); }
 
 /* Marked lines. A worker can dim a run of lines that carries nothing for this topic, and
    focus the few lines its heat reason is about. report.js wraps each line of a marked
    block in .ln and sets the classes by line number; the rules here draw them. */
 pre.diff .ln { display: block; position: relative; }
+/* The first and last line carry the block's vertical padding, so an added or removed
+   line at either edge paints its tint up to the edge instead of leaving a white band.
+   The line passes the padding down to its run span, which owns the tint. A block not yet
+   highlighted has no lines and pads itself. */
+pre.diff .ln:first-child { --line-pt: var(--pad-y); }
+pre.diff .ln:last-child { --line-pb: var(--pad-y); }
+pre.diff > code:not(.highlighted) { padding-top: var(--pad-y); padding-bottom: var(--pad-y); }
 
 /* Every code line leaves a gutter at its left edge, transparent by default. */
 figure.hunk > .card { --gutter-w: 5px; }
@@ -613,6 +621,7 @@ pre.diff .ln.focus:has(> .token.deleted) { --gutter: var(--del-mark); }
    with; a dimmed line halves it and its background stays as it is. */
 pre.diff code { --fg: 1; }
 pre.diff .ln.dim { --fg: .5; }
+pre.diff .ln.dim.lit { --fg: 1; }   /* the hovered run, lifted by report.js */
 
 /* Prism tokens. One palette, ours, so a tour looks the same everywhere. Every colour is
    mixed with --fg, so a dimmed line fades its text and nothing else. */
