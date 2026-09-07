@@ -343,7 +343,7 @@ class Repo(RepoCase):
         self.assertEqual(code, 0, err)
         page = read(out_path)
         self.assertIn('data-focus="6-6"', page)
-        self.assertNotIn('data-dim', page)
+        self.assertNotIn('data-dim', page.split('<main>')[1].split('</main>')[0])   # the inlined script mentions the attribute; the figures must not
         self.assertIn('matches 3 times at lines 2, 4, 6; add @N', err)
         self.assertIn('took line 6 (hint 6)', err)
         self.assertIn('quoted block not found', err)
