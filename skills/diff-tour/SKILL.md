@@ -374,7 +374,7 @@ Assemble in one command, pasting the `ARGS=` value from the setup command verbat
 
 Given the working directory, the script takes every `.html` file under it in path order, which puts `00-intro.html` first and the workers' `topic-NN/fragment.html` after it in reading order; the output file itself is skipped. The script splices every placeholder, and appends any hunk no fragment placed in a final "Unsorted hunks" chapter, listing those ids on stderr. That is the completeness rule, enforced without anyone re-reading the diff. It also lists placeholders that name no hunk, and hunks placed more than once; the latter is expected for shared hunks.
 
-A few unplaced hunks are acceptable for speed: they are shown. If the unplaced list is long and its hunks all belong to one topic, that worker's fragment is missing; fork a replacement for that topic and assemble again. Never edit a fragment by hand.
+A few unplaced hunks are acceptable for speed: they are shown. Lines starting `line mark:` are informational: a worker's focus or dim block that the script could not place, or placed by its `@N` hint; the mark is simply absent from the page, and nothing needs doing. If the unplaced list is long and its hunks all belong to one topic, that worker's fragment is missing; fork a replacement for that topic and assemble again. Never edit a fragment by hand.
 
 ## Hand over the tour
 
@@ -468,9 +468,9 @@ This is not a code review! You do not verify anything; work on intuition and wha
 
 ## Mark lines inside a hunk, rarely
 
-A hunk normally reads as one thing at one level of attention. Two marks exist for the hunk that does not: **focus** for the few lines a reader must not miss, **dim** for a run of lines a reader of this topic can pass over. They are an extra signal for large hunks, for hunks that mix very different importance, and for hot spots. Used on every hunk they are no signal at all, so the default is no marks, and a topic with more than one marked hunk in five is marking the wrong things.
+A hunk normally reads as one thing at one level of attention. Two marks exist for the hunk that does not: **focus** for the few lines a reader must not miss, **dim** for a run of lines a reader of this topic can pass over. They are an extra signal for large hunks, for hunks that mix very different importance, and for hot spots. Used on every hunk they are no signal at all, so the default is no marks: at most one marked hunk in five, and never more than one in a topic of fewer than five hunks.
 
-**Focus** goes on the lines a heat reason is about, when the hunk is long enough that a reader would otherwise hunt for them: one range, one to five lines, at most two ranges. A six-line hunk needs no focus; the reason already points at it. Skip and read hunks never get one.
+**Focus** goes on the lines a heat reason is about, when the hunk is long enough that a reader would otherwise hunt for them: usually one range of one to five lines, never more than two ranges. A six-line hunk needs no focus; the reason already points at it. Skip and read hunks never get one.
 
 **Dim** goes on a run of lines that carries nothing for this topic: boilerplate, a block that belongs to another topic in a shared hunk, generated or repeated lines, a long argument list. It is for lines a reader would otherwise read carefully and gain nothing from. It is not for closing braces, `end`, blank lines or a two-line import; a programmer scans those without help, and dimming them is noise. A dim run is at least five lines and, as a rule, less than half the hunk: if most of a hunk carries nothing, the hunk is a skip, or the sentence says which part matters. The exception is a hunk shared with another topic, where the other topic's part may be the larger one; dim it, so the reader of this topic sees at once which lines are theirs.
 
@@ -500,7 +500,7 @@ validate :validate_authentication_code_with_user
 <p>The code validation trait. ...</p>
 ```
 
-The script finds the block in the hunk and marks those lines. A block it cannot find, or one that matches in several places, is dropped and reported on stderr, never guessed. When your block is short or made of common lines (`end`, `raise`, a one-line focus), add `@N` with your guess at its first line, counting the hunk's lines from 1 below the `@@` line: `<!-- focus @9: ... -->`. The number is used only to choose between several matches, so a rough guess is fine. A quoted line that ends in `-` needs a space before the closing `-->`.
+The script finds the block in the hunk and marks those lines. A block it cannot find, or one that matches in several places, is dropped and reported on stderr, never guessed. When your block is short or made of common lines (`end`, `raise`, a one-line focus), add `@N` with your guess at its first line, counting the hunk's lines from 1 below the `@@` line: `<!-- focus @9: ... -->`. The number is used only to choose between several matches, so a rough guess is fine. Quote lines raw, `<` and `&` included; the script matches text, not HTML. The one line you cannot quote is one containing `-->`, because it ends the comment early; start or end your block on the line next to it.
 
 ## Write the topic fragment
 

@@ -144,6 +144,7 @@ def _prose(raw):
 # directly after a hunk placeholder. The block is the quoted lines of the hunk to mark;
 # `@N` is an optional guess at the first line's number, used only to break a tie.
 MARK = re.compile(r'<!--\s*(focus|dim)(?:\s*@\s*(\d+))?\s*:(.*?)-->', re.S | re.I)
+STRAY_MARK = re.compile(r'<!--\s*(focus|dim)\b', re.I)
 
 
 def _beat(title, raw):
@@ -155,8 +156,22 @@ def _beat(title, raw):
         reason = (parts[i + 2] or '').strip() if level else ''
         marks = [(m.group(1).lower(), int(m.group(2)) if m.group(2) else None, m.group(3))
                  for m in MARK.finditer(parts[i + 3])]
-        items.append((parts[i], level, reason, _prose(MARK.sub('', parts[i + 3])), marks))
-    return {'title': _title(title) if title else '', 'say': _prose(parts[0]), 'items': items}
+        rest = MARK.sub('', parts[i + 3])
+        # What a badly written mark leaves behind is reported, never shown: a comment with
+        # no colon, or the tail of a block that contained "-->" and was cut short there.
+        if STRAY_MARK.search(rest):
+            marks.append(('invalid', None, 'a focus/dim comment without a colon was ignored'))
+            rest = re.sub(r'<!--.*?-->', '', rest, flags=re.S)
+        if '-->' in rest:
+            marks.append(('invalid', None, 'a quoted line contained "-->", which ends the comment early; the rest was dropped'))
+            rest = rest[rest.index('-->') + 3:]
+        items.append((parts[i], level, reason, _prose(rest), marks))
+    say = parts[0]
+    if MARK.search(say) or STRAY_MARK.search(say):
+        # A mark before the first placeholder belongs to no hunk: reported, not shown.
+        items.insert(0, (None, None, '', '', [('invalid', None, 'a focus/dim comment stood before any placeholder and was ignored')]))
+        say = re.sub(r'<!--.*?-->', '', say, flags=re.S)
+    return {'title': _title(title) if title else '', 'say': _prose(say), 'items': items}
 
 
 def _norm(line):
@@ -173,6 +188,9 @@ def resolve_marks(h, marks):
     body = [_norm(l[1:]) for l in h.body[1:]]
     ranges, problems = {'focus': [], 'dim': []}, []
     for kind, hint, block in marks:
+        if kind == 'invalid':
+            problems.append('%s: %s' % (h.id, block))
+            continue
         quoted = [l for l in block.split('\n')]
         while quoted and not quoted[0].strip():
             quoted.pop(0)
@@ -181,15 +199,17 @@ def resolve_marks(h, marks):
         if not quoted:
             problems.append('%s in %s: empty block' % (kind, h.id))
             continue
-        forms = []
-        for q in quoted:
-            alt = {_norm(q)}
-            if q[:1] in '+- ':
-                alt.add(_norm(q[1:]))
-            forms.append(alt)
-        n = len(forms)
-        starts = [w for w in range(0, len(body) - n + 1)
-                  if all(body[w + k] in forms[k] for k in range(n))]
+        # Two passes: the block as quoted, then with a leading diff column stripped. Only
+        # the second pass tolerates a worker copying the +/- column; trying both at once
+        # made a YAML "- item" match the body line "item" as well.
+        n = len(quoted)
+        exact = [{_norm(q), _norm(html.unescape(q))} for q in quoted]
+        stripped = [{_norm(q[1:]), _norm(html.unescape(q[1:]))} if q[:1] in '+- ' else set(forms)
+                    for q, forms in zip(quoted, exact)]
+        def windows(forms):
+            return [w for w in range(0, len(body) - n + 1)
+                    if all(body[w + k] in forms[k] for k in range(n))]
+        starts = windows(exact) or windows(stripped)
         if not starts:
             problems.append('%s in %s: quoted block not found (%d line%s, starts "%s")'
                             % (kind, h.id, n, '' if n == 1 else 's', quoted[0].strip()[:40]))
@@ -220,6 +240,14 @@ def _chapter(title, raw):
         intro = intro[:m.start()]
     for i in range(1, len(parts), 2):
         beats.append(_beat(parts[i], parts[i + 1]))
+    if MARK.search(intro) or STRAY_MARK.search(intro):
+        # A mark in the chapter intro belongs to no hunk: reported, not shown.
+        problem = (None, None, '', '', [('invalid', None, 'a focus/dim comment stood before any placeholder and was ignored')])
+        if beats:
+            beats[0]['items'].insert(0, problem)
+        else:
+            beats.append({'title': '', 'say': '', 'items': [problem]})
+        intro = re.sub(r'<!--.*?-->', '', intro, flags=re.S)
     return {'title': _title(title), 'intro': _prose(intro), 'beats': beats}
 
 
@@ -484,6 +512,10 @@ def render(hunks, texts, git_args, out_path=''):
     seen, unknown, dupes, mark_problems = {}, [], [], []
 
     def fig(hid, level, reason, note='', marks=()):
+        if hid is None:
+            # Not a hunk: a mark that stood where no hunk was. Report it and render nothing.
+            mark_problems.extend(m[2] for m in marks)
+            return ''
         if hid not in by_id:
             unknown.append(hid)
             return '<p class="missing"><strong>Unknown hunk %s</strong></p>' % html.escape(hid)

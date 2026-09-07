@@ -585,14 +585,11 @@ pre.diff > code > .token.unchanged:not(.prefix), pre.diff .ln > .token.unchanged
 }
 pre.diff > code > .token.inserted:not(.prefix), pre.diff .ln > .token.inserted:not(.prefix) { background: var(--add-bg); }
 pre.diff > code > .token.deleted:not(.prefix), pre.diff .ln > .token.deleted:not(.prefix) { background: var(--del-bg); }
-pre.diff > code > .token.coord { display: block; padding: 0 .85rem; }
+pre.diff > code > .token.coord, pre.diff .ln > .token.coord { display: block; padding: 0 .85rem 0 calc(var(--gutter-w) + .85rem); }
 
 /* Marked lines. A worker can dim a run of lines that carries nothing for this topic, and
    focus the few lines its heat reason is about. report.js wraps each line of a marked
    block in .ln and sets the classes by line number; the rules here draw them. */
-/* Marked lines. report.js wraps each line of a marked block in .ln and sets the classes by
-   line number; the rules here draw them through two channels that leave the diff's own
-   backgrounds alone: a gutter for focus, text opacity for dim. */
 pre.diff .ln { display: block; position: relative; }
 
 /* Every code line leaves a gutter at its left edge, transparent by default. */
@@ -613,11 +610,9 @@ pre.diff .ln.focus:has(> .token.inserted) { --gutter: var(--add-mark); }
 pre.diff .ln.focus:has(> .token.deleted) { --gutter: var(--del-mark); }
 
 /* Dim: only the text fades. --fg is the foreground alpha every token colour below is mixed
-   with; a run of dimmed lines halves it and the backgrounds stay as they are. Hovering
-   anywhere in the run brings the whole run's text back. */
+   with; a dimmed line halves it and its background stays as it is. */
 pre.diff code { --fg: 1; }
-pre.diff .dim-run { display: block; --fg: .5; }
-pre.diff .dim-run:hover { --fg: 1; }
+pre.diff .ln.dim { --fg: .5; }
 
 /* Prism tokens. One palette, ours, so a tour looks the same everywhere. Every colour is
    mixed with --fg, so a dimmed line fades its text and nothing else. */
@@ -632,5 +627,6 @@ pre.diff code, pre.diff .ln { color: color-mix(in srgb, var(--ink) calc(var(--fg
 .token.class-name, .token.builtin, .token.namespace, .token.selector, .token.property, .token.attr-name { color: color-mix(in srgb, var(--tok-class) calc(var(--fg) * 100%), transparent); }
 .token.variable, .token.interpolation, .token.parameter { color: color-mix(in srgb, var(--tok-variable) calc(var(--fg) * 100%), transparent); }
 .token.prefix, pre.diff .token.coord { color: color-mix(in srgb, var(--faint) calc(var(--fg) * 100%), transparent); }
+.token.prefix { user-select: none; }
 .token.bold { font-weight: 600; }
 .token.italic { font-style: italic; }

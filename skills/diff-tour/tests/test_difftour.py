@@ -350,6 +350,54 @@ class Repo(RepoCase):
         self.assertIn('took line 6 (hint 6)', err)
         self.assertIn('quoted block not found', err)
 
+    def test_line_marks_edge_cases(self):
+        # Code with a YAML list item next to the same text without its dash, a blank line,
+        # odd indentation, and a "<" inside a quoted line.
+        self.write('y.yml', 'a\n')
+        sh(self.dir, 'git', 'add', 'y.yml')
+        sh(self.dir, 'git', 'commit', '-q', '-m', 'y')
+        self.write('y.yml', 'a\nitems:\n  - foo\n  foo\n\n  bar: <b>\n')
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2>\n<!-- hunk h1 -->\n'
+                    '<!-- focus:\n- foo\n-->\n'
+                    '<!-- dim @5:\nfoo\n\n bar: <b>\n-->\n'
+                    '<!-- focus @2:   items:   -->\n'
+                    '<p>Sentence.</p>')
+        out_path = os.path.join(self.dir, 'tour.html')
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '--', 'y.yml', '++', frag)
+        self.assertEqual(code, 0, err)
+        page = read(out_path)
+        # Body lines: 1 "a"(ctx) 2 "items:" 3 "- foo" 4 "foo" 5 "" 6 "bar: <b>".
+        # "- foo" matches only its own line: the exact pass wins over the stripped one.
+        self.assertIn('data-focus="3-3,2-2"', page)
+        self.assertIn('data-dim="4-6"', page)   # a blank line inside the block matches the blank body line
+        self.assertEqual(err, '')   # a hint on a unique match is not reported
+
+    def test_line_marks_syntax_problems_are_reported_not_shown(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- focus: line1 -->\n<p>Beat prose.</p>\n'
+            '<!-- hunk h1 -->\n<!-- focus line1 -->\n<!-- dim:\nline2 --> leaked tail\n-->\n<p>Sentence.</p>\n'
+            '<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertNotIn('leaked tail', main)
+        self.assertNotRegex(main, r'<!--\s*(focus|dim)')   # the layout's own marker comments may remain
+        self.assertIn('<span class="lvl">read</span>Sentence.</p>', main)
+        self.assertIn('stood before any placeholder', err)
+        self.assertIn('without a colon', err)
+        self.assertIn('contained "-->"', err)
+
+    def test_line_marks_on_binary_unknown_and_shared_hunks(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2><!-- hunk h4 --><!-- focus: anything --><p>Binary.</p>'
+            '<!-- hunk h99 --><!-- dim: x --><p>Unknown.</p>'
+            '<!-- hunk h1 --><!-- focus:\n+CHANGED <b>&\n--><p>Marked here.</p>',
+            '<h2>B</h2><!-- hunk h1 --><p>Not marked here.</p><!-- hunk h2 --><!-- hunk h3 -->')
+        self.assertIn('focus in h4: quoted block not found', err)
+        self.assertIn('h99', err)
+        self.assertRegex(page, r'<figure class="hunk lvl-plain" id="h1" [^>]*data-focus="3-3"')
+        self.assertNotRegex(page, r'<figure class="hunk lvl-plain" id="h1-2" [^>]*data-focus')
+
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)

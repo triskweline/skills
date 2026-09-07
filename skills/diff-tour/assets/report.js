@@ -405,12 +405,19 @@
      keeps every newline as text, so line N of the hunk is the Nth wrapper. Only blocks
      with marks pay for this. */
   function wrapLines(code) {
-    var html = code.innerHTML, out = '<span class="ln">', open = [], m;
-    var re = /<\/span>|<span\b[^>]*>|\n|[^<\n]+/g;
-    while ((m = re.exec(html))) {
-      var t = m[0];
+    var html = code.innerHTML, out = '<span class="ln">', open = [];
+    var re = /<\/span>|<span\b[^>]*>|\n|[^<\n]+/g, tokens = [], m;
+    while ((m = re.exec(html))) tokens.push(m[0]);
+    for (var i = 0; i < tokens.length; i++) {
+      var t = tokens[i];
       if (t === '\n') {
-        out += open.map(function () { return '</span>'; }).join('') + '</span><span class="ln">' + open.join('');
+        /* Prism ends a run's span right after its last newline. Close those spans here,
+           before the chain is reopened, or the next line would begin with an empty span
+           of the previous run and be styled as part of it. */
+        out += '\n';
+        while (tokens[i + 1] === '</span>' && open.length) { open.pop(); out += '</span>'; i++; }
+        out += open.map(function () { return '</span>'; }).join('') + '</span>';
+        out += '<span class="ln">' + open.join('');
       } else if (t === '</span>') { open.pop(); out += t; }
       else if (t.charAt(0) === '<') { open.push(t); out += t; }
       else out += t;
@@ -432,18 +439,6 @@
     }
     apply(dim, 'dim');
     apply(focus, 'focus');
-    /* Consecutive dimmed lines become one run, so hovering any of them brings the whole
-       run back: the stylesheet puts the text opacity on the run, not the line. */
-    var run = null;
-    lines.forEach(function (ln) {
-      if (!ln.classList.contains('dim')) { run = null; return; }
-      if (!run) {
-        run = document.createElement('span');
-        run.className = 'dim-run';
-        ln.parentNode.insertBefore(run, ln);
-      }
-      run.appendChild(ln);
-    });
   }
 
   function light(el) {
