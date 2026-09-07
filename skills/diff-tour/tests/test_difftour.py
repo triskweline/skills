@@ -287,6 +287,7 @@ class Repo(RepoCase):
     def test_intro_fixed_headings_get_their_bylines(self):
         page, out, err = self.assemble(
             '<h1>T</h1>\n<h2>The spectrum of solutions</h2>\n<h3>The minimal solution</h3>\n<p>Patch it.</p>\n'
+            '<p>Patch it. <strong>Buys:</strong> two lines. <b>Costs</b>: still\nleaks.</p>\n'
             '<h3>The Maximal Solution</h3>\n<p>Rebuild it.</p>\n<h3>The evaporating solution</h3>\n<p>Avoid it.</p>\n'
             '<h3>Where this change sits</h3>\n<p>Between.</p>',
             '<h2>Only chapter</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
@@ -298,7 +299,8 @@ class Repo(RepoCase):
         # The four blocks become two-column rows: label and byline left, prose right.
         self.assertEqual(page.count('<div class="row"><div class="lbl">'), 4)
         self.assertIn('<div class="lbl"><h3>The minimal solution</h3>\n<p class="byline">The smallest patch', page)
-        self.assertIn('</div><div class="prose"><p>Patch it.</p></div></div>', page)
+        self.assertIn('</div><div class="prose"><p>Patch it.</p>\n<p>Patch it. <span class="buys"><strong>Buys:</strong> two lines.</span> '
+                      '<span class="costs"><b>Costs</b>: still\nleaks.</span></p></div></div>', page)
         self.assertIn('<div class="lbl"><h3>Where this change sits</h3>\n</div><div class="prose"><p>Between.</p></div>', page)
         self.assertLess(page.index('<h2>The spectrum of solutions</h2>\n<p class="byline">'), page.index('<div class="spectrum">'))
 

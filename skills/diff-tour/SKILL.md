@@ -306,13 +306,13 @@ The fragment has this shape. It is the only fragment with an `<h1>`, and that is
 <h2>The spectrum of solutions</h2>
 
 <h3>The minimal solution</h3>
-<p>...</p>
+<p>... <strong>Buys:</strong> ... <strong>Costs:</strong> ...</p>
 
 <h3>The maximal solution</h3>
-<p>...</p>
+<p>... <strong>Buys:</strong> ... <strong>Costs:</strong> ...</p>
 
 <h3>The evaporating solution</h3>
-<p>...</p>
+<p>... <strong>Buys:</strong> ... <strong>Costs:</strong> ...</p>
 
 <h3>Where this change sits</h3>
 <p>...</p>
@@ -347,6 +347,8 @@ Lay out three alternatives, an exercise borrowed from [Caleb Porzio's deconstruc
 - **The evaporating solution.** A change somewhere else in the system that makes the problem not arise in the first place.
 
 Each of the three has to be a realistic, workable change to *this* repository, one a competent colleague could propose in a design meeting. Not a strawman: the maximal solution may be heavy and risky, but it does not rewrite the codebase in another language, and the evaporating solution has to name the actual place the problem would evaporate from.
+
+**Each solution is one paragraph in three parts**, so the reader can weigh the three against each other at a glance: a description of one to three sentences, then `<strong>Buys:</strong>` with one to three strengths, then `<strong>Costs:</strong>` with one to three weaknesses, all in one flowing paragraph. Strengths and weaknesses are phrases, not sentences: "two lines, no migration" or "every reader still leaks". The page tints the strengths green and the weaknesses red, label included, so the two labels have to be exactly these; the script recognises them.
 
 Then, under **Where this change sits**, at most 80 words: which of the three the toured change is closest to, where it deviates, and what that position means for the reviewer. A minimal change invites the question "what did it leave out"; a maximal one invites "was all of this necessary"; a change that sits between them invites both, at the seams. It comes last because it refers to the three the reader has just met.
 

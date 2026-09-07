@@ -94,9 +94,9 @@ data, and nobody would know.</p>
 <p class="byline">Three other ways this could have been built, so you can see the room the author was standing in. Then where this change sits.</p>
 <div class="spectrum">
 <div class="row"><div class="lbl"><h3>The minimal solution</h3>
-<p class="byline">The smallest patch that gets by: least blast radius, possibly incomplete, possibly not pretty.</p></div><div class="prose"><p>Prefix the tenant id in the one reader that leaks. Two lines, and the other readers keep leaking.</p></div></div>
+<p class="byline">The smallest patch that gets by: least blast radius, possibly incomplete, possibly not pretty.</p></div><div class="prose"><p>Prefix the tenant id in the one reader that leaks. <span class="buys"><strong>Buys:</strong> two lines, no migration, ships today.</span> <span class="costs"><strong>Costs:</strong> every other reader keeps leaking.</span></p></div></div>
 <div class="row"><div class="lbl"><h3>The maximal solution</h3>
-<p class="byline">The thorough fix: solves the problem completely, restructuring whatever stands in the way.</p></div><div class="prose"><p>Give the cache a tenant-scoped namespace at the store level, so no reader can build an unscoped key. Touches the store adapter and every reader.</p></div></div>
+<p class="byline">The thorough fix: solves the problem completely, restructuring whatever stands in the way.</p></div><div class="prose"><p>Give the cache a tenant-scoped namespace at the store level, so no reader can build an unscoped key. <span class="buys"><strong>Buys:</strong> no reader can get it wrong again.</span> <span class="costs"><strong>Costs:</strong> touches the store adapter and every reader, a deploy that rekeys everything.</span></p></div></div>
 <div class="row"><div class="lbl"><h3>Where this change sits</h3>
 </div><div class="prose"><p>Between the two: every key is threaded, but the cache store itself is untouched.</p></div></div>
 </div>

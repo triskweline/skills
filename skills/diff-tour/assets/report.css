@@ -36,6 +36,7 @@
   --tok-variable: #c25b3a;
 
   --ok: #2da44e;
+  --bad: #cf222e;
 
   /* The five attention levels, low to high. One hue family from grey through amber and
      red to a dark red, so a strip of squares reads as temperature at a glance. */
@@ -91,6 +92,7 @@
   --tok-variable: #e0836c;
 
   --ok: #3fb950;
+  --bad: #f85149;
   --l0: var(--panel);
   --l1: #eda;
   --l2: #fc0;
@@ -134,6 +136,7 @@
   --tok-variable: #e0836c;
 
   --ok: #3fb950;
+  --bad: #f85149;
   --l0: var(--panel);
   --l1: #eda;
   --l2: #fc0;
@@ -374,6 +377,10 @@ button.seen[aria-pressed="true"] { color: var(--seen); border-color: var(--seen)
 .summary .spectrum .lbl .byline { margin: 0; font-size: 13px; }
 .summary .spectrum .prose > :first-child { margin-top: 0; }
 .summary .spectrum .prose > :last-child { margin-bottom: 0; }
+/* Every solution's paragraph ends in what it buys and what it costs; the two parts are
+   tinted, label included, so the three solutions can be weighed at a glance. */
+.summary .spectrum .prose .buys, .summary .spectrum .prose .buys strong, .summary .spectrum .prose .buys b { color: var(--ok); }
+.summary .spectrum .prose .costs, .summary .spectrum .prose .costs strong, .summary .spectrum .prose .costs b { color: var(--bad); }
 @media (max-width: 1100px) { .summary .spectrum { grid-template-columns: 1fr; gap: 0; } .summary .spectrum .prose { border-top: none; padding-top: 0; } }
 .summary ul { margin: .8rem 0; padding-left: 1.35rem; }
 

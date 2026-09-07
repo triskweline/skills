@@ -347,6 +347,9 @@ def _with_bylines(summary_html):
 SPECTRUM_H2 = re.compile(r'<h2[^>]*>\s*the spectrum of solutions\s*</h2>', re.I)
 H3_SPLIT = re.compile(r'(<h3[^>]*>.*?</h3>)', re.S | re.I)
 BYLINE_P = re.compile(r'^\s*(<p class="byline">.*?</p>)', re.S)
+# The two fixed labels inside a solution's paragraph. Each label and the text after it, up
+# to the next label or the end of the paragraph, is wrapped so the page can tint it.
+WEIGHS = re.compile(r'(<(?:strong|b)>\s*(buys|costs)\s*:?\s*</(?:strong|b)>.*?)(?=\s*<(?:strong|b)>\s*(?:buys|costs)\s*:?\s*</(?:strong|b)>|\s*</p>)', re.I | re.S)
 
 
 def _spectrum_rows(summary_html):
@@ -367,6 +370,7 @@ def _spectrum_rows(summary_html):
         heading, body = parts[i], parts[i + 1]
         bm = BYLINE_P.match(body)
         byline, prose = (bm.group(1), body[bm.end():]) if bm else ('', body)
+        prose = WEIGHS.sub(lambda w: '<span class="%s">%s</span>' % (w.group(2).lower(), w.group(1)), prose)
         rows.append('<div class="row"><div class="lbl">%s\n%s</div><div class="prose">%s</div></div>'
                     % (heading, byline, prose.strip()))
     return head + parts[0] + '<div class="spectrum">\n' + '\n'.join(rows) + '\n</div>\n' + tail
