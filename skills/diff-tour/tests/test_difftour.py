@@ -310,6 +310,44 @@ class Repo(RepoCase):
         self.assertIn('<a href="#h3">the greeting</a>', page)
         self.assertIn('<p><span class="lvl">read</span>Pairs with <a href="#h2">its sibling</a>.</p>', page)
 
+    def test_line_marks_resolve_quoted_blocks_to_line_ranges(self):
+        # a.py's second hunk (h2) body after the @@ line:
+        #   1 " line7"  2 " line8"  3 " line9"  4 "-line10"  5 "+line10 tail"
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h2 hot: the tail -->\n'
+            '<!-- focus:\n-line10\n+line10 tail\n-->\n'
+            '<!-- dim:\nline7\nline8\n-->\n'
+            '<p>Sentence.</p>\n<!-- hunk h1 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('data-focus="4-5"', page)
+        self.assertIn('data-dim="1-2"', page)
+        # The mark comments do not leak into the sentence, and the sentence keeps its badge.
+        self.assertIn('<div class="note"><p><span class="lvl">hot</span>Sentence.</p></div>', page)
+        self.assertNotIn('focus:', page.split('<main>')[1])
+        self.assertEqual(err, '')
+
+    def test_line_marks_report_misses_and_ambiguity(self):
+        # m.py: a block of "x = 1" lines repeated, so a one-line quote is ambiguous.
+        self.write('m.py', 'a\nb\nc\n')
+        sh(self.dir, 'git', 'add', 'm.py')
+        sh(self.dir, 'git', 'commit', '-q', '-m', 'm')
+        self.write('m.py', 'a\nx = 1\nb\nx = 1\nc\nx = 1\n')
+        frag = os.path.join(self.dir, 'f.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2>\n<!-- hunk h1 -->\n'
+                    '<!-- focus: x = 1 -->\n'                 # 3 matches, no hint: dropped
+                    '<!-- focus @6: x = 1 -->\n'              # 3 matches, hint picks line 6
+                    '<!-- dim: not in this hunk at all -->\n'  # no match: dropped
+                    '<p>Sentence.</p>')
+        out_path = os.path.join(self.dir, 'tour.html')
+        code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '--', 'm.py', '++', frag)
+        self.assertEqual(code, 0, err)
+        page = read(out_path)
+        self.assertIn('data-focus="6-6"', page)
+        self.assertNotIn('data-dim', page)
+        self.assertIn('matches 3 times at lines 2, 4, 6; add @N', err)
+        self.assertIn('took line 6 (hint 6)', err)
+        self.assertIn('quoted block not found', err)
+
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)

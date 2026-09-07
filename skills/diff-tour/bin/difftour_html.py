@@ -140,15 +140,72 @@ def _prose(raw):
     return text
 
 
+# A line mark: `<!-- focus: ...lines... -->` or `<!-- dim @9: ...lines... -->`, written
+# directly after a hunk placeholder. The block is the quoted lines of the hunk to mark;
+# `@N` is an optional guess at the first line's number, used only to break a tie.
+MARK = re.compile(r'<!--\s*(focus|dim)(?:\s*@\s*(\d+))?\s*:(.*?)-->', re.S | re.I)
+
+
 def _beat(title, raw):
-    """One beat: its own prose, then (hunk id, level, reason, note prose) items."""
+    """One beat: its own prose, then (hunk id, level, reason, note prose, marks) items."""
     parts = PLACEHOLDER.split(raw)
     items = []
     for i in range(1, len(parts), 4):
         level = parts[i + 1].lower() if parts[i + 1] else None
         reason = (parts[i + 2] or '').strip() if level else ''
-        items.append((parts[i], level, reason, _prose(parts[i + 3])))
+        marks = [(m.group(1).lower(), int(m.group(2)) if m.group(2) else None, m.group(3))
+                 for m in MARK.finditer(parts[i + 3])]
+        items.append((parts[i], level, reason, _prose(MARK.sub('', parts[i + 3])), marks))
     return {'title': _title(title) if title else '', 'say': _prose(parts[0]), 'items': items}
+
+
+def _norm(line):
+    return ' '.join(line.split())
+
+
+def resolve_marks(h, marks):
+    """Turn quoted blocks into hunk-relative line ranges: {'focus': [(a, b)], 'dim': [...]}.
+    Body lines are compared without their diff prefix and with whitespace collapsed; a
+    quoted line may carry the prefix or not. A block that matches once is that range. A
+    block that matches several times takes the match nearest the `@N` hint, or is dropped
+    when there is no hint. A block that matches nowhere is dropped. Dropped marks are
+    returned as messages so the assembler can report them."""
+    body = [_norm(l[1:]) for l in h.body[1:]]
+    ranges, problems = {'focus': [], 'dim': []}, []
+    for kind, hint, block in marks:
+        quoted = [l for l in block.split('\n')]
+        while quoted and not quoted[0].strip():
+            quoted.pop(0)
+        while quoted and not quoted[-1].strip():
+            quoted.pop()
+        if not quoted:
+            problems.append('%s in %s: empty block' % (kind, h.id))
+            continue
+        forms = []
+        for q in quoted:
+            alt = {_norm(q)}
+            if q[:1] in '+- ':
+                alt.add(_norm(q[1:]))
+            forms.append(alt)
+        n = len(forms)
+        starts = [w for w in range(0, len(body) - n + 1)
+                  if all(body[w + k] in forms[k] for k in range(n))]
+        if not starts:
+            problems.append('%s in %s: quoted block not found (%d line%s, starts "%s")'
+                            % (kind, h.id, n, '' if n == 1 else 's', quoted[0].strip()[:40]))
+            continue
+        if len(starts) > 1:
+            if hint is None:
+                problems.append('%s in %s: quoted block matches %d times at lines %s; add @N to pick one'
+                                % (kind, h.id, len(starts), ', '.join(str(w + 1) for w in starts)))
+                continue
+            w = min(starts, key=lambda w: abs(w + 1 - hint))
+            problems.append('%s in %s: quoted block matches %d times, took line %d (hint %d)'
+                            % (kind, h.id, len(starts), w + 1, hint))
+        else:
+            w = starts[0]
+        ranges[kind].append((w + 1, w + n))
+    return ranges, problems
 
 
 def _chapter(title, raw):
@@ -310,7 +367,7 @@ FLAG_LABEL = {
 }
 
 
-def figure(h, ident, level, reason, note=''):
+def figure(h, ident, level, reason, note='', ranges=None):
     """One hunk: its sentence with the level badge in front, the level's reason if any,
     then the diff card. The whole thing is one figure with the level as its left edge, so
     the hunks of a beat form a vertical line striped by attention level."""
@@ -331,9 +388,14 @@ def figure(h, ident, level, reason, note=''):
     # and the sentence reads as "FISHY: what this hunk is about".
     note = note or '<p></p>'
     note = re.sub(r'<p\b[^>]*>', lambda m: m.group(0) + badge, note, count=1)
+    attrs = ''
+    if reason:
+        attrs += ' data-reason="%s"' % html.escape(reason, quote=True)
+    for mark in ('focus', 'dim'):
+        if ranges and ranges.get(mark):
+            attrs += ' data-%s="%s"' % (mark, ','.join('%d-%d' % r for r in ranges[mark]))
     out = ['<figure class="hunk lvl-%s%s" id="%s" data-key="%s" data-level="%d"%s>'
-           % (name, ' file' if not h.body else '', ident, _key(h), LEVELS[level],
-              (' data-reason="%s"' % html.escape(reason, quote=True)) if reason else ''),
+           % (name, ' file' if not h.body else '', ident, _key(h), LEVELS[level], attrs),
            '<div class="note">%s</div>' % note]
     if level in ('note', 'fishy', 'hot'):
         out.append('<p class="flag %s"><b>%s:</b> %s</p>'
@@ -411,9 +473,9 @@ def render(hunks, texts, git_args, out_path=''):
     """-> (page html, report dict with placed / missing / unknown / duplicate ids)."""
     title, summary, chapters = parse_fragments(texts)
     by_id = dict((h.id, h) for h in hunks)
-    seen, unknown, dupes = {}, [], []
+    seen, unknown, dupes, mark_problems = {}, [], [], []
 
-    def fig(hid, level, reason, note=''):
+    def fig(hid, level, reason, note='', marks=()):
         if hid not in by_id:
             unknown.append(hid)
             return '<p class="missing"><strong>Unknown hunk %s</strong></p>' % html.escape(hid)
@@ -421,7 +483,11 @@ def render(hunks, texts, git_args, out_path=''):
         seen[hid] = n
         if n > 1:
             dupes.append(hid)
-        return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), level, reason, note)
+        ranges = None
+        if marks:
+            ranges, problems = resolve_marks(by_id[hid], marks)
+            mark_problems.extend(problems)
+        return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), level, reason, note, ranges)
 
     body = []
     for n, ch in enumerate(chapters, 1):
@@ -472,7 +538,8 @@ def render(hunks, texts, git_args, out_path=''):
     page = _swap(page, 'NAVTITLE', plain)
     page = re.sub(r'<title>.*?</title>', lambda m: '<title>%s</title>' % plain, page, count=1)
     page = page.replace('data-uid="fixture"', 'data-uid="%s"' % uid, 1)
-    return page, {'placed': placed, 'missing': missing, 'unknown': unknown, 'dupes': dupes}
+    return page, {'placed': placed, 'missing': missing, 'unknown': unknown, 'dupes': dupes,
+                  'marks': mark_problems}
 
 
 def _beat_html(beat, fig):
@@ -482,8 +549,8 @@ def _beat_html(beat, fig):
     if beat['say']:
         say.append(beat['say'])
     show = []
-    for hid, level, reason, note in beat['items']:
-        show.append(fig(hid, level, reason, note))
+    for hid, level, reason, note, marks in beat['items']:
+        show.append(fig(hid, level, reason, note, marks))
     if not show:
         return '<section class="beat solo"><div class="say">%s</div></section>' % '\n'.join(say)
     return ('<section class="beat"><div class="say">%s</div><div class="show">%s</div></section>'

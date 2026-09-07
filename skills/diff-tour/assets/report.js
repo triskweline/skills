@@ -400,12 +400,60 @@
      tokenising code nobody has scrolled to. ---- */
   var blocks = [].slice.call(document.querySelectorAll('pre.diff > code'));
 
+  /* Wrap every line of a highlighted block in its own span, splitting tokens that span
+     lines and reopening them on the next line, so a line can be styled on its own. Prism
+     keeps every newline as text, so line N of the hunk is the Nth wrapper. Only blocks
+     with marks pay for this. */
+  function wrapLines(code) {
+    var html = code.innerHTML, out = '<span class="ln">', open = [], m;
+    var re = /<\/span>|<span\b[^>]*>|\n|[^<\n]+/g;
+    while ((m = re.exec(html))) {
+      var t = m[0];
+      if (t === '\n') {
+        out += open.map(function () { return '</span>'; }).join('') + '</span><span class="ln">' + open.join('');
+      } else if (t === '</span>') { open.pop(); out += t; }
+      else if (t.charAt(0) === '<') { open.push(t); out += t; }
+      else out += t;
+    }
+    code.innerHTML = out + '</span>';
+    var last = code.lastElementChild;
+    if (last && last.className === 'ln' && !last.textContent) last.remove();
+  }
+  function markLines(fig, code) {
+    var focus = fig.getAttribute('data-focus'), dim = fig.getAttribute('data-dim');
+    if (!focus && !dim) return;
+    wrapLines(code);
+    var lines = [].slice.call(code.querySelectorAll(':scope > .ln'));
+    function apply(spec, cls) {
+      (spec || '').split(',').forEach(function (range) {
+        var parts = range.trim().split('-'), from = +parts[0], to = +(parts[1] || parts[0]);
+        for (var n = from; n <= to; n++) if (lines[n - 1]) lines[n - 1].classList.add(cls);
+      });
+    }
+    apply(dim, 'dim');
+    apply(focus, 'focus');
+    /* Consecutive dimmed lines become one run, so hovering any of them brings the whole
+       run back: the stylesheet puts the text opacity on the run, not the line. */
+    var run = null;
+    lines.forEach(function (ln) {
+      if (!ln.classList.contains('dim')) { run = null; return; }
+      if (!run) {
+        run = document.createElement('span');
+        run.className = 'dim-run';
+        ln.parentNode.insertBefore(run, ln);
+      }
+      run.appendChild(ln);
+    });
+  }
+
   function light(el) {
     if (el.classList.contains('highlighted')) return;
     el.classList.add('highlighted');
     if (window.Prism) {
       try { Prism.highlightElement(el); } catch (e) {}
     }
+    var fig = el.closest('figure.hunk');
+    if (fig) markLines(fig, el);
   }
 
   if (window.IntersectionObserver) {

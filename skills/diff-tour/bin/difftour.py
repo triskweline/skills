@@ -184,6 +184,8 @@ def assemble(out_path, hunks, fragments, git_args):
     if dupes:
         sys.stderr.write('%d hunk(s) were placed more than once (fine if shared between topics): %s\n'
                          % (len(dupes), ' '.join(dupes)))
+    for problem in report.get('marks', []):
+        sys.stderr.write('line mark dropped or adjusted: %s\n' % problem)
     # A file:// URL, not a path: terminals make it clickable, and the orchestrator hands
     # this line to the human verbatim.
     from urllib.request import pathname2url

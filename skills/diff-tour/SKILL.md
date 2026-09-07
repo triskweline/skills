@@ -123,6 +123,8 @@ Hunk # One annotated diff hunk
 + sentence: html             # always present, in a <p>; one sentence, up to three for note/fishy/hot
 + heat_level: 'skip' | none | 'note' | 'fishy' | 'hot'  # one word in the placeholder
 + heat_reason: text          # required for note, fishy and hot; lives in the placeholder
++ focus: text[]              # rare: quoted blocks of lines a reader must not miss; comments after the placeholder
++ dim: text[]                # rare: quoted blocks of lines a reader of this topic can pass over
 + diff_content: text         # spliced in by the script, never typed by an agent
 + path: string
 + starting_line_number: integer
@@ -464,6 +466,42 @@ This is not a code review! You do not verify anything; work on intuition and wha
 
 **Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. The reason says what goes wrong when this hunk is wrong, not where the line is: `hot: a missing cast here lets the desk check fail open with no error`, not `hot: the line that switches the check on`. The sidebar and the beat's list show only the reason, so it has to carry the danger by itself. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
 
+## Mark lines inside a hunk, rarely
+
+A hunk normally reads as one thing at one level of attention. Two marks exist for the hunk that does not: **focus** for the few lines a reader must not miss, **dim** for a run of lines a reader of this topic can pass over. They are an extra signal for large hunks, for hunks that mix very different importance, and for hot spots. Used on every hunk they are no signal at all, so the default is no marks, and a topic with more than one marked hunk in five is marking the wrong things.
+
+**Focus** goes on the lines a heat reason is about, when the hunk is long enough that a reader would otherwise hunt for them: one range, one to five lines, at most two ranges. A six-line hunk needs no focus; the reason already points at it. Skip and read hunks never get one.
+
+**Dim** goes on a run of lines that carries nothing for this topic: boilerplate, a block that belongs to another topic in a shared hunk, generated or repeated lines, a long argument list. It is for lines a reader would otherwise read carefully and gain nothing from. It is not for closing braces, `end`, blank lines or a two-line import; a programmer scans those without help, and dimming them is noise. A dim run is at least five lines and, as a rule, less than half the hunk: if most of a hunk carries nothing, the hunk is a skip, or the sentence says which part matters. The exception is a hunk shared with another topic, where the other topic's part may be the larger one; dim it, so the reader of this topic sees at once which lines are theirs.
+
+**A mark needs a contrast.** Marks say "these lines, not those", so a hunk with marks always has marked and unmarked lines. Never dim a whole hunk: a skip hunk already says it is boring, and its lines get no marks at all. Never focus a whole hunk: a hot hunk already says to read every line, and a focus that covers it adds nothing. If you cannot leave a meaningful part of the hunk unmarked, the level and the sentence are the right tools, and the hunk gets no marks.
+
+Marks describe importance, not agreement. A dim run is not "fine", a focus range is not "wrong"; the heat level and its reason carry that. The test before adding either: would a reader who has the sentence and the heat reason still spend time on the wrong lines of this hunk? Only then.
+
+### How to write a mark
+
+A mark is a comment directly after the hunk's placeholder, before its sentence. Inside it, quote the lines to mark, whole and contiguous, as they stand in the diff; the diff's `+`/`-` column and indentation do not matter, the script ignores both. Quoting the whole block, rather than a phrase, is what makes the match unique in a long hunk:
+
+```html
+<!-- hunk h24 hot: the accept-or-reject decision for every code -->
+<!-- focus:
+totp.verify(
+  authentication_code.delete(" "),
+  drift_behind: 30,
+  drift_ahead: 30,
+)
+-->
+<!-- dim:
+attribute :authentication_code, :string
+
+validates :authentication_code, presence: true
+validate :validate_authentication_code_with_user
+-->
+<p>The code validation trait. ...</p>
+```
+
+The script finds the block in the hunk and marks those lines. A block it cannot find, or one that matches in several places, is dropped and reported on stderr, never guessed. When your block is short or made of common lines (`end`, `raise`, a one-line focus), add `@N` with your guess at its first line, counting the hunk's lines from 1 below the `@@` line: `<!-- focus @9: ... -->`. The number is used only to choose between several matches, so a rough guess is fine. A quoted line that ends in `-` needs a space before the closing `-->`.
+
 ## Write the topic fragment
 
 Write the whole topic as one HTML fragment to the path you were given. One `Write`, no re-reading. The content of every paragraph follows *Narrate for a reader who zooms*; the placeholders follow *Give each hunk a heat level*. This is the shape:
@@ -485,13 +523,17 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 <p>One sentence.</p>
 
 <!-- hunk h6 hot: a wrong early return here lets every request through unchallenged -->
+<!-- focus:
+  return unless current_user
+  return if exempt?(current_user)
+-->
 <p>One to three sentences.</p>
 
 <h3>Next beat</h3>
 ...
 ```
 
-A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, and hunk placeholders. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
+A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, hunk placeholders, and the focus and dim comments described in *Mark lines inside a hunk, rarely*. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
 
 - **Never type out a diff.** Put the placeholder where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page.
 - Every hunk id you were given appears exactly once as a placeholder.

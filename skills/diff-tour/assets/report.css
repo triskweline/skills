@@ -20,8 +20,10 @@
 
   --add-bg: #e6ffec;
   --add-edge: #6fd28a;
+  --add-mark: #5bbf78;
   --del-bg: #ffebe9;
   --del-edge: #f0a7a1;
+  --del-mark: #e4736c;
 
   --tok-comment: #8a919b;
   --tok-keyword: #a626a4;
@@ -73,8 +75,10 @@
 
   --add-bg: rgba(63, 185, 80, .13);
   --add-edge: rgba(63, 185, 80, .55);
+  --add-mark: #4faa61;
   --del-bg: rgba(248, 81, 73, .12);
   --del-edge: rgba(248, 81, 73, .5);
+  --del-mark: #e0655e;
 
   --tok-comment: #7d8590;
   --tok-keyword: #c678dd;
@@ -114,8 +118,10 @@
 
   --add-bg: rgba(63, 185, 80, .13);
   --add-edge: rgba(63, 185, 80, .55);
+  --add-mark: #4faa61;
   --del-bg: rgba(248, 81, 73, .12);
   --del-edge: rgba(248, 81, 73, .5);
+  --del-mark: #e0655e;
 
   --tok-comment: #7d8590;
   --tok-keyword: #c678dd;
@@ -544,11 +550,12 @@ figure.hunk.collapsed > .card > figcaption { border-bottom: none; }
    first line of the diff. */
 .card .ctx {
   font: 12.5px/1.58 var(--mono); color: var(--faint);
-  padding: .3rem .85rem;
+  padding: .3rem .85rem .3rem calc(var(--gutter-w, 5px) + .85rem);   /* same left edge as the code lines */
   border-bottom: 1px dashed var(--line);
   white-space: pre; overflow-x: auto;
 }
-.card .ctx::before { content: "⋯ "; }
+/* The ellipsis takes the diff prefix's column, so the declaration lines up with the code. */
+.card .ctx::before { content: "⋯"; display: inline-block; width: 1ch; }
 
 /* ------------------------------------------------------------------ the diff */
 
@@ -568,28 +575,60 @@ pre.diff > code {
    run tinted as a block is exactly one tint per line. The tint is the whole signal:
    no edge on the run, because the figure's own left edge already carries the
    attention level and two coloured edges side by side read as noise. */
-pre.diff > code > .token.inserted:not(.prefix),
-pre.diff > code > .token.deleted:not(.prefix),
-pre.diff > code > .token.unchanged:not(.prefix) {
+pre.diff > code > .token.inserted:not(.prefix), pre.diff .ln > .token.inserted:not(.prefix),
+pre.diff > code > .token.deleted:not(.prefix), pre.diff .ln > .token.deleted:not(.prefix),
+pre.diff > code > .token.unchanged:not(.prefix), pre.diff .ln > .token.unchanged:not(.prefix) {
   display: block;
   padding: 0 .85rem;
 }
-pre.diff > code > .token.inserted:not(.prefix) { background: var(--add-bg); }
-pre.diff > code > .token.deleted:not(.prefix) { background: var(--del-bg); }
-pre.diff > code > .token.coord { display: block; padding: 0 .85rem; color: var(--faint); }
-/* Before Prism runs, and if it never does, the raw diff still reads correctly. */
-pre.diff > code:not(.highlighted) { padding: 0 .85rem; white-space: pre; }
-.token.prefix { color: var(--faint); user-select: none; }
+pre.diff > code > .token.inserted:not(.prefix), pre.diff .ln > .token.inserted:not(.prefix) { background: var(--add-bg); }
+pre.diff > code > .token.deleted:not(.prefix), pre.diff .ln > .token.deleted:not(.prefix) { background: var(--del-bg); }
+pre.diff > code > .token.coord { display: block; padding: 0 .85rem; }
 
-/* Prism tokens. One palette, ours, so a tour looks the same everywhere. */
-.token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--tok-comment); font-style: italic; }
-.token.punctuation { color: var(--tok-punct); }
-.token.operator, .token.entity, .token.url { color: var(--tok-operator); }
-.token.keyword, .token.atrule, .token.important, .token.rule { color: var(--tok-keyword); }
-.token.boolean, .token.number, .token.constant, .token.symbol { color: var(--tok-number); }
-.token.string, .token.char, .token.attr-value, .token.regex { color: var(--tok-string); }
-.token.function, .token.method, .token.tag { color: var(--tok-function); }
-.token.class-name, .token.builtin, .token.namespace, .token.selector, .token.property, .token.attr-name { color: var(--tok-class); }
-.token.variable, .token.interpolation, .token.parameter { color: var(--tok-variable); }
+/* Marked lines. A worker can dim a run of lines that carries nothing for this topic, and
+   focus the few lines its heat reason is about. report.js wraps each line of a marked
+   block in .ln and sets the classes by line number; the rules here draw them. */
+/* Marked lines. report.js wraps each line of a marked block in .ln and sets the classes by
+   line number; the rules here draw them through two channels that leave the diff's own
+   backgrounds alone: a gutter for focus, text opacity for dim. */
+pre.diff .ln { display: block; position: relative; }
+
+/* Every code line leaves a gutter at its left edge, transparent by default. */
+figure.hunk > .card { --gutter-w: 5px; }
+pre.diff > code > .token.inserted:not(.prefix), pre.diff .ln > .token.inserted:not(.prefix),
+pre.diff > code > .token.deleted:not(.prefix), pre.diff .ln > .token.deleted:not(.prefix),
+pre.diff > code > .token.unchanged:not(.prefix), pre.diff .ln > .token.unchanged:not(.prefix) { padding-left: calc(var(--gutter-w) + .85rem); }
+pre.diff > code:not(.highlighted) { padding-left: calc(var(--gutter-w) + .85rem); }
+
+/* The gutter carries the focus mark: a stronger green or red by the kind of change on that
+   line, grey for a context line. Dimmed lines leave the gutter empty; anything there
+   would draw the eye to what is meant to recede. Backgrounds do not change. */
+pre.diff .ln.focus::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--gutter-w);
+  background: var(--gutter, var(--faint));
+}
+pre.diff .ln.focus:has(> .token.inserted) { --gutter: var(--add-mark); }
+pre.diff .ln.focus:has(> .token.deleted) { --gutter: var(--del-mark); }
+
+/* Dim: only the text fades. --fg is the foreground alpha every token colour below is mixed
+   with; a run of dimmed lines halves it and the backgrounds stay as they are. Hovering
+   anywhere in the run brings the whole run's text back. */
+pre.diff code { --fg: 1; }
+pre.diff .dim-run { display: block; --fg: .5; }
+pre.diff .dim-run:hover { --fg: 1; }
+
+/* Prism tokens. One palette, ours, so a tour looks the same everywhere. Every colour is
+   mixed with --fg, so a dimmed line fades its text and nothing else. */
+pre.diff code, pre.diff .ln { color: color-mix(in srgb, var(--ink) calc(var(--fg) * 100%), transparent); }
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: color-mix(in srgb, var(--tok-comment) calc(var(--fg) * 100%), transparent); font-style: italic; }
+.token.punctuation { color: color-mix(in srgb, var(--tok-punct) calc(var(--fg) * 100%), transparent); }
+.token.operator, .token.entity, .token.url { color: color-mix(in srgb, var(--tok-operator) calc(var(--fg) * 100%), transparent); }
+.token.keyword, .token.atrule, .token.important, .token.rule { color: color-mix(in srgb, var(--tok-keyword) calc(var(--fg) * 100%), transparent); }
+.token.boolean, .token.number, .token.constant, .token.symbol { color: color-mix(in srgb, var(--tok-number) calc(var(--fg) * 100%), transparent); }
+.token.string, .token.char, .token.attr-value, .token.regex { color: color-mix(in srgb, var(--tok-string) calc(var(--fg) * 100%), transparent); }
+.token.function, .token.method, .token.tag { color: color-mix(in srgb, var(--tok-function) calc(var(--fg) * 100%), transparent); }
+.token.class-name, .token.builtin, .token.namespace, .token.selector, .token.property, .token.attr-name { color: color-mix(in srgb, var(--tok-class) calc(var(--fg) * 100%), transparent); }
+.token.variable, .token.interpolation, .token.parameter { color: color-mix(in srgb, var(--tok-variable) calc(var(--fg) * 100%), transparent); }
+.token.prefix, pre.diff .token.coord { color: color-mix(in srgb, var(--faint) calc(var(--fg) * 100%), transparent); }
 .token.bold { font-weight: 600; }
 .token.italic { font-style: italic; }
