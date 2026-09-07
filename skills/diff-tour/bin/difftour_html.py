@@ -205,13 +205,43 @@ def _norm(line):
     return ' '.join(line.split())
 
 
+GAP = '[...]'   # alone on a line inside a block: "from the lines above to the lines below"
+
+
+def _find(quoted, body, lo=0, hint=None, nearest=False):
+    """Where a quoted block starts in the body (0-based), searching from `lo`, or (None,
+    why). Two passes: the block as quoted, then with a leading diff column stripped. Only
+    the second pass tolerates a worker copying the +/- column; trying both at once made a
+    YAML "- item" match the body line "item" as well. Several matches take the one nearest
+    the `hint`, or with `nearest` the first one from `lo`, which is how the tail of a
+    `[...]` range finds the `end` that closes its run."""
+    n = len(quoted)
+    exact = [{'\\'} if q.strip().startswith('\\') else {_norm(q), _norm(html.unescape(q))} for q in quoted]
+    stripped = [{_norm(q[1:]), _norm(html.unescape(q[1:]))} if q[:1] in '+- ' and not q.strip().startswith('\\') else set(forms)
+                for q, forms in zip(quoted, exact)]
+    def windows(forms):
+        return [w for w in range(lo, len(body) - n + 1)
+                if all(body[w + k] in forms[k] for k in range(n))]
+    starts = windows(exact) or windows(stripped)
+    if not starts:
+        return None, 'quoted block not found (%d line%s, starts "%s")' % (n, '' if n == 1 else 's', quoted[0].strip()[:40])
+    if len(starts) > 1 and not nearest:
+        if hint is None:
+            return None, 'quoted block matches %d times at lines %s and carries no @N; dropped' % (
+                len(starts), ', '.join(str(w + 1) for w in starts))
+        return min(starts, key=lambda w: abs(w + 1 - hint)), None
+    return starts[0], None
+
+
 def resolve_marks(h, marks):
     """Turn quoted blocks into hunk-relative line ranges: {'focus': [(a, b)], 'dim': [...]}.
     Body lines are compared without their diff prefix and with whitespace collapsed; a
     quoted line may carry the prefix or not. A block that matches once is that range. A
     block that matches several times takes the match nearest the `@N` hint, or is dropped
-    when there is no hint. A block that matches nowhere is dropped. Dropped marks are
-    returned as messages so the assembler can report them."""
+    when there is no hint. A block that matches nowhere is dropped. A block with a `[...]`
+    line runs from the lines above it to the lines below it, the tail being the first match
+    below the head. Lines git found moved from elsewhere (h.moved) are dimmed without any
+    mark. Dropped marks are returned as messages so the assembler can report them."""
     # The "\\ No newline at end of file" marker is a body line too; it is matched by any
     # quoted line that starts with a backslash, since nobody types it out exactly.
     body = ['\\' if l.startswith('\\') else _norm(l[1:]) for l in h.body[1:]]
@@ -225,56 +255,75 @@ def resolve_marks(h, marks):
             quoted.pop(0)
         while quoted and not quoted[-1].strip():
             quoted.pop()
-        if not quoted:
-            problems.append('%s in %s: empty block' % (kind, h.id))
+        gaps = [i for i, q in enumerate(quoted) if q.strip() == GAP]
+        head, tail = quoted, None
+        if gaps:
+            head, tail = quoted[:gaps[0]], quoted[gaps[-1] + 1:]
+            while head and not head[-1].strip():
+                head.pop()
+            while tail and not tail[0].strip():
+                tail.pop(0)
+        if not head or (gaps and not tail):
+            problems.append('%s in %s: empty block%s' % (kind, h.id, ' on one side of %s' % GAP if gaps else ''))
             continue
-        # Two passes: the block as quoted, then with a leading diff column stripped. Only
-        # the second pass tolerates a worker copying the +/- column; trying both at once
-        # made a YAML "- item" match the body line "item" as well.
-        n = len(quoted)
-        if n >= len(body) and len(body) > 0:
+        if len(quoted) >= len(body) and len(body) > 0 and not gaps:
             problems.append('%s in %s: the quoted block covers the whole hunk; a mark needs unmarked lines beside it, dropped'
                             % (kind, h.id))
             continue
-        exact = [{'\\'} if q.strip().startswith('\\') else {_norm(q), _norm(html.unescape(q))} for q in quoted]
-        stripped = [{_norm(q[1:]), _norm(html.unescape(q[1:]))} if q[:1] in '+- ' and not q.strip().startswith('\\') else set(forms)
-                    for q, forms in zip(quoted, exact)]
-        def windows(forms):
-            return [w for w in range(0, len(body) - n + 1)
-                    if all(body[w + k] in forms[k] for k in range(n))]
-        starts = windows(exact) or windows(stripped)
-        if not starts:
-            problems.append('%s in %s: quoted block not found (%d line%s, starts "%s")'
-                            % (kind, h.id, n, '' if n == 1 else 's', quoted[0].strip()[:40]))
+        w, why = _find(head, body, hint=hint)
+        if why:
+            problems.append('%s in %s: %s' % (kind, h.id, why))
             continue
-        if len(starts) > 1:
-            if hint is None:
-                problems.append('%s in %s: quoted block matches %d times at lines %s and carries no @N; dropped'
-                                % (kind, h.id, len(starts), ', '.join(str(w + 1) for w in starts)))
+        last = w + len(head) - 1
+        if tail is not None:
+            w2, why = _find(tail, body, lo=w + len(head), nearest=True)
+            if why:
+                problems.append('%s in %s: after %s, %s' % (kind, h.id, GAP, why))
                 continue
-            w = min(starts, key=lambda w: abs(w + 1 - hint))
-        else:
-            w = starts[0]
-        ranges[kind].append((w + 1, w + n))
+            last = w2 + len(tail) - 1
+        if last - w + 1 >= len(body):
+            problems.append('%s in %s: the block covers the whole hunk; a mark needs unmarked lines beside it, dropped'
+                            % (kind, h.id))
+            continue
+        ranges[kind].append((w + 1, last + 1))
     # Where a dim range overlaps a focus range, focus wins: the dimmed part is trimmed.
     focused = set()
     for a, b in ranges['focus']:
         focused.update(range(a, b + 1))
     if focused and ranges['dim']:
-        trimmed, cut = [], False
-        for a, b in ranges['dim']:
-            run = None
-            for line in range(a, b + 1):
-                if line in focused:
-                    cut = True
-                    if run: trimmed.append(run); run = None
-                elif run: run = (run[0], line)
-                else: run = (line, line)
-            if run: trimmed.append(run)
+        ranges['dim'], cut = _trim(ranges['dim'], focused)
         if cut:
             problems.append('%s: a dim block overlaps a focus block; focus wins on the shared lines' % h.id)
-        ranges['dim'] = trimmed
+    # Moved code is dimmed by the script: nothing in those lines is new to the reader. git
+    # marks the identical lines only, so a blank line between two moved runs is bridged; a
+    # changed line inside a moved block stays undimmed, which is exactly the line to read.
+    moved, run = sorted(getattr(h, 'moved', ())), None
+    for n in moved:
+        if run and (n == run[1] + 1 or all(body[k - 1] == '' for k in range(run[1] + 1, n))):
+            run = (run[0], n)
+        else:
+            if run: ranges['dim'].append(run)
+            run = (n, n)
+    if run:
+        ranges['dim'].append(run)
+    if focused and moved:
+        ranges['dim'], _ = _trim(ranges['dim'], focused)
     return ranges, problems
+
+
+def _trim(dims, focused):
+    """Cut the focused lines out of the dim ranges; (ranges, whether anything was cut)."""
+    trimmed, cut = [], False
+    for a, b in dims:
+        run = None
+        for line in range(a, b + 1):
+            if line in focused:
+                cut = True
+                if run: trimmed.append(run); run = None
+            elif run: run = (run[0], line)
+            else: run = (line, line)
+        if run: trimmed.append(run)
+    return trimmed, cut
 
 
 def _chapter(title, raw):
@@ -574,10 +623,8 @@ def render(hunks, texts, git_args, out_path=''):
         seen[hid] = n
         if n > 1:
             dupes.append(hid)
-        ranges = None
-        if marks:
-            ranges, problems = resolve_marks(by_id[hid], marks)
-            mark_problems.extend(problems)
+        ranges, problems = resolve_marks(by_id[hid], marks)
+        mark_problems.extend(problems)
         return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), level, reason, note, ranges)
 
     mark_problems.extend(_PROBLEMS)

@@ -430,6 +430,51 @@ class Repo(RepoCase):
         self.assertNotIn('<div class="show"></div>', main)
         self.assertIn('stood before any placeholder', err)
 
+    def test_a_gap_marks_from_the_head_block_to_the_tail_block(self):
+        # h1 body: 1 " line1" 2 "-line2" 3 "+CHANGED <b>&" 4 " line3" 5 " line4" 6 " line5"
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h1 -->\n<!-- dim:\nline1\n[...]\n line4\n-->\n<p>S.</p>\n'
+            '<!-- hunk h2 -->\n<!-- dim:\nline9\n[...]\n-->\n'                   # nothing after the gap
+            '<!-- focus:\nline8\n[...]\nline7\n-->\n'                             # the tail lies above the head
+            '<!-- dim:\nline7\n[...]\n+line10 tail\n-->\n<p>S.</p>',              # head to tail is the whole hunk
+            '<h2>B</h2><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertRegex(page, r'id="h1" [^>]*data-dim="1-5"')
+        self.assertNotRegex(page, r'id="h2" [^>]*data-(dim|focus)')
+        self.assertIn('dim in h2: empty block on one side of [...]', err)
+        self.assertIn('focus in h2: after [...], quoted block not found', err)
+        self.assertIn('dim in h2: the block covers the whole hunk', err)
+
+    def test_a_gap_tail_takes_the_first_match_below_the_head(self):
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour_html
+        class H:
+            id, moved = 'h9', set()
+            body = ['@@', '+  before do', '+    x', '+  end', '+', '+  it do', '+    y', '+  end']
+        ranges, problems = difftour_html.resolve_marks(H(), [('dim', None, '\n  before do\n[...]\n  end\n')])
+        self.assertEqual(ranges['dim'], [(1, 3)])   # the first `end` below the head, not the last
+        self.assertEqual(problems, [])
+
+    def test_moved_blocks_are_flagged_in_the_marker_and_dimmed_on_the_page(self):
+        d = self.dir
+        self.write('c.rb', 'class A\n  def alpha_value(input)\n    input.to_s.strip.downcase\n  end\n\n'
+                           '  def beta_total(items)\n    items.map(&:to_i).sum\n  end\n\n  def gamma_default_value\n    DEFAULT_GAMMA_VALUE.dup\n  end\nend\n')
+        sh(d, 'git', 'add', 'c.rb')
+        sh(d, 'git', 'commit', '-q', '-m', 'methods')
+        self.write('c.rb', 'class A\n  def gamma_default_value\n    DEFAULT_GAMMA_VALUE.dup\n  end\n\n  private\n\n  def alpha_value(input)\n'
+                           '    input.to_s.strip.downcase\n  end\n\n  def beta_total(items)\n    items.map(&:to_i).sum\n  end\nend\n')
+        code, out, err = hunks(self.dir, '--', 'HEAD')
+        self.assertEqual(code, 0, err)
+        markers = [m for m in re.findall(r'^### (h\d+)  (\S+)(.*)$', out, re.M) if m[1].startswith('c.rb')]
+        self.assertTrue(any(re.search(r'\(moved: \d+ of \d+ lines\)', m[2]) for m in markers), markers)
+        self.assertNotIn('moved', [m for m in re.findall(r'^### h\d+  a\.py.*$', out, re.M)][0])
+        moved_ids = [m[0] for m in markers if 'moved' in m[2]]
+        page, out_path, err = self.assemble(
+            '<h2>A</h2>' + ''.join('<!-- hunk %s --><p>S.</p>' % h for h in ['h1', 'h2', 'h3', 'h4'] + moved_ids))
+        for hid in moved_ids:
+            self.assertRegex(page, r'id="%s" [^>]*data-dim="[0-9,-]+"' % hid)   # dimmed with no worker mark
+        self.assertNotRegex(page, r'id="h1" [^>]*data-dim')
+        self.assertNotIn('line mark', err)
+
     def test_dim_yields_to_focus_and_whole_hunk_marks_are_dropped(self):
         # h2 body: 1 " line7" 2 " line8" 3 " line9" 4 "-line10" 5 "+line10 tail"
         page, out, err = self.assemble(

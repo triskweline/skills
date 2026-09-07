@@ -198,7 +198,7 @@ So glance at the commit list in case it does give a good signal. The final selec
 
 The numbered diff is in `$WORK/diff.txt`. **Read that file with the Read tool**, not by printing it in a shell: a shell result is capped and a long diff would be truncated, saved elsewhere and read back in pieces, which is three calls where one will do. The Read tool's limit is tokens, not lines, and a diff is token-dense: expect roughly one Read per 1000 to 1300 diff lines. The `DIFF=` line gives the line count. Read with offsets, back to back, nothing in between, until you have seen the last line of the file.
 
-Every hunk has a marker line `### h17  path:line` before it. From here on, everybody refers to hunks by that id. Binary files show up as a marker with no diff body. For those you only need to know that they were added, changed, removed or moved, which the file header tells you.
+Every hunk has a marker line `### h17  path:line` before it. From here on, everybody refers to hunks by that id. A marker ending in `(moved: 30 of 40 lines)` says git found those lines moved from elsewhere in the diff, within the file or from another one; such a hunk is usually preparation or fallout rather than a topic of its own. Binary files show up as a marker with no diff body. For those you only need to know that they were added, changed, removed or moved, which the file header tells you.
 
 ## Generate a list of topics
 
@@ -468,19 +468,25 @@ This is not a code review! You do not verify anything; work on intuition and wha
 
 **Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. The reason says what goes wrong when this hunk is wrong, not where the line is: `hot: a missing cast here lets the desk check fail open with no error`, not `hot: the line that switches the check on`. The sidebar and the beat's list show only the reason, so it has to carry the danger by itself. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
 
-## Mark lines inside a hunk, rarely
+## Mark lines inside a hunk
 
-A hunk normally reads as one thing at one level of attention. Two marks exist for the hunk that does not: **focus** for the few lines a reader must not miss, **dim** for a run of lines a reader of this topic can pass over. Used on every hunk they are no signal at all, so the default is no marks: at most one marked hunk in five, and never more than one in a topic of fewer than five hunks.
+Heat levels help a hurried reader choose which hunks to read. Marks help the same reader inside a hunk they cannot read whole: they say which lines to spend the time on and which to leave out. Every line of a hunk falls into one of three tiers, told apart by what a reader does with it:
 
-**Focus** goes on the lines a heat reason is about, when the hunk is long enough that a reader would otherwise hunt for them: usually one range of one to five lines, never more than two ranges. A six-line hunk needs no focus, and skip and read hunks never get one.
+- **Focus** is for the reader who can spend only a few lines on this hunk. These lines they must see.
+- **Unmarked** is for the reader who reads the hunk but not every line. These lines they need in order to understand what the change does.
+- **Dim** is for the reader deciding what to leave out. These lines they can skip and still understand the change, because the name or the shape of the run already tells them what is there.
 
-**Dim** goes on a run of at least five lines that carries nothing for this topic: boilerplate, generated or repeated lines, a long argument list, the other topic's part of a shared hunk. Not closing braces, `end`, blank lines or a two-line import; a programmer scans those without help. A dim run is less than half the hunk, except in a shared hunk, where the other topic's part may be the larger one. If most of a hunk carries nothing, the hunk is a skip.
+Marks follow from decisions you have already made, so they cost no tool call and a moment per hunk. Ask once per hunk: would a hurried reader read this whole? A hunk short enough to take in at a glance needs no marks. For every other hunk, whatever its level, place the focus and the dims together. Skip hunks get no marks at all; the reader trusts the sentence.
 
-A hunk with marks always keeps unmarked lines; if you cannot leave a meaningful part unmarked, the level and the sentence are the right tools. Marks say where to look, not what is right: a dim run is not "fine" and a focus range is not "wrong", the heat reason carries that. The test before adding either: would a reader who has the sentence and the reason still spend time on the wrong lines of this hunk? Only then.
+**Focus marks the essentials.** Ask: if the reader read only these lines, would they get what the change does? Mark the lines that make the answer yes: the line that does the thing, the condition that decides, the new call, the changed value, the assignment that carries the new state. Usually one range of one to five lines. A read hunk gets its focus like any other; the level says how carefully to read the hunk, the focus says where to start. In a note, fishy or hot hunk the focus also covers the lines the reason is about, always, so a badge always comes with a strip in the gutter; when those are not the same lines as the essentials, mark both. A reason about the hunk as a whole, or about an absence, adds no range, and the essentials still get theirs. Never more than three ranges in one hunk, and never a whole hunk.
+
+**Dim marks what can be skipped.** Ask of each run of lines: if the reader skipped this, would they misunderstand the change? Where the answer is no, dim the run. It is no for a helper that does what its name says, a trivial transformation that maps, formats or builds a hash, a URL or a path, setup and teardown, wiring and registration, a thin delegation, a rename or signature change echoed down a file, and the part of a shared hunk that belongs to another topic. Code that merely moved, within a file or between files, is dimmed by the script without your help; a hunk's marker line says how much of it moved, `(moved: 30 of 40 lines)`, and a hunk that is mostly moved code is usually a skip. It is yes wherever the change's behaviour is decided: a condition or guard, a write or a delete, the call that does the thing, error handling that picks an outcome. Those lines stay unmarked, however dull they look. A run of five lines counts as much as a run of fifty, several dims in one hunk are normal, and together they tell the reader: the substance of this hunk is what you can still see. Only closing braces, `end`, blank lines and a lone import are not worth a mark; a programmer scans those without help. A dim covers the whole run or nothing, never a sample of it. It may cover most of a hunk when the rest is the point; a hunk that could be dimmed entirely is a skip. Never dim a whole hunk.
+
+Marks say where to look, not what is right: a dim run is not "fine" and a focus range is not "wrong", the heat reason carries that.
 
 ### How to write a mark
 
-A mark is a comment after the hunk's placeholder. Inside it, quote the lines to mark, whole and contiguous, exactly as they stand in the numbered diff; the `+`/`-` column and the indentation do not matter, and `<` and `&` stay as they are. The script finds the block in the hunk and marks those lines. Given this hunk:
+A mark is a comment after the hunk's placeholder. Inside it, quote the lines to mark, whole and contiguous, exactly as they stand in the numbered diff and in its order, `-` and `+` lines interleaved as the diff shows them; the `+`/`-` column and the indentation do not matter, and `<` and `&` stay as they are. The script finds the block in the hunk and marks those lines. Given this hunk:
 
 ```
 ### h24 app/models/user.rb:31
@@ -506,7 +512,19 @@ the mark is:
 <p>...</p>
 ```
 
-A dim is written the same way with `dim:`. Quoting the block is all it takes in nearly every case. Only when the very same lines could stand twice in the hunk, a lone `end` or `raise`, a repeated generated line, add `@N` with the line number of your block's first line, counting from 1 at the line below `@@`: in the hunk above `end` is line 8, so `<!-- focus @8: end -->`. Count carefully; the script uses the number only to choose between the matches and takes the nearest. Never quote more lines than you mean to mark: a mark covers exactly the lines quoted.
+A dim is written the same way with `dim:`. For a long run, quote its first and last lines with `[...]` alone on a line between them; the script marks everything from the one to the other, so a run of eighty lines costs you two or three quoted lines:
+
+```html
+<!-- dim:
+  before do
+[...]
+  end
+-->
+```
+
+A focus inside a dim run is fine: the script cuts the dim around the focused lines, so a long sweep is one dim from its first line to its last, with its essential lines focused inside.
+
+Quoting the lines is all it takes in nearly every case. Only when the very same lines could stand twice in the hunk, a lone `end` or `raise`, a repeated generated line, add `@N` with the line number of your block's first line, counting from 1 at the line below `@@`: in the hunk above `end` is line 8, so `<!-- focus @8: end -->`. Count carefully; the script uses the number only to choose between the matches and takes the nearest. Never quote more lines than you mean to mark: a mark covers exactly the lines quoted.
 
 ## Write the topic fragment
 
@@ -539,7 +557,7 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 ...
 ```
 
-A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, hunk placeholders, and the focus and dim comments described in *Mark lines inside a hunk, rarely*. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
+A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, hunk placeholders, and the focus and dim comments described in *Mark lines inside a hunk*. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
 
 - **Never type out a diff.** Put the placeholder where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page. The only diff text in a fragment is the few lines quoted inside a focus or dim comment, which the script uses only to find the range.
 - Every hunk id you were given appears exactly once as a placeholder.

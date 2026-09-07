@@ -53,10 +53,13 @@ class Hunk:
         self.line = line          # starting line in the new file, or None
         self.header = header      # the file's diff header lines
         self.body = body          # the hunk lines, starting with the @@ line
+        self.moved = set()        # 1-based body line numbers git found moved from elsewhere
 
     def marker(self):
         where = self.path if self.line is None else '%s:%d' % (self.path, self.line)
         note = '' if self.body else '  (no text hunk: binary, mode or rename)'
+        if len(self.moved) >= 3:          # one relocated line is not worth the reader's attention
+            note += '  (moved: %d of %d lines)' % (len(self.moved), len(self.body) - 1)
         return '### %s  %s%s' % (self.id, where, note)
 
     def text(self):
@@ -70,6 +73,36 @@ def run_git(args):
         sys.stderr.write(out.stderr.decode('utf-8', 'replace'))
         sys.exit(2)
     return out.stdout.decode('utf-8', 'replace')
+
+
+# git's own move detection: a block of at least 20 alphanumeric characters that was removed
+# in one place and added in another, within a file or across files, re-indented or not. We
+# ask for two colours nothing else in the output uses and read them back per line.
+MOVED_SGR = ('\x1b[1;35m', '\x1b[1;36m')
+
+
+def moved_flags(args, plain):
+    """One flag per line of `plain` (the uncoloured diff for the same args): True where git
+    paints the line as moved. None when the coloured output does not line up."""
+    cmd = ['git', '-c', 'color.diff.oldMoved=bold magenta', '-c', 'color.diff.newMoved=bold cyan',
+           'diff', '--color=always', '--no-ext-diff', '--color-moved=blocks',
+           '--color-moved-ws=allow-indentation-change'] + args
+    out = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if out.returncode not in (0, 1):
+        return None
+    lines = out.stdout.decode('utf-8', 'replace').split('\n')
+    if len(lines) != len(plain.split('\n')):
+        return None
+    return [any(s in l for s in MOVED_SGR) for l in lines]
+
+
+def with_untracked(text, flags):
+    """Append the untracked files' diff, padding the moved flags: nothing moves into or out
+    of a file git does not track yet."""
+    text += untracked_diff()
+    if flags is not None:
+        flags = flags + [False] * (len(text.split('\n')) - len(flags))
+    return text, flags
 
 
 def untracked_diff():
@@ -89,10 +122,12 @@ def untracked_diff():
     return ''.join(parts)
 
 
-def parse(diff_text):
-    """Split a unified diff into numbered Hunks, in the order they appear."""
+def parse(diff_text, moved=None):
+    """Split a unified diff into numbered Hunks, in the order they appear. `moved` is the
+    per-line flag list from moved_flags(), or None."""
     hunks, header, body, path, line = [], [], None, None, None
     n = [0]
+    moved_lines = set()
 
     def path_of(header_lines):
         for h in header_lines:
@@ -110,13 +145,15 @@ def parse(diff_text):
         if body is not None:
             n[0] += 1
             hunks.append(Hunk('h%d' % n[0], path, line, header, body))
+            hunks[-1].moved = set(moved_lines)
+            moved_lines.clear()
 
     def flush_file():
         if header and body is None:          # a file with no text hunk at all
             n[0] += 1
             hunks.append(Hunk('h%d' % n[0], path, None, header, []))
 
-    for raw in diff_text.split('\n'):
+    for i, raw in enumerate(diff_text.split('\n')):
         if raw.startswith('diff --git '):
             flush_hunk(); flush_file()
             header, body, path, line = [raw], None, None, None
@@ -135,6 +172,8 @@ def parse(diff_text):
             header.append(raw)
         else:
             body.append(raw)
+            if moved and moved[i]:
+                moved_lines.add(len(body) - 1)
     flush_hunk(); flush_file()
     for h in hunks:                            # drop the trailing blank from split()
         while h.body and h.body[-1] == '':
@@ -333,9 +372,10 @@ def setup(target):
         raise SetupError('not inside a git repository')
     untracked, args, log_range = resolve_target(target)
     text = run_git(args)
+    flags = moved_flags(args, text)
     if untracked:
-        text += untracked_diff()
-    hunks = parse(text)
+        text, flags = with_untracked(text, flags)
+    hunks = parse(text, flags)
     if not hunks:
         raise SetupError('the diff for %s is empty; nothing to tour' % target)
     # A repository with a tmp/ folder (Rails apps have one) keeps its tours there, so
@@ -400,9 +440,10 @@ def main(argv):
         fragments = expand_fragments(fragments, arg if mode == 'assemble' else None)
 
     text = run_git(rest)
+    flags = moved_flags(rest, text)
     if untracked:
-        text += untracked_diff()
-    hunks = parse(text)
+        text, flags = with_untracked(text, flags)
+    hunks = parse(text, flags)
 
     if mode == 'ids':
         for h in hunks:
