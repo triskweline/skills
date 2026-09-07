@@ -152,6 +152,8 @@ class Repo(RepoCase):
         self.assertIn('<span class="t">Unsorted hunks</span>', page)
         self.assertIn('id="h2"', page)
         self.assertIn('class="hunk lvl-plain file" id="h4"', page)
+        # A binary file that is new: the kind pill sits in the header bar's where, not the tools.
+        self.assertIn('<span class="where">bin.dat <span class="tag binary">binary</span></span>', page)
         self.assertIn('A binary file', page)
         self.assertIn('h2 h4', err)
         self.assertIn('(4 hunks, 2 placed by fragments, 2 appended)', out)

@@ -511,17 +511,19 @@ figcaption .where:focus-visible { outline: 2px solid var(--accent); outline-offs
 figcaption .sz { color: var(--faint); }
 figcaption .tools { display: flex; align-items: center; gap: .4rem; }
 
-/* Scoped to .tools, and it must stay scoped: Prism's markup grammar emits
-   <span class="token tag"> for every HTML tag it highlights, so a bare `.tag` rule here
-   would reach inside every diff. */
-.tools .tag {
-  font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
-  padding: .3rem .42rem; border-radius: 4px;
+/* The kind of file change, a pill after the path and the size. Scoped to figcaption, and
+   it must stay scoped: Prism's markup grammar emits <span class="token tag"> for every
+   HTML tag it highlights, so a bare `.tag` rule here would reach inside every diff. */
+figcaption .where .tag {
+  display: inline-block; vertical-align: .1em; margin-left: .35rem;
+  font: 600 9.5px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
+  padding: .22rem .38rem; border-radius: 4px;
   color: var(--muted); background: var(--bg); border: 1px solid var(--line);
 }
-.tools .tag.added { color: var(--ok); border-color: var(--add-edge); }
-.tools .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
-.tools .tag.moved { color: var(--accent); border-color: var(--accent); }
+figcaption .where .tag.added { color: var(--ok); border-color: var(--add-edge); }
+figcaption .where .tag.deleted { color: var(--fishy); border-color: var(--del-edge); }
+figcaption .where .tag.moved { color: var(--accent); border-color: var(--accent); }
+figcaption .where .tag.binary { color: var(--muted); border-color: var(--faint); }
 
 /* Marking a hunk viewed collapses its code and fades the whole hunk. When every hunk of
    a beat is viewed its prose column fades too, and when every hunk of a chapter is viewed

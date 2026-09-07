@@ -331,10 +331,15 @@ def parse_fragments(texts):
 
 # ------------------------------------------------------------------- figures
 
-def _kind(h):
+def _binary(h):
     head = '\n'.join(h.header)
-    if 'GIT binary patch' in head or '\nBinary files ' in head:
-        return 'binary'
+    return 'GIT binary patch' in head or '\nBinary files ' in head
+
+
+def _kind(h):
+    """How the file changed: added, deleted, moved, mode, or changed. Independent of
+    whether it is binary; a binary file can be any of these."""
+    head = '\n'.join(h.header)
     if '\nnew file mode' in head:
         return 'added'
     if '\ndeleted file mode' in head:
@@ -372,6 +377,7 @@ def figure(h, ident, level, reason, note='', ranges=None):
     then the diff card. The whole thing is one figure with the level as its left edge, so
     the hunks of a beat form a vertical line striped by attention level."""
     kind = _kind(h)
+    binary = _binary(h)
     add = sum(1 for l in h.body[1:] if l.startswith('+'))
     rem = sum(1 for l in h.body[1:] if l.startswith('-'))
     where = html.escape(h.path)
@@ -379,9 +385,12 @@ def figure(h, ident, level, reason, note='', ranges=None):
         where += ':%d' % h.line
     if add or rem:
         where += ' · <span class="sz">%s%s</span>' % ('+%d ' % add if add else '', '−%d' % rem if rem else '')
-    tags = []
+    # The kind of file change sits with the path and the size, where the eye reads the
+    # hunk's facts; the tools area on the right is for controls only.
     if kind in ('added', 'deleted', 'moved'):
-        tags.append('<span class="tag %s">%s</span>' % (kind, kind))
+        where += ' <span class="tag %s">%s</span>' % (kind, kind)
+    if binary:
+        where += ' <span class="tag binary">binary</span>'
     name = level or 'plain'
     badge = '<span class="lvl">%s</span>' % (level if level else 'read')
     # The badge opens the hunk's sentence, so the level is the first thing the eye meets
@@ -402,8 +411,7 @@ def figure(h, ident, level, reason, note='', ranges=None):
                    % (level, FLAG_LABEL[level],
                       html.escape(reason) if reason else 'please check this change'))
     out.append('<div class="card">')
-    out.append('<figcaption><span class="where">%s</span><span class="tools">%s</span></figcaption>'
-               % (where, ''.join(tags)))
+    out.append('<figcaption><span class="where">%s</span><span class="tools"></span></figcaption>' % where)
     if h.body:
         # The @@ line is not shown: its numbers are in the header bar already. Git's
         # function context after the second @@, the nearest declaration above the hunk,
@@ -415,7 +423,7 @@ def figure(h, ident, level, reason, note='', ranges=None):
         out.append('<pre class="diff"><code class="language-diff-%s diff-highlight">%s\n</code></pre>'
                    % (language_of(h.path, h.body), html.escape('\n'.join(h.body[1:]))))
     else:
-        out.append('<div class="binary">%s</div>' % NO_BODY[kind])
+        out.append('<div class="binary">%s</div>' % NO_BODY['binary' if binary else kind])
     out.append('</div>')
     out.append('</figure>')
     return '\n'.join(out)
