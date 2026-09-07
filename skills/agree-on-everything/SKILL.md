@@ -1,6 +1,13 @@
 ---
 name: agree-on-everything
-description: Turn software requirements into an autonomously executable implementation plan with no open questions or surprising edge cases, by resolving every decision with the user before any code is written. Use before implementation whenever the user wants to plan, think through, hash out, align on, pin down, de-risk, or stress-test requirements or a design, or says things like "let's plan this", "grill me on the requirements", or "let's agree on everything".
+description: >-
+  Resolves every detailed decision needed to implement a chosen approach to a software
+  requirement, producing a plan an agent can execute without further questions. Walks through
+  the future implementation, surfaces every decision, edge case and blocker, and settles each
+  one with the user before any code is written. The input is a requirement whose approach is
+  already settled. The output is a detailed implementation plan with no open questions. Use
+  when the user says "let's plan this", "grill me on the requirements", "let's agree on
+  everything", or wants to hash out, pin down, de-risk or stress-test a design.
 ---
 
 # Agree on everything

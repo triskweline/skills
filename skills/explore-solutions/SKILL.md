@@ -1,13 +1,14 @@
 ---
 name: explore-solutions
 description: >-
-  Explore the solution space for a given software requirement before committing to a plan.
-  Finds genuinely different approaches, compares their trade-offs from a bird's-eye view, and
-  helps the user narrow down to a set of solution candidates worth aligning on. Use when the
-  user is still undecided about how to approach a requirement, or says things like "what are
-  my options", "how could we approach this", "compare approaches", "what would it take to
-  build this", or "explore solutions". Not for detailed alignment on one chosen approach;
-  use an alignment skill for that afterwards.
+  Explores different approaches to a software requirement and compares their trade-offs, so
+  the user knows which approaches are workable and at what cost. Scans the codebase for what
+  exists and what will get in the way, generates genuinely different solution approaches,
+  compares them from a bird's-eye view, and tracks which ones the user keeps or rejects, until
+  a primary candidate and its fallbacks remain. The input is a requirement whose approach is
+  still open. The output is a small set of candidate approaches with their trade-offs, not a
+  plan. Use when the user asks "what are my options", "how could we approach this", "which
+  way should we go", "compare approaches", or wants to explore solutions.
 ---
 
 # Explore solutions
