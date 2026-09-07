@@ -142,9 +142,47 @@ def _prose(raw):
 
 # A line mark: `<!-- focus: ...lines... -->` or `<!-- dim @9: ...lines... -->`, written
 # directly after a hunk placeholder. The block is the quoted lines of the hunk to mark;
-# `@N` is an optional guess at the first line's number, used only to break a tie.
-MARK = re.compile(r'<!--\s*(focus|dim)(?:\s*@\s*(\d+))?\s*:(.*?)-->', re.S | re.I)
-STRAY_MARK = re.compile(r'<!--\s*(focus|dim)\b', re.I)
+# `@N` is an optional guess at the first line's number, used only to break a tie. A block
+# cannot contain "<!--": a mark that seems to is one that was never closed.
+MARK = re.compile(r'<!--\s*(focus|dim)(?:\s*@\s*(\d+))?\s*:((?:(?!<!--).)*?)-->', re.S | re.I)
+SENTINEL = re.compile(r'<!--mark:(\d+)-->')
+_MARKS = {}      # sentinel number -> (kind, hint, block), or ('invalid', None, message)
+_PROBLEMS = []   # mark problems found where no hunk can own them (the intro fragment)
+
+
+def _extract_marks(text):
+    """Replace every mark with a sentinel before the fragment is split at headings and
+    placeholders, so a quoted line that looks like a heading or a placeholder cannot
+    derail the parse. Badly formed marks become 'invalid' sentinels, which are reported
+    and never shown."""
+    def store(entry):
+        n = len(_MARKS) + 1
+        _MARKS[n] = entry
+        return '<!--mark:%d-->' % n
+
+    text = MARK.sub(lambda m: store((m.group(1).lower(), int(m.group(2)) if m.group(2) else None, m.group(3))), text)
+    # A block that contained "-->" ended there; what followed it up to the real "-->" now
+    # sits in the open, right after the sentinel.
+    text = re.sub(r'(<!--mark:\d+-->)([^<]*?-->)',
+                  lambda m: m.group(1) + store(('invalid', None,
+                      'a quoted line contained "-->", which ends the comment early; the mark covers only the lines before it')),
+                  text)
+    # What is left of "<!-- focus" or "<!-- dim" is a closed comment without a colon, or a
+    # comment never closed. The latter would swallow the page up to the layout's own
+    # closing marker, so it is cut at the next placeholder or heading.
+    def stray(m):
+        if m.group(1) is not None:
+            return store(('invalid', None, 'a focus/dim comment without a colon was ignored'))
+        return store(('invalid', None,
+                      'a focus/dim comment was never closed with -->; it and the text after it, up to the next placeholder or heading, were dropped'))
+    text = re.sub(r'<!--\s*(?:focus|dim)\b(?:(?:(?!<!--).)*?(-->)|.*?(?=<!--\s*hunk|<h[23]\b|\Z))', stray, text, flags=re.S | re.I)
+    return text
+
+
+def _take_marks(text):
+    """-> (text without sentinels, the marks they stood for)."""
+    marks = [_MARKS[int(n)] for n in SENTINEL.findall(text)]
+    return SENTINEL.sub('', text), marks
 
 
 def _beat(title, raw):
@@ -154,23 +192,12 @@ def _beat(title, raw):
     for i in range(1, len(parts), 4):
         level = parts[i + 1].lower() if parts[i + 1] else None
         reason = (parts[i + 2] or '').strip() if level else ''
-        marks = [(m.group(1).lower(), int(m.group(2)) if m.group(2) else None, m.group(3))
-                 for m in MARK.finditer(parts[i + 3])]
-        rest = MARK.sub('', parts[i + 3])
-        # What a badly written mark leaves behind is reported, never shown: a comment with
-        # no colon, or the tail of a block that contained "-->" and was cut short there.
-        if STRAY_MARK.search(rest):
-            marks.append(('invalid', None, 'a focus/dim comment without a colon was ignored'))
-            rest = re.sub(r'<!--.*?-->', '', rest, flags=re.S)
-        if '-->' in rest:
-            marks.append(('invalid', None, 'a quoted line contained "-->", which ends the comment early; the rest was dropped'))
-            rest = rest[rest.index('-->') + 3:]
+        rest, marks = _take_marks(parts[i + 3])
         items.append((parts[i], level, reason, _prose(rest), marks))
-    say = parts[0]
-    if MARK.search(say) or STRAY_MARK.search(say):
+    say, strays = _take_marks(parts[0])
+    if strays:
         # A mark before the first placeholder belongs to no hunk: reported, not shown.
         items.insert(0, (None, None, '', '', [('invalid', None, 'a focus/dim comment stood before any placeholder and was ignored')]))
-        say = re.sub(r'<!--.*?-->', '', say, flags=re.S)
     return {'title': _title(title) if title else '', 'say': _prose(say), 'items': items}
 
 
@@ -185,7 +212,9 @@ def resolve_marks(h, marks):
     block that matches several times takes the match nearest the `@N` hint, or is dropped
     when there is no hint. A block that matches nowhere is dropped. Dropped marks are
     returned as messages so the assembler can report them."""
-    body = [_norm(l[1:]) for l in h.body[1:]]
+    # The "\\ No newline at end of file" marker is a body line too; it is matched by any
+    # quoted line that starts with a backslash, since nobody types it out exactly.
+    body = ['\\' if l.startswith('\\') else _norm(l[1:]) for l in h.body[1:]]
     ranges, problems = {'focus': [], 'dim': []}, []
     for kind, hint, block in marks:
         if kind == 'invalid':
@@ -203,8 +232,12 @@ def resolve_marks(h, marks):
         # the second pass tolerates a worker copying the +/- column; trying both at once
         # made a YAML "- item" match the body line "item" as well.
         n = len(quoted)
-        exact = [{_norm(q), _norm(html.unescape(q))} for q in quoted]
-        stripped = [{_norm(q[1:]), _norm(html.unescape(q[1:]))} if q[:1] in '+- ' else set(forms)
+        if n >= len(body) and len(body) > 0:
+            problems.append('%s in %s: the quoted block covers the whole hunk; a mark needs unmarked lines beside it, dropped'
+                            % (kind, h.id))
+            continue
+        exact = [{'\\'} if q.strip().startswith('\\') else {_norm(q), _norm(html.unescape(q))} for q in quoted]
+        stripped = [{_norm(q[1:]), _norm(html.unescape(q[1:]))} if q[:1] in '+- ' and not q.strip().startswith('\\') else set(forms)
                     for q, forms in zip(quoted, exact)]
         def windows(forms):
             return [w for w in range(0, len(body) - n + 1)
@@ -225,6 +258,24 @@ def resolve_marks(h, marks):
         else:
             w = starts[0]
         ranges[kind].append((w + 1, w + n))
+    # Where a dim range overlaps a focus range, focus wins: the dimmed part is trimmed.
+    focused = set()
+    for a, b in ranges['focus']:
+        focused.update(range(a, b + 1))
+    if focused and ranges['dim']:
+        trimmed, cut = [], False
+        for a, b in ranges['dim']:
+            run = None
+            for line in range(a, b + 1):
+                if line in focused:
+                    cut = True
+                    if run: trimmed.append(run); run = None
+                elif run: run = (run[0], line)
+                else: run = (line, line)
+            if run: trimmed.append(run)
+        if cut:
+            problems.append('%s: a dim block overlaps a focus block; focus wins on the shared lines' % h.id)
+        ranges['dim'] = trimmed
     return ranges, problems
 
 
@@ -240,15 +291,9 @@ def _chapter(title, raw):
         intro = intro[:m.start()]
     for i in range(1, len(parts), 2):
         beats.append(_beat(parts[i], parts[i + 1]))
-    if MARK.search(intro) or STRAY_MARK.search(intro):
-        # A mark in the chapter intro belongs to no hunk: reported, not shown.
-        problem = (None, None, '', '', [('invalid', None, 'a focus/dim comment stood before any placeholder and was ignored')])
-        if beats:
-            beats[0]['items'].insert(0, problem)
-        else:
-            beats.append({'title': '', 'say': '', 'items': [problem]})
-        intro = re.sub(r'<!--.*?-->', '', intro, flags=re.S)
-    return {'title': _title(title), 'intro': _prose(intro), 'beats': beats}
+    intro, strays = _take_marks(intro)
+    problems = ['a focus/dim comment stood before any placeholder and was ignored'] if strays else []
+    return {'title': _title(title), 'intro': _prose(intro), 'beats': beats, 'problems': problems}
 
 
 # Fixed lines under the intro's fixed headings, emitted here so they read identically on
@@ -332,8 +377,10 @@ def _spectrum_rows(summary_html):
 def parse_fragments(texts):
     """-> (title html, summary html, chapters). `texts` are fragment bodies in page order."""
     title, summary, chapters = '', [], []
+    _MARKS.clear()
+    del _PROBLEMS[:]
     for text in texts:
-        text = WRAPPERS.sub('', text)
+        text = _extract_marks(WRAPPERS.sub('', text))
         m = H1.search(text)
         if m:
             # The fragment with the <h1> is the intro. Everything else in it is the tour
@@ -341,7 +388,9 @@ def parse_fragments(texts):
             # chapters.
             if not title:
                 title = m.group(1).strip()
-            rest = text[:m.start()] + text[m.end():]
+            rest, strays = _take_marks(text[:m.start()] + text[m.end():])
+            if strays:
+                _PROBLEMS.append('a focus/dim comment stood in the intro fragment and was ignored')
             if rest.strip():
                 summary.append(_with_bylines(_prose(rest)))
             continue
@@ -529,8 +578,10 @@ def render(hunks, texts, git_args, out_path=''):
             mark_problems.extend(problems)
         return figure(by_id[hid], hid if n == 1 else '%s-%d' % (hid, n), level, reason, note, ranges)
 
+    mark_problems.extend(_PROBLEMS)
     body = []
     for n, ch in enumerate(chapters, 1):
+        mark_problems.extend(ch.get('problems', []))
         body.append('<section class="chapter" id="topic-%d">' % n)
         body.append('<h2><span class="n">%d</span><span class="t">%s</span></h2>' % (n, ch['title']))
         if ch['intro']:
@@ -591,6 +642,7 @@ def _beat_html(beat, fig):
     show = []
     for hid, level, reason, note, marks in beat['items']:
         show.append(fig(hid, level, reason, note, marks))
+    show = [piece for piece in show if piece]   # a hunk-less problem item renders nothing
     if not show:
         return '<section class="beat solo"><div class="say">%s</div></section>' % '\n'.join(say)
     return ('<section class="beat"><div class="say">%s</div><div class="show">%s</div></section>'

@@ -500,7 +500,7 @@ validate :validate_authentication_code_with_user
 <p>The code validation trait. ...</p>
 ```
 
-The script finds the block in the hunk and marks those lines. A block it cannot find, or one that matches in several places, is dropped and reported on stderr, never guessed. When your block is short or made of common lines (`end`, `raise`, a one-line focus), add `@N` with your guess at its first line, counting the hunk's lines from 1 below the `@@` line: `<!-- focus @9: ... -->`. The number is used only to choose between several matches, so a rough guess is fine. Quote lines raw, `<` and `&` included; the script matches text, not HTML. The one line you cannot quote is one containing `-->`, because it ends the comment early; start or end your block on the line next to it.
+The script finds the block in the hunk and marks those lines. A block it cannot find, or one that matches in several places, is dropped and reported on stderr, never guessed. When your block is short or made of common lines (`end`, `raise`, a one-line focus), add `@N` with your guess at its first line, counting the hunk's lines from 1 below the `@@` line: `<!-- focus @9: ... -->`. The number is used only to choose between several matches, so a rough guess is fine. Quote lines raw, `<` and `&` included; the script matches text, not HTML. The lines you cannot quote are ones containing `-->` or `<!--`, because they end or restart the comment; start or end your block on the line next to them. Focus and dim never overlap; where they would, focus wins.
 
 ## Write the topic fragment
 

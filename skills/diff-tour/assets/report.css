@@ -597,7 +597,7 @@ figure.hunk > .card { --gutter-w: 5px; }
 pre.diff > code > .token.inserted:not(.prefix), pre.diff .ln > .token.inserted:not(.prefix),
 pre.diff > code > .token.deleted:not(.prefix), pre.diff .ln > .token.deleted:not(.prefix),
 pre.diff > code > .token.unchanged:not(.prefix), pre.diff .ln > .token.unchanged:not(.prefix) { padding-left: calc(var(--gutter-w) + .85rem); }
-pre.diff > code:not(.highlighted) { padding-left: calc(var(--gutter-w) + .85rem); }
+pre.diff > code:not(.highlighted) { padding-left: calc(var(--gutter-w) + .85rem); padding-right: .85rem; }
 
 /* The gutter carries the focus mark: a stronger green or red by the kind of change on that
    line, grey for a context line. Dimmed lines leave the gutter empty; anything there

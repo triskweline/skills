@@ -398,6 +398,85 @@ class Repo(RepoCase):
         self.assertRegex(page, r'<figure class="hunk lvl-plain" id="h1" [^>]*data-focus="3-3"')
         self.assertNotRegex(page, r'<figure class="hunk lvl-plain" id="h1-2" [^>]*data-focus')
 
+    def test_an_unclosed_mark_is_cut_and_reported_not_shown(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h1 -->\n<!-- focus:\nline1\n<p>Sentence one.</p>\n'
+            '<!-- hunk h2 --><p>Sentence two.</p><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertNotRegex(main, r'<!--\s*(focus|dim)')
+        self.assertIn('id="h2"', main)                      # the next hunk survived the unclosed comment
+        self.assertIn('Sentence two.', main)
+        self.assertIn('never closed with -->', err)
+
+    def test_a_quoted_heading_or_placeholder_does_not_split_the_fragment(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<h3>Only beat</h3>\n<!-- hunk h1 -->\n'
+            '<!-- focus:\n<h3>Not a beat</h3>\n<h2>Not a chapter</h2>\n-->\n'
+            '<p>Sentence.</p>\n<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertEqual(main.count('<section class="chapter"'), 1)
+        self.assertEqual(main.count('<h3>'), 1)
+        self.assertNotIn('Not a', main)
+        self.assertIn('focus in h1: quoted block not found', err)
+
+    def test_a_stray_mark_in_a_prose_only_beat_keeps_it_solo(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<h3>Prose only</h3>\n<!-- focus: x -->\n<p>Just prose.</p>\n'
+            '<h3>With hunks</h3>\n<!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        main = page.split('<main>')[1].split('</main>')[0]
+        self.assertIn('<section class="beat solo"><div class="say"><h3>Prose only</h3>\n<p>Just prose.</p></div></section>', main)
+        self.assertNotIn('<div class="show"></div>', main)
+        self.assertIn('stood before any placeholder', err)
+
+    def test_dim_yields_to_focus_and_whole_hunk_marks_are_dropped(self):
+        # h2 body: 1 " line7" 2 " line8" 3 " line9" 4 "-line10" 5 "+line10 tail"
+        page, out, err = self.assemble(
+            '<h2>A</h2>\n<!-- hunk h2 -->\n<!-- focus:\nline9\n-line10\n-->\n<!-- dim:\nline8\nline9\n-line10\n+line10 tail\n-->\n'
+            '<!-- hunk h1 -->\n<!-- dim:\nline1\n-line2\n+CHANGED <b>&\nline3\nline4\nline5\n-->\n<p>S.</p>'
+            '<!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('data-focus="3-4"', page)
+        self.assertIn('data-dim="2-2,5-5"', page)         # the dim block minus the focused lines
+        self.assertIn('dim block overlaps a focus block', err)
+        self.assertIn('covers the whole hunk', err)
+        self.assertNotRegex(page, r'id="h1" [^>]*data-dim')
+
+    @unittest.skipUnless(shutil.which('node'), 'the wrapper runs in a browser; checking it needs node')
+    def test_wrap_lines_against_real_prism_output(self):
+        """The line wrapper in report.js, run in node against the vendored Prism: every source
+        line becomes one .ln with the run span as its direct child, a + line after a - run
+        carries no leftover span of that run, a token spanning lines keeps its class on both,
+        and the text keeps its newlines."""
+        js = read(os.path.join(SKILL, 'assets', 'report.js'))
+        fn = js[js.index('  function wrapLines(code) {'):js.index('  function markLines(fig, code) {')]
+        script = r"""
+const path = require('path'), V = %r;
+global.self = global; global.window = global;
+const Prism = require(V + '/prism-core.min.js'); global.Prism = Prism;
+for (const n of ['clike', 'javascript', 'diff', 'diff-highlight']) require(V + '/prism-' + n + '.min.js');
+%s
+const src = ' ctx\n-old line\n+new line\n+/* two\n+   lines */\n tail\n';
+const html = Prism.highlight(src, Prism.languages.diff, 'diff-javascript');
+const code = { innerHTML: html };
+wrapLines(code);
+/* The mock has no DOM, so the trailing empty line span the browser version removes is
+   removed here by hand. */
+const out = code.innerHTML.replace(/<span class="ln"><\/span>$/, '');
+const lines = out.split('<span class="ln">').slice(1);
+const check = [];
+check.push(['lines', lines.length === 6]);
+check.push(['balanced', (out.match(/<span/g) || []).length === (out.match(/<\/span>/g) || []).length]);
+check.push(['no-empty-span', !/<span class="token [^"]*"><\/span>/.test(out)]);
+check.push(['plus-after-minus', /^<span class="token inserted-sign inserted/.test(lines[2])]);
+check.push(['comment-split', /token comment/.test(lines[3]) && /token comment/.test(lines[4])]);
+check.push(['newlines', (out.match(/\n/g) || []).length === 6]);
+const failed = check.filter(c => !c[1]).map(c => c[0]);
+if (failed.length) { console.log('FAILED ' + failed.join(',')); console.log(out); process.exit(1); }
+console.log('ok');
+""" % (os.path.join(SKILL, 'vendor', 'prism'), fn)
+        r = subprocess.run(['node', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.strip(), 'ok')
+
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)
