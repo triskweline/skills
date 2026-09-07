@@ -264,6 +264,25 @@
     });
   }
 
+  /* ---- each chapter title carries one button for every hunk in the chapter, across all
+     its beats, so a reader who has read a whole topic marks it in one press. ---- */
+  chapterRecs.forEach(function (rec) {
+    var h2 = rec.el.querySelector(':scope > h2');
+    if (!h2 || !rec.figs.length) return;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'seen group';
+    b.addEventListener('click', function () { mark(rec.figs, !allSeen(rec.figs)); });
+    h2.appendChild(b);
+    painters.push(function () {
+      var all = allSeen(rec.figs), n = countSeen(rec.figs), total = rec.figs.length;
+      b.textContent = all
+        ? (total === 1 ? '✓ viewed' : 'All ' + total + ' viewed')
+        : (total === 1 ? 'Mark viewed' : 'Mark all ' + total + ' viewed' + (n ? ' (' + n + ' done)' : ''));
+      b.setAttribute('aria-pressed', all ? 'true' : 'false');
+    });
+  });
+
   painters.push(function () {
     chapterRecs.forEach(function (rec) {
       var c = rec.link.querySelector('.c');
@@ -301,7 +320,7 @@
      so and the page returns to the top. Only `mark()` announces, so marks restored on
      load never do, and unmarking cannot complete anything. ---- */
   var flashBox, flashTimer;
-  function flash(title, line) {
+  function flash(title, line, done) {
     if (!flashBox) {
       var wrap = document.createElement('div');
       wrap.className = 'flash';
@@ -315,6 +334,7 @@
     flashBox.firstChild.textContent = title;
     flashBox.lastChild.textContent = line;
     flashBox.parentNode.classList.add('on');
+    flashBox.parentNode.classList.toggle('done', !!done);
     clearTimeout(flashTimer);
     flashTimer = setTimeout(function () { flashBox.parentNode.classList.remove('on'); }, 3000);
   }
@@ -352,7 +372,7 @@
       return;
     }
     if (!delta.remaining.length) {
-      flash('All chapters done', 'Tour completed');
+      flash('All chapters done', 'Tour completed', true);
       party();
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;

@@ -269,6 +269,8 @@ button.sq:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
 }
 .flash.on .box { opacity: 1; transform: none; }
 .flash .box b { display: block; font-size: 34px; font-weight: 700; margin-bottom: .3rem; }
+/* The finish is the one flash in colour: the same green as a viewed mark. */
+.flash.done .box { background: color-mix(in srgb, var(--ok) 88%, transparent); }
 
 /* The party: a few seconds of emoji falling past the finish flash. Purely decorative,
    so a reader who asked for reduced motion gets none of it. */
@@ -393,6 +395,8 @@ section.chapter h2 {
   padding-bottom: .7rem;
   border-bottom: 2px solid var(--line);
 }
+/* The chapter's own mark-viewed button sits at the far right of the title line. */
+section.chapter h2 > button.seen { margin-left: auto; letter-spacing: 0; }
 section.chapter h2 .n {
   font: 600 1.1rem/1 var(--mono);
   color: #fff;
