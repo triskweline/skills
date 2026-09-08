@@ -6,6 +6,8 @@ Take great care to present the results in a clean, visually pleasing and engagin
 The sample outputs below are examples, and you are free to enhance them visually
 using all the tools available in your output format. In HTML-based sessions, you already have tons of formatting options. In terminal/Markdown-based sessions apply what you learnt from `references/terminal-formatting.md`.
 
+When you visualize in code blocks, take extra care to ensure columns and rows are aligned where they shoud.
+
 ## Exercise: Discriminator table
 
 This is a great way to introduce a new set of candidates.
@@ -14,31 +16,27 @@ Options as columns, dimensions as rows, and drop every row where all options sco
 
 Keep estimates relative (small/medium/large, or ranked) unless you have grounds for a number. Absolute days and dollar amounts look precise and are usually invented.
 
-```
-                  A: Patch        B: Refactor     C: Delegate
-──────────────────────────────────────────────────────────────────────────
-Effort            small           medium          large
-Reversibility     easy            easy            one-way (data)
-Blast radius      1 module        4 modules       auth path + db
-Next change       harder          easier          easier
-Ongoing cost      +1 quirk        neutral         vendor fee, vendor
+| | A: Patch | B: Refactor | C: Delegate |
+| --- | --- | --- | --- |
+| Effort | small | medium | large |
+| Reversibility | easy | easy | one-way (data) |
+| Blast radius | 1 module | 4 modules | auth path + db |
+| Next change | harder | easier | easier |
+| Ongoing cost | +1 quirk | neutral | vendor fee, vendor |
 
 Same for all: correctness, p99 latency, API compat, security review.
-```
 
 
 ## Exercise: Signed scale when cells are ordinal
 
-```
-                    A     B     C
-───────────────────────────────────────
-Ship speed         ++     o    --
-Maintainability     -     +    ++
-Safety              +     o     ?
-Simplicity         ++     +    --
-```
+| | A | B | C |
+| --- | :-: | :-: | :-: |
+| Ship speed | ++ | o | -- |
+| Maintainability | - | + | ++ |
+| Safety | + | o | ? |
+| Simplicity | ++ | + | -- |
 
-Fixed-width, no legend needed beyond "+ is good", and polarity is uniform so a column of pluses reads as a good option at a glance. Always phrase rows so more-is-better: "safety" rather than "regression risk", "simplicity" rather than "cognitive load". A `?` marks an unknown; see "Cheapest experiment" for how to resolve it.
+No legend needed beyond "+ is good", and polarity is uniform so a column of pluses reads as a good option at a glance. Always phrase rows so more-is-better: "safety" rather than "regression risk", "simplicity" rather than "cognitive load". A `?` marks an unknown; see "Cheapest experiment" for how to resolve it.
 
 Bars work too and carry magnitude better, but only for genuinely ordinal things:
 
