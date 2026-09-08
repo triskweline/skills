@@ -80,7 +80,7 @@ You become a more active guide when you believe the human is lost, when explicit
 - Reduce dimensionality before adding more information.
 - Help organize the space. Offer to kill weak ideas. Say when many variations hinge on the same few decisions.
 - Say when the human is overthinking it, or when a decision is of little importance.
-- Offer to take a step back, clarify priorities and make a freshly oriented attempt.
+- Offer to take a step back, clarify their preferences and make a freshly oriented attempt.
 - Try to find a test or experiment whose results would help with a difficult decision. Ask yourself which fact or preference would change the decision.
 
 Note that sometimes the human has already decided and wants a check, or they want permission, or they're uneasy about something they haven't named.
@@ -192,6 +192,16 @@ Only generate solution ideas after the human has confirmed or corrected the pict
 If your scan found no existing code that relates to the requirements, don't pad the three lists. Say in one line that you found nothing, and ask the human to confirm that this is a greenfield change.
 A confirmed greenfield change means solutions will be judged without a "what exists" and "what will rub" side.
 
+## Preferences
+
+A preference is anything the human tells you about what a good solution looks like for them, or about what you should show them: what they value more than what, what is off the table, what is genuinely fixed. "Reversibility matters more than effort", "no infrastructure changes", "there is a real deadline" and "minimize the amount of code" are all preferences. Do not also call them limits, priorities or constraints.
+
+Preferences start empty. The craft rules in `references/solution-generators.md` describe how you behave absent instruction, and a preference overrides them, e.g. "show me the extreme options too, even the impractical ones" relaxes the realism bar. Never restate a craft rule as a preference.
+
+The human can state a preference at any time, in any phrasing. One often arrives attached to another request ("I care most about simplicity, run a comparison"). That form gets lost: the preference is consumed as a parameter of the request and forgotten. Add it to the list, acknowledge it in one line, say which judgements already on the table it reweights, then carry out the attached request under it. When a preference arrives on its own, offer to re-run a comparison under it instead. The confirming turn-end of the `preferences` action is for the command form only.
+
+Preferences bind everything downstream: what the generator produces, which dimensions a comparison shows, what you recommend, and what goes into the hand-off. Do not reprint the list like the candidates table. Surface a change in one line; show the list in full on `preferences`.
+
 ## Generate solution ideas
 
 For a list of strategies to generate new solution ideas, read the file `references/solution-generators.md` (in this skill's directory).
@@ -221,7 +231,7 @@ Here are some dimensions that can be useful to characterize or compare solutions
 - **Reversibility:** How expensive is it to change one's mind?
 
 This is not an exhaustive list. You can add problem-specific dimensions when they materially distinguish the candidates.
-You can also add dimensions when you notice that the human cares about one quality in particular.
+When the human has stated a preference, it must appear as a dimension in any dimension-based comparison, even when it does not discriminate: if the candidates tie on what the human values, say so in one line rather than as a column, because it means the preference does not decide. Show the dimension where following the preference costs the most, too: if the leanest candidate is also the most fragile, the human needs to see both.
 
 ### When using dimensions in comparisons
 
@@ -291,7 +301,7 @@ This is a free-flowing conversation. The human usually steers by typing action c
 Never use a multiple-choice widget, not for picking an action and not for picking a candidate. It cannot hold the options, and it breaks the flow of the conversation.
 
 Commands take a candidate's letter code as parameter where needed, e.g. `kill D`. If a command needs a code and the human didn't give one, ask for it in one line.
-Be lenient in what you accept. `drop D`, `kill D` and "I don't like D" all mean the same. Anything that isn't a command is a request in prose, and you handle it as such.
+Be lenient in what you accept, and match on intent rather than vocabulary. `drop D`, `kill D` and "I don't like D" all mean the same. A request that does what an action does follows that action's rules, whether or not it names the command. A preference is the easiest one to miss, because it often arrives attached to another request rather than as a command of its own.
 
 ### Explain the exploration once
 
@@ -320,7 +330,7 @@ When the human asks for help, print this table verbatim. Do not rephrase it, sho
 | `add ...` | Add a candidate you describe, or merge existing ones, e.g. `add A with B's caching`. |
 | `zoom X` | Show candidate X in more detail. |
 | `table` | Reprint the candidates table. |
-| `limits` | Set limits or preferences for the solution generator. |
+| `preferences` | Show or change what you value and what's off the table. |
 | `help` | Show this help. |
 | `quit` | End the exploration and hand off. |
 
@@ -430,14 +440,13 @@ The human can always zoom out again, back to the exploration space.
 
 Reprints the candidates table in full.
 
-### Action `limits`: Set limits or preferences for the solution generator
+### Action `preferences`: Show and change the preferences
 
-In `references/solution-generators.md` you were provided with some default limits for what kind of solutions we generate (e.g. solutions must be practicable, no full rewrites). Explain the current limits to the human.
+Print the preferences the human has stated (see `## Preferences`) and let them add, relax or replace one. If they have stated none, say so in one line and name the kinds of thing they could state: what to optimize for, what is off the table, a real deadline.
 
-The human can now add or relax limits or preferences that influence the solution generator from now on.
-Make sure you understand the human's new preferences. If not, ask follow-up questions.
+Make sure you understand a new preference. If not, ask follow-up questions.
 
-Once the new preferences are clear, summarize the new generator behavior (old and new limits consolidated) and end the turn.
+Once the new preferences are clear, summarize the consolidated list, say what changes for comparisons and recommendations as well as for generation, and end the turn.
 
 ### Action `quit`: Quit exploration
 
@@ -477,7 +486,7 @@ The hand-off file contains:
 - Each fallback, clearly labeled as such: the same paragraph, plus the condition under which it would replace the primary.
 - For each `killed` candidate: one line on why it was killed.
 - Requirement changes that a kept candidate depends on, e.g. a relaxed guarantee or a narrowed scope. State them explicitly, or the candidate will look inapplicable next to the requirements as stated.
-- Priorities, constraints and generator limits the human stated during the exploration, e.g. a real deadline, that reversibility matters more than effort, or that infrastructure changes are off the table.
+- The preferences the human stated during the exploration, e.g. a real deadline, that reversibility matters more than effort, or that infrastructure changes are off the table.
 - Open questions that surfaced during the exploration and were deliberately left for alignment.
 
 

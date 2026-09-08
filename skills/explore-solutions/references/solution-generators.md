@@ -4,13 +4,11 @@ Below you can find a number of strategies to come up with new ideas for possible
 
 Do not mechanically produce one solution for every generator. Inspect the problem and repository, choose the generators that expose genuinely different approaches. Stop when additional candidates are merely similar permutations of existing ideas.
 
-## Limits
+## Keep solutions realistic
 
 A generated solution stands for an archetype of an approach, but it must still be a realistic, workable change to this repository. Don't present extreme strawman parodies that the human has no choice but to kill. E.g. the maximum solution from the Porzio Spectrum may contain heavy and risky changes to the code, but should not suggest rewriting the entire codebase in a new programming language because it is faster.
 
 If you judge a generated solution to be too extreme or impracticable, check if you can make it workable by limiting its scope or balancing it out with aspects from other approaches. In the example above, instead of rewriting the entire application in a faster language, suggest only porting a small but performance-critical component and integrating that.
-
-The human can add or relax limits to what solutions are worth presenting. For example, when the human cannot control their deployed server configuration, they might ask you to not generate solutions that involve infrastructure changes.
 
 ## Generator: Your own intuition
 
