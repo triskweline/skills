@@ -2,9 +2,11 @@
 
 Always pick one or two exercises that seem the most helpful at this point of the exploration.
 
-Take great care to present the results visually, using all the tools available in your output format.
+Take great care to present the results in a clean, visually pleasing and engaging way.
+The sample outputs below are examples, and you are free to enhance them visually
+using all the tools available in your output format. In HTML-based sessions, you already have tons of formatting options. In terminal/Markdown-based sessions apply what you learnt from `references/terminal-formatting.md`.
 
-## Discriminator table
+## Exercise: Discriminator table
 
 This is a great way to introduce a new set of candidates.
 
@@ -14,6 +16,7 @@ Keep estimates relative (small/medium/large, or ranked) unless you have grounds 
 
 ```
                   A: Patch        B: Refactor     C: Delegate
+──────────────────────────────────────────────────────────────────────────
 Effort            small           medium          large
 Reversibility     easy            easy            one-way (data)
 Blast radius      1 module        4 modules       auth path + db
@@ -24,10 +27,11 @@ Same for all: correctness, p99 latency, API compat, security review.
 ```
 
 
-## Signed scale when cells are ordinal
+## Exercise: Signed scale when cells are ordinal
 
 ```
                     A     B     C
+───────────────────────────────────────
 Ship speed         ++     o    --
 Maintainability     -     +    ++
 Safety              +     o     ?
@@ -42,7 +46,7 @@ Bars work too and carry magnitude better, but only for genuinely ordinal things:
 Ship speed    A ████░  B ██░░░  C █░░░░
 ```
 
-## Conditional recommendations
+## Exercise: Conditional recommendations
 
 Inverts the frame from "here are options, you rank them" to "here is the rule". This is often better than recommending one absolute winner: you're deriving decision boundaries.
 
@@ -68,7 +72,7 @@ Inverts the frame from "here are options, you rank them" to "here is the rule". 
 
 Worth it only when the two dimensions genuinely dominate, but it shows dominance and the Pareto frontier in a way tables don't.
 
-## Phase bars for incrementality
+## Exercise: Phase bars for incrementality
 
 Shows the thing a single effort number hides: when value arrives, and whether there's a long unglamorous tail after the "done" moment.
 
@@ -78,7 +82,7 @@ B  ░░░░▓▓▓▓▓▓             spike, then ships whole
 C  ░░░░▓▓▓▓▓▓░░░░░░▓▓     ships, then 3w migration tail
 ```
 
-## Trade-offs
+## Exercise: Trade-offs
 
 Useful when only a few candidates are left in the table.
 A large table would produce too many pairs.
@@ -99,7 +103,7 @@ Buys:
 + likely follow-up requirement becomes straightforward
 ```
 
-## Stakeholder walkthrough
+## Exercise: Stakeholder walkthrough
 
 Make multiple personas answer concrete questions for each solution, e.g.:
 
@@ -113,7 +117,7 @@ Make multiple personas answer concrete questions for each solution, e.g.:
 The trick is to role-play incentives and tasks, not personalities.
 
 
-## The next three requirements
+## Exercise: The next three requirements
 
 Invent plausible follow-up requests and mentally implement them against every candidate.
 
@@ -134,7 +138,7 @@ For each solution ask:
 This is probably one of the strongest exercises for judging abstraction quality.
 
 
-## Pre-mortem
+## Exercise: Pre-mortem
 
 Assume:
 
@@ -157,7 +161,7 @@ This is much better than generic "risks" because you're forced to construct a be
 Pairs well with the success-mortem.
 
 
-## Success-mortem
+## Exercise: Success-mortem
 
 Imagine it's six months later and this solution turned out to be an unusually good decision. Why?
 
@@ -173,7 +177,7 @@ C succeeded because removing the old subsystem eliminated an entire category of 
 
 Now you're comparing the worlds in which each solution wins.
 
-## Regret minimization
+## Exercise: Regret minimization
 
 Ask of each choice:
 
@@ -191,7 +195,7 @@ This surfaces optionality.
 
 Sometimes the technically inferior solution is rational because it keeps future choices open.
 
-## Explain it to the next developer
+## Exercise: Explain it to the next developer
 
 Imagine someone joins the project a year later.
 
@@ -211,7 +215,7 @@ If you need five historical anecdotes to explain a design, that's information.
 
 This isn't simply "simplicity"; it tests conceptual integrity.
 
-## Steelman each solution
+## Exercise: Steelman each solution
 
 Make the strongest credible case for every candidate, including the ugly-looking one.
 
@@ -229,7 +233,7 @@ which is a real danger with the minimum/maximum spectrum generator.
 
 Steelmanning pairs well with "Conditional recommendations" above: once you know the world in which each candidate wins, state it as a rule.
 
-## Cheapest experiment
+## Exercise: Cheapest experiment
 
 For uncertain trade-offs:
 
