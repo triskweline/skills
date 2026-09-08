@@ -1,9 +1,9 @@
 ---
-name: implement-autonomously
+name: build-alone
 description: Carry a set of requirements all the way to a tested, self-reviewed implementation that's ready to hand back, deciding open questions on your own and only interrupting for true showstoppers. Use when the user asks you to implement a feature, task, or ticket autonomously, end-to-end, or with minimal supervision — e.g. "build this on your own", "implement the whole thing", "go ahead and ship it".
 ---
 
-# Implement autonomously
+# Build alone
 
 Your task is to implement requirements on your own, without further human input.
 

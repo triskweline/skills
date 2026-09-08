@@ -118,7 +118,7 @@ When everything is agreed and no open question or edge case remains:
 - Ask whether to write a detailed execution plan.
   If yes, put it where the project keeps plans (e.g. `doc/plans`, or `plans/`)
 - Ask whether the human wants you to fully and autonomously implement the requirements, now that you are in full alignment.
-  If yes, use the `/implement-autonomously` skill.
+  If yes, use the `/build-alone` skill.
 
 ## Begin your work
 
