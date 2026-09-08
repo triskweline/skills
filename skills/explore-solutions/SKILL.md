@@ -455,15 +455,18 @@ You can recommend this action when you believe the human has decided on one or t
 
 ## Hand-off and good-bye
 
-If no candidate is `kept`, there is no result. Say so in one line and stop. Don't print a result set, don't recommend alignment, don't offer a file.
+If no candidate is `kept`, there is no result. Say so in one line and stop. Don't print a result set, don't recommend alignment, don't ask about a hand-off file.
 
 Otherwise, print an overview of the result set: the primary candidate, the fallbacks, and the `killed` candidates, each group clearly labeled.
 `merged` candidates are not part of the result set. Whatever they had to offer has survived in a `kept` candidate.
 Recommend that the human now makes an alignment pass to align on every detail required for an implementation plan.
 Check which alignment skills are available in this session and name them in your recommendation. Only skills available to you count; do not hunt for skill definitions elsewhere. Popular examples are `/agree-on-everything` and `/grill-me`, but the human may have others or none. If none is installed, recommend the alignment pass without naming a skill.
 
-Also offer to write a more detailed hand-off to a file, in case the human wants to align in a new session.
-Write it to a file of your choosing and print its path. It is up to the human to hand that file to the alignment session.
+Then ask the human explicitly whether they want a hand-off file, and wait for the answer. Never write one unasked.
+Say that the file is useful when they want to attach the exploration to a story or issue, or when they plan to continue alignment in another agent session.
+Say that it is *not* required to keep working in the current session, since the exploration is still in context.
+
+If the human wants the file, write it to a location of your choosing and print its path. It is up to the human to hand that file to the alignment session.
 
 The hand-off file contains:
 
