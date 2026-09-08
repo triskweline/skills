@@ -4,9 +4,14 @@
   difftour.py --setup <target>
       Resolve a tour target (dirty, staged, uncommitted, branch, <range>, <commit>,
       <branch>, <PR/MR number>, <PR/MR URL>), create the working directory with its
-      topic folders, and write the numbered diff into it. Prints WORK=, ARGS= (to paste
-      into --assemble), the commit list, the stat, TOPICS= (the folder names) and DIFF=. Exit 3 with one line
-      saying what went wrong when the target cannot be resolved.
+      topic folders, and write the numbered diff into it. Fetches origin first (read-only:
+      no local branch and no file is touched) so a branch is compared against origin's
+      default branch, not a stale local one. Prints WORK=, ARGS= (to paste into --assemble),
+      BASE= and TIP= (which refs are compared and how the local branches relate to origin),
+      the commit list, the stat, TOPICS= (the folder names), DIFF=, and for a commit tour an
+      ASK: line with OPTION: lines under it, the question the human answers before the tour
+      is built; an option may end in `=> --setup <target>`, the command that implements it.
+      Exit 3 with one line saying what went wrong when the target cannot be resolved.
 
   difftour.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT|DIR...
       Lay the fragments out, in order (a directory means every .html under it, in
@@ -255,6 +260,60 @@ def git_out(*args, ok=(0,)):
     return r.stdout.decode('utf-8', 'replace').strip()
 
 
+def fetch_remote(remote):
+    """Refresh a remote's remote-tracking refs, and for origin its HEAD. Read-only for
+    everything the human owns: no local branch, tag or file changes, and no credential
+    prompt to hang on. -> None, or the reason the fetch did not happen."""
+    if git_out('remote', 'get-url', remote) is None:
+        return 'no remote named %s' % remote
+    env = dict(os.environ, GIT_TERMINAL_PROMPT='0')
+    try:
+        r = subprocess.run(['git', 'fetch', '-q', '--no-tags', remote],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, timeout=90)
+        if r.returncode == 0 and remote == 'origin':
+            # origin/HEAD is not refreshed by a fetch; ask, so a renamed default branch is seen.
+            subprocess.run(['git', 'remote', 'set-head', 'origin', '-a'],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, timeout=90)
+    except subprocess.TimeoutExpired:
+        return 'git fetch %s took longer than 90 seconds' % remote
+    if r.returncode != 0:
+        reason = r.stderr.decode('utf-8', 'replace').strip().splitlines()
+        return 'git fetch %s failed: %s' % (remote, reason[-1] if reason else 'exit %d' % r.returncode)
+    return None
+
+
+def counts(a, b):
+    """(commits in a but not b, commits in b but not a), or None."""
+    out = git_out('rev-list', '--left-right', '--count', '%s...%s' % (a, b))
+    if not out or len(out.split()) != 2:
+        return None
+    x, y = out.split()
+    return int(x), int(y)
+
+
+def local_branch(name):
+    return git_out('show-ref', '--verify', '-q', 'refs/heads/' + name) is not None
+
+
+def tip_status(name):
+    """How a local branch relates to its upstream: {'upstream', 'remote_upstream', 'ahead',
+    'behind'} or {}. An upstream on a remote other than origin is fetched first, so a fork
+    workflow gets the same fresh comparison."""
+    full = git_out('rev-parse', '--symbolic-full-name', name + '@{u}')
+    up = git_out('rev-parse', '--abbrev-ref', '--symbolic-full-name', name + '@{u}')
+    if not full or not up:
+        return {}
+    info = {'upstream': up, 'remote_upstream': full.startswith('refs/remotes/')}
+    if info['remote_upstream']:
+        remote = git_out('config', 'branch.%s.remote' % name)
+        if remote and remote not in ('origin', '.'):
+            info['upstream_fetch_failed'] = fetch_remote(remote)
+    ab = counts(name, up)
+    if ab:
+        info['ahead'], info['behind'] = ab
+    return info
+
+
 def default_branch():
     head = git_out('symbolic-ref', '-q', 'refs/remotes/origin/HEAD')
     if head:
@@ -320,45 +379,54 @@ def fetch_pr(number, kind=None):
 
 
 def resolve_target(target):
-    """-> (untracked, git diff args, log range or None)."""
+    """-> (untracked, git diff args, log range or None, info). `info` describes the tip for
+    the human's question: kind ('tree', 'branch', 'pr', 'commit', 'range'), 'tip', and for a
+    local branch its 'upstream' with 'ahead'/'behind' counts."""
     t = target.strip()
     if t == 'dirty':
-        return True, [], None
+        return True, [], None, {'kind': 'tree'}
     if t == 'staged':
-        return False, ['--cached'], None
+        return False, ['--cached'], None, {'kind': 'tree'}
     if t == 'uncommitted':
-        return True, ['HEAD'], None
+        return True, ['HEAD'], None, {'kind': 'tree'}
     if t == 'branch':
         rng = branch_range('HEAD', 'HEAD')
-        return False, [rng], rng
+        name = git_out('symbolic-ref', '--short', '-q', 'HEAD')
+        info = {'kind': 'branch', 'tip': name or 'HEAD', 'local': True}
+        if name:
+            info.update(tip_status(name))
+        return False, [rng], rng, info
     m = re.search(r'/(pull|pulls)/(\d+)', t) if '://' in t else None
     if m:
         ref = fetch_pr(m.group(2), 'pull')
         rng = branch_range(ref, 'PR ' + m.group(2))
-        return False, [rng], rng
+        return False, [rng], rng, {'kind': 'pr', 'tip': 'PR ' + m.group(2)}
     m = re.search(r'/merge_requests/(\d+)', t) if '://' in t else None
     if m:
         ref = fetch_pr(m.group(1), 'merge-requests')
         rng = branch_range(ref, 'MR ' + m.group(1))
-        return False, [rng], rng
+        return False, [rng], rng, {'kind': 'pr', 'tip': 'MR ' + m.group(1)}
     if '://' in t:
         raise SetupError('URL %s is not a GitHub pull request or GitLab merge request URL' % t)
     if '..' in t:
         if git_out('rev-list', '-n', '1', t) is None:
             raise SetupError('git does not understand the range %s' % t)
-        return False, [t], t
+        return False, [t], t, {'kind': 'range', 'tip': t}
     if t.isdigit() and not is_branch(t) and git_out('rev-parse', '--verify', '-q', t + '^{commit}') is None:
         ref = fetch_pr(t)
         rng = branch_range(ref, 'PR/MR ' + t)
-        return False, [rng], rng
+        return False, [rng], rng, {'kind': 'pr', 'tip': 'PR/MR ' + t}
     if is_branch(t):
         rng = branch_range(t, 'branch ' + t)
-        return False, [rng], rng
+        info = {'kind': 'branch', 'tip': t, 'local': local_branch(t)}
+        if info['local']:
+            info.update(tip_status(t))
+        return False, [rng], rng, info
     if git_out('rev-parse', '--verify', '-q', t + '^{commit}') is not None:
         rng = '%s~1..%s' % (t, t)
         if git_out('rev-parse', '--verify', '-q', t + '~1^{commit}') is None:
             raise SetupError('%s has no parent to diff against' % t)
-        return False, [rng], rng
+        return False, [rng], rng, {'kind': 'commit', 'tip': t}
     import difflib
     names = (git_out('branch', '-a', '--format=%(refname:short)') or '').split()
     close = difflib.get_close_matches(t, names, n=5, cutoff=0.5)
@@ -370,7 +438,10 @@ def setup(target):
     import tempfile
     if git_out('rev-parse', '--show-toplevel') is None:
         raise SetupError('not inside a git repository')
-    untracked, args, log_range = resolve_target(target)
+    # Working-tree targets and explicit ranges never look at origin; everything else does.
+    t = target.strip()
+    fetch_failed = None if t in ('dirty', 'staged', 'uncommitted') or '..' in t else fetch_remote('origin')
+    untracked, args, log_range, info = resolve_target(target)
     text = run_git(args)
     flags = moved_flags(args, text)
     if untracked:
@@ -392,15 +463,96 @@ def setup(target):
         f.write(body)
     print('WORK=%s' % work)
     print(('ARGS=%s-- %s' % ('--untracked ' if untracked else '', ' '.join(args))).rstrip())
+    base = default_branch() if info['kind'] in ('branch', 'pr') else None
+    if base:
+        print('BASE=%s  (%s)' % (base, describe_base(base, fetch_failed)))
+    if info['kind'] == 'branch':
+        print('TIP=%s  (%s)' % (info['tip'], describe_tip(info)))
     print('COMMITS:')
+    log = git_out('log', '--oneline', '--no-decorate', log_range) if log_range else None
     if log_range:
-        print(git_out('log', '--oneline', '--no-decorate', log_range) or '(none)')
+        print(log or '(none)')
     else:
         print('(none: working tree)')
     print('STAT:')
     print(git_out('diff', '--stat', *args) or '(no stat)')
     print('TOPICS=%s' % ' '.join('topic-%02d' % n for n in range(1, 13)))
     print('DIFF=%s  (%d lines, %d hunks)' % (diff_path, body.count('\n'), len(hunks)))
+    if log_range:
+        for line in question(info, base, len(log.splitlines()) if log else 0, fetch_failed):
+            print(line)
+
+
+def describe_base(base, fetch_failed):
+    """The parenthesis after BASE=: whether origin was asked, and where the local default
+    branch stands against it."""
+    if not base.startswith('origin/'):
+        return 'local; %s' % (fetch_failed or 'no origin counterpart')
+    note = 'fetched now' if not fetch_failed else 'NOT fetched, may be stale: %s' % fetch_failed
+    name = base[len('origin/'):]
+    if not local_branch(name):
+        return '%s; no local %s' % (note, name)
+    ab = counts(name, base)
+    if not ab:
+        return '%s; how local %s relates to it is unknown' % (note, name)
+    if ab == (0, 0):
+        return '%s; local %s is in sync' % (note, name)
+    ahead, behind = ab
+    parts = (['local %s is %d ahead' % (name, ahead)] if ahead else []) + \
+            (['local %s is %d behind' % (name, behind)] if behind else [])
+    return note + '; ' + ' and '.join(parts)
+
+
+def describe_tip(info):
+    """The parenthesis after TIP=: local or remote, and the upstream relation."""
+    if not info.get('local'):
+        return 'remote-tracking branch; no local branch of that name'
+    if not info.get('upstream'):
+        return 'local; no upstream configured'
+    ahead, behind = info.get('ahead', 0), info.get('behind', 0)
+    if not info.get('remote_upstream'):
+        return 'local; tracks the local branch %s, %d ahead and %d behind it' % (info['upstream'], ahead, behind)
+    if info.get('upstream_fetch_failed'):
+        return 'local; %s NOT fetched (%s), %d ahead of and %d behind what is known of it' % (
+            info['upstream'], info['upstream_fetch_failed'], ahead, behind)
+    if not ahead and not behind:
+        return 'local; in sync with %s' % info['upstream']
+    return 'local; %d ahead of and %d behind %s' % (ahead, behind, info['upstream'])
+
+
+def question(info, base, n, fetch_failed):
+    """The ASK: line and its OPTION: lines for a tour of `n` commits. The orchestrator relays
+    them to the human and runs whatever the chosen option names after `=>`; it composes
+    nothing itself. Only a remote upstream yields the "tour the pushed state" option: a
+    branch tracking a local branch has no pushed state to offer."""
+    commits = 'this commit' if n == 1 else 'these %d commits' % n
+    what = {'branch': 'on %s' % info.get('tip'), 'pr': 'of %s' % info.get('tip'),
+            'commit': 'at %s' % info.get('tip'), 'range': 'in %s' % info.get('tip')}[info['kind']]
+    ask = 'Tour %s %s%s?' % (commits, what, ' against %s' % base if base else '')
+    ahead, behind = info.get('ahead', 0), info.get('behind', 0)
+    up = info.get('upstream') if info.get('remote_upstream') else None
+    if info['kind'] == 'branch' and info.get('local') and up:
+        if ahead and behind:
+            ask += ' Your branch is %d ahead of and %d behind %s.' % (ahead, behind, up)
+        elif behind:
+            ask += ' Your branch is %d behind %s.' % (behind, up)
+        elif ahead:
+            ask += ' That includes %d unpushed commit%s.' % (ahead, '' if ahead == 1 else 's')
+    if fetch_failed and fetch_failed.startswith('no remote named'):
+        ask += ' There is no origin remote, so the base is a local branch.'
+    elif fetch_failed:
+        ask += ' origin could not be reached (%s); the base may be stale.' % fetch_failed
+    lines = ['ASK: ' + ask]
+    desc = 'the local branch as it is' if info.get('local') and info['kind'] == 'branch' else 'as listed above'
+    if ahead and up:
+        desc += ', including %d unpushed commit%s' % (ahead, '' if ahead == 1 else 's')
+    lines.append('OPTION: Tour %s | %s' % (commits, desc))
+    if behind and up:
+        lines.append('OPTION: Tour %s instead | the pushed state, %d commit%s you do not have locally => --setup %s'
+                     % (up, behind, '' if behind == 1 else 's', up))
+    stop = 'pull or rebase first, then start the tour again' if behind and up else 'nothing is generated'
+    lines.append('OPTION: Stop | ' + stop)
+    return lines
 
 
 def main(argv):

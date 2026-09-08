@@ -650,6 +650,118 @@ class Setup(RepoCase):
         finally:
             shutil.rmtree(origin)
 
+    def test_setup_fetches_origin_and_puts_the_branch_state_to_the_human(self):
+        d = self.dir
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'second')
+        sh(d, 'git', 'checkout', '-q', '-b', 'feature/x')
+        self.write('f.txt', 'feature\n')
+        sh(d, 'git', 'add', 'f.txt')
+        sh(d, 'git', 'commit', '-q', '-m', 'feature work')
+        origin = tempfile.mkdtemp(prefix='difftour-origin-')
+        other = tempfile.mkdtemp(prefix='difftour-other-')
+        sh(origin, 'git', 'init', '-q', '--bare')
+        sh(origin, 'git', 'symbolic-ref', 'HEAD', 'refs/heads/main')
+        sh(d, 'git', 'remote', 'add', 'origin', origin)
+        sh(d, 'git', 'push', '-q', '-u', 'origin', 'main', 'feature/x')
+        sh(d, 'git', 'remote', 'set-head', 'origin', 'main')
+        sh(origin, 'git', 'tag', 'v1', 'refs/heads/main')
+        try:
+            # In sync: a plain confirmation with two options.
+            code, facts, out, err = setup(d, 'feature/x')
+            self.assertEqual(code, 0, err)
+            self.assertTrue(facts['BASE'].startswith('origin/main  (fetched now; local main is in sync)'), facts['BASE'])
+            self.assertEqual(facts['TIP'], 'feature/x  (local; in sync with origin/feature/x)')
+            self.assertIn('ASK: Tour this commit on feature/x against origin/main?', out)
+            options = [l for l in out.splitlines() if l.startswith('OPTION: ')]
+            self.assertEqual([o.split(' | ')[0] for o in options], ['OPTION: Tour this commit', 'OPTION: Stop'])
+            works = [facts['WORK']]
+            self.assertNotIn('=>', out)
+
+            # Someone else pushes to the branch and to main: local is behind both. Setup
+            # fetches, compares against origin's main, reports the gap and offers the pushed
+            # branch as a target; the local branch itself is never moved.
+            sh(other, 'git', 'clone', '-q', origin, '.')
+            sh(other, 'git', 'config', 'user.email', 'o@example.com')
+            sh(other, 'git', 'config', 'user.name', 'O')
+            sh(other, 'git', 'checkout', '-q', 'feature/x')
+            with open(os.path.join(other, 'g.txt'), 'w') as f:
+                f.write('pushed by a colleague\n')
+            sh(other, 'git', 'add', 'g.txt')
+            sh(other, 'git', 'commit', '-q', '-m', 'colleague work')
+            sh(other, 'git', 'checkout', '-q', 'main')
+            with open(os.path.join(other, 'm.txt'), 'w') as f:
+                f.write('main moved on\n')
+            sh(other, 'git', 'add', 'm.txt')
+            sh(other, 'git', 'commit', '-q', '-m', 'main moved on')
+            sh(other, 'git', 'push', '-q', 'origin', 'main', 'feature/x')
+            local_tip = sh(d, 'git', 'rev-parse', 'refs/heads/feature/x').stdout.strip()
+            local_main = sh(d, 'git', 'rev-parse', 'refs/heads/main').stdout.strip()
+            code, facts, out, err = setup(d, 'feature/x')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('local main is 1 behind', facts['BASE'])
+            self.assertFalse(os.path.exists(os.path.join(d, '.git', 'refs', 'tags', 'v1')))   # --no-tags
+            self.assertEqual(facts['TIP'], 'feature/x  (local; 0 ahead of and 1 behind origin/feature/x)')
+            self.assertIn('Your branch is 1 behind origin/feature/x.', out)
+            self.assertIn('OPTION: Tour origin/feature/x instead | the pushed state, 1 commit you do not have locally => --setup origin/feature/x', out)
+            self.assertIn('OPTION: Stop | pull or rebase first', out)
+            self.assertNotIn('colleague work', out)          # the local branch does not have it
+            self.assertEqual(sh(d, 'git', 'rev-parse', 'refs/heads/feature/x').stdout.strip(), local_tip)
+            self.assertEqual(sh(d, 'git', 'rev-parse', 'refs/heads/main').stdout.strip(), local_main)
+            # The offered command tours the pushed branch, against the fresh origin/main.
+            code, facts, out, err = setup(d, 'origin/feature/x')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertRegex(facts['ARGS'], r'^-- [0-9a-f]{12}\.\.origin/feature/x$')
+            self.assertIn('colleague work', out)
+            self.assertNotIn('main moved on', out)            # the base is origin/main, not the stale local main
+            self.assertEqual(facts['TIP'], 'origin/feature/x  (remote-tracking branch; no local branch of that name)')
+
+            # A local commit on top: diverged, both counts in the question.
+            self.write('h.txt', 'unpushed\n')
+            sh(d, 'git', 'add', 'h.txt')
+            sh(d, 'git', 'commit', '-q', '-m', 'unpushed work')
+            code, facts, out, err = setup(d, 'branch')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('Your branch is 1 ahead of and 1 behind origin/feature/x.', out)
+            self.assertIn('OPTION: Tour these 2 commits | the local branch as it is, including 1 unpushed commit', out)
+
+            # A branch that tracks a local branch has no pushed state to offer: no `=>` option,
+            # and the question does not talk about origin.
+            sh(d, 'git', 'branch', '-q', '--track', 'feature/local', 'feature/x')
+            sh(d, 'git', 'checkout', '-q', 'feature/local')
+            self.write('i.txt', 'on the local tracker\n')
+            sh(d, 'git', 'add', 'i.txt')
+            sh(d, 'git', 'commit', '-q', '-m', 'tracker work')
+            code, facts, out, err = setup(d, 'feature/local')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('tracks the local branch feature/x, 1 ahead and 0 behind it', facts['TIP'])
+            self.assertNotIn('=>', out)
+            self.assertNotIn('Your branch is', out)
+            sh(d, 'git', 'checkout', '-q', 'feature/x')
+
+            # origin unreachable: the fetch fails, setup still works and says the base may be stale.
+            sh(d, 'git', 'remote', 'set-url', 'origin', os.path.join(origin, 'gone'))
+            code, facts, out, err = setup(d, 'feature/x')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertIn('NOT fetched, may be stale', facts['BASE'])
+            self.assertIn('origin could not be reached', out)
+            # Working-tree tours ask nothing.
+            self.write('f.txt', 'edited\n')
+            code, facts, out, err = setup(d, 'dirty')
+            works.append(facts['WORK'])
+            self.assertEqual(code, 0, err)
+            self.assertNotIn('ASK:', out)
+        finally:
+            shutil.rmtree(origin)
+            shutil.rmtree(other)
+            for w in works:
+                shutil.rmtree(w, ignore_errors=True)
+
 
 if __name__ == '__main__':
     unittest.main()

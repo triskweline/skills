@@ -149,10 +149,10 @@ Target:
   dirty         All unstaged and untracked changes
   staged        All staged changes
   uncommitted   All dirty and staged changes
-  branch        The current branch vs its branch point off the default branch
+  branch        The current branch vs its branch point off origin's default branch
   <git range>   e.g. main..HEAD, abc123..def456
   <commit>      e.g. HEAD~1, or a commit SHA
-  <branch>      compared against the repo's default branch
+  <branch>      compared against origin's default branch
   <number>      a PR or MR in this repo
   <PR/MR URL>   a GitHub pull request or GitLab merge request
 
@@ -169,17 +169,23 @@ Everything mechanical before the clustering happens in **one script call**, run 
 <skill dir>/bin/difftour.py --setup <target>
 ```
 
-It resolves the target exactly as the help text lists them (a branch is compared against the default branch from its merge base; a PR or MR is fetched from the origin remote into a local ref, never checked out, so local changes are safe), creates the working directory with twelve empty topic folders in it, and writes the numbered diff. The working directory is a uniquely named folder inside the repository's `tmp/` if it has one (Rails apps do), otherwise in the system temp dir; two tours never share a folder, and a tour never numbers its own files. It prints:
+It first fetches origin, which is read-only: it refreshes what the repository knows about origin's branches and moves no local branch and no file. Then it resolves the target exactly as the help text lists them (a branch is compared against **origin's** default branch from its merge base, never against a local main or master that may be stale; a PR or MR is fetched from the origin remote into a local ref, never checked out, so local changes are safe), creates the working directory with twelve empty topic folders in it, and writes the numbered diff. It never pulls, merges, rebases or checks out; those are the human's to do. The working directory is a uniquely named folder inside the repository's `tmp/` if it has one (Rails apps do), otherwise in the system temp dir; two tours never share a folder, and a tour never numbers its own files. It prints:
 
 ```
 WORK=/home/me/app/tmp/diff-tour.sLxCWm          the working directory; fragments and the tour go here
 ARGS=-- 9b1f3c2a7e4d..feature/x                 paste this into --assemble in Part 4, verbatim
+BASE=origin/main  (fetched now; local main is 12 behind)      what the branch is compared against
+TIP=feature/x  (local; 2 ahead of and 3 behind origin/feature/x)   the branch being toured
 COMMITS:                                        the commit list, or "(none: working tree)"
 ...
 STAT:                                           git diff --stat
 ...
 TOPICS=topic-01 topic-02 ... topic-12           the empty topic folders inside WORK
 DIFF=/home/me/app/tmp/diff-tour.sLxCWm/diff.txt  (1527 lines, 61 hunks)
+ASK: Tour these 7 commits on feature/x against origin/main? Your branch is 2 ahead of and 3 behind origin/feature/x.
+OPTION: Tour these 7 commits | the local branch as it is, including 2 unpushed commits
+OPTION: Tour origin/feature/x instead | the pushed state, 3 commits you do not have locally => --setup origin/feature/x
+OPTION: Stop | pull or rebase first, then start the tour again
 ```
 
 The script covers the common cases and can fail at the edges: a branch name that does not exist, a PR number the origin remote does not serve, a repository with no default branch, an empty diff. It then prints one line saying what went wrong and exits non-zero. **Make one attempt to fix what that line names, then run the command again. If it fails a second time, stop and ask the human.** Do not resolve targets by hand, and do not run `git diff` yourself.
@@ -193,6 +199,18 @@ The commit list is a hint, not the plan. In a perfect world, commits would alrea
 - There might be a mix of good and bad commit styles
 
 So glance at the commit list in case it does give a good signal. The final selection of topics is deferred to a scan of the entire diff.
+
+## Confirm the commits with the human
+
+A tour built on the wrong range costs minutes to generate and then misleads a review, so the range is confirmed before anything else happens. When the setup output contains an `ASK:` line, put that question to the human with the question widget, **before reading the diff**; the question and the wait cost nothing against any budget, the clustering budget starts after the Read: the `ASK:` text followed by the commit list is the question (up to about fifteen commits in full, then "and N more"), and each `OPTION:` line is one choice, the text before `|` its label and the text after it its description. You compose nothing yourself: the script has already worked out which branches differ from origin and what the alternatives are.
+
+Then act on the answer:
+
+- An option that ends in `=> --setup <target>`: run that setup command and treat its output the same way. Its question is normally a one-click confirmation of the commits the human has now seen. Follow at most one such option per tour; if the second run offers another, stop and tell the human what the script found.
+- "Tour these N commits": continue with the `WORK` directory of the run that asked.
+- "Stop": end with one line saying nothing was generated and why. The human pulls, rebases or pushes at their own pace; you never do any of that for them.
+
+A run that asks and is then abandoned leaves an empty working directory in `tmp/`; leave it. Working-tree targets print no `ASK:` line, since there is no commit list to get wrong; continue straight to the diff.
 
 ## Read the full diff
 
