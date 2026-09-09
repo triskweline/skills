@@ -341,6 +341,8 @@ After the table, add one line: anything else the human types is a request in pro
 Before you ask for the next action, say briefly what changed in your picture of the exploration, if anything did. Silence is fine when nothing changed.
 This is also the moment to check on the human when you suspect they are lost, unfocused or stuck with a hard decision.
 
+Your preparatory comments should *briefly* conclude the previous turn and frame the results into the greater exploration. The spotlight should remain on the previous turn's results (e.g. exercise output), and we don't want long commentary to push those results out of the visible viewport. Hence keep your comments short, 1-2 paragraphs or a short list is enough.
+
 Then recommend some actions, and ask the human to decide on the next one.
 
 ### Recommending next actions
