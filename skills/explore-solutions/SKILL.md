@@ -6,9 +6,11 @@ description: >-
   exists and what will get in the way, generates genuinely different solution approaches,
   compares them from a bird's-eye view, and tracks which ones the user keeps or rejects, until
   a primary candidate and its fallbacks remain. The input is a requirement whose approach is
-  still open. The output is a small set of candidate approaches with their trade-offs, not a
-  plan. Use when the user asks "what are my options", "how could we approach this", "which
-  way should we go", "compare approaches", or wants to explore solutions.
+  still open, typically the size of a feature or ticket. The output is a small set of
+  candidate approaches with their trade-offs, not a plan. This is a heavy, multi-turn session.
+  Use only when the user explicitly asks for a solution exploration: "explore solutions for
+  this", "run a solution exploration", "explore the solution space for this ticket". Not for
+  a quick question about options or alternatives, which gets a direct answer.
 ---
 
 # Explore solutions
