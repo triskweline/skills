@@ -56,6 +56,47 @@ an unquoted value and YAML reads the colon-space as a key/value separator. Quote
 value or make it a block scalar (`description: >-`) when the prose needs punctuation that
 YAML wants for itself.
 
+## Skills that use other skills declare it in a dependency check
+
+A skill whose instructions tell the agent to use another skill from this repo carries a
+`## Dependency check` section directly after its title and intro paragraph, before any
+other `##` heading. Its prose is this template, verbatim; only the table rows change:
+
+```markdown
+## Dependency check
+
+This skill uses other skills from triskweline/skills. Check which of them are available in
+this session by looking at the skills offered to you; do not search the filesystem.
+
+| Skill | Role in this skill |
+| --- | --- |
+| `/<name>` | <what the skill does in this skill's process, one line> |
+
+If all are available, say nothing about it and go on. For each missing skill, say in one
+line that it is missing and what you use instead: another skill you have that fills the
+role, or that you do the step yourself. Then continue. Where this skill's instructions name
+a missing skill, use your substitute for the rest of this run. Do not ask whether to install
+or what to substitute, and never install anything yourself.
+```
+
+The table lists exactly the repo skills the body refers to as `/name` in backticks, one row
+each. The role column says what the dependency does in *this* skill's process, in this
+skill's own words. Do not paste the other skill's description; it would drift.
+
+A mention of a skill that is not in this repo, as a contrast or example like
+`/code-review`, gets no row. Add its name to `ALLOWLIST` in the test instead.
+
+Call sites in the body stay bare: "use the `/self-review` skill". Do not add a fallback
+procedure at the call site, and do not write your own handling of a missing skill anywhere
+else. The one-line role in the table is all the agent needs to substitute, and a how-to at
+the call site invites it to skip the installed skill.
+
+When you add, remove or rename a reference to another skill, update the table, and the
+companion install line in the README when build-alone is affected.
+`tests/test_skill_references.py` fails when a referenced skill does not exist or when a
+table and its body disagree. The template wording and the README line are not checked;
+keep them in step by hand.
+
 ## Never commit a corpus from a private repository
 
 Test fixtures are written from the *shapes* that real diffs and tours revealed, never

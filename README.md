@@ -34,15 +34,33 @@ Install everything without prompts (`--all` installs every skill to every detect
 npx skills add triskweline/skills --all
 ```
 
-Install a single skill by pointing at its directory:
+Install a single skill by name:
 
 ```bash
-npx skills add https://github.com/triskweline/skills/tree/main/skills/effective-rails-testing
+npx skills add triskweline/skills --skill effective-rails-testing
 ```
 
 By default skills install into the current project.\
 Install skills globally using `--global`.
 
+
+## Skills that work together
+
+Some skills use other skills from this repo for a step of their process, and say so in a
+"Dependency check" section at the top of their `SKILL.md`. `build-alone` is the main example.
+
+You can install a skill without the skills it uses. It will then tell you in one line what
+is missing and what it does instead: either a skill of yours that fills the same role, or
+the step done by hand. If you would rather have the original, install it with the `--skill`
+command above.
+
+To install `build-alone` with everything it uses:
+
+```bash
+npx skills add triskweline/skills --skill build-alone --skill agree-on-everything \
+  --skill work-in-branch --skill find-verification-tools --skill full-verification \
+  --skill self-review --skill effective-rails-testing
+```
 
 ## Development
 
