@@ -9,11 +9,32 @@ Your task is to review a code change you just wrote, and improve your work with 
 The goal is to meaningfully improve the quality of code that was generated autonomously, reducing the burden on a human code review to find all faults.
 Ideally, your review-improved change can be merged by a human with only a cursory manual review and little to no additional changes.
 
+## Project-specific review rules
+
+Some projects keep their own review guidance; many have none. Look for `REVIEW.md` and
+`GITLAB-REVIEW.md` in the repo root, and for a section about code review in `AGENTS.md` or
+`CLAUDE.md`. If you find nothing, skip the rest of this section and use the quality
+dimensions below as they are.
+
+If you find rules, skip those about process (who reviews, how to label); only rules about
+the code apply. Merge the remaining rules into the quality dimensions below before you brief
+the sub-agent, so it receives one checklist without contradictions:
+
+- A project rule that refines a dimension is added to that dimension, in the project's
+  own words.
+- A project rule that contradicts a dimension replaces the contradicted part. The project
+  wins.
+- A project rule that fits no dimension becomes a dimension of its own, named after its
+  topic.
+
+Shorten the defaults if the list gets long, never the project's rules. Tell the human in
+one line which files you merged.
+
 ## Tasking a sub-agent
 
-Ask a **sub-agent** to review your work, briefing it with our requirements only. Leave out technical details that you discovered during the implementation, to ensure that the sub-agent's review represents a true secondary opinion.
+Ask a **sub-agent** to review your work, briefing it with our requirements and the quality dimensions below (merged with project-specific rules, if there were any) only. Leave out technical details that you discovered during the implementation, to ensure that the sub-agent's review represents a true secondary opinion.
 
-The sub-agent review should focus on the following quality dimensions:
+By default, the sub-agent review focuses on the following quality dimensions:
 
 - **Correctness:** Does the new code fulfill requirements?
 - **Simplicity:** Is there a simpler or more concise way to implement this functionality?
