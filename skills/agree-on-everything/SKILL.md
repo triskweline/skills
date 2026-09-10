@@ -26,6 +26,21 @@ To discover the required decisions, walk through the future implementation in yo
 
 Then talk to the human until you agree on every single decision.
 
+## Dependency check
+
+This skill uses other skills from triskweline/skills. Check which of them are available in
+this session by looking at the skills offered to you; do not search the filesystem.
+
+| Skill | Role in this skill |
+| --- | --- |
+| `/build-alone` | Runs the autonomous implementation if the human asks for one at the end. |
+
+If all are available, say nothing about it and go on. For each missing skill, say in one
+line that it is missing and what you use instead: another skill you have that fills the
+role, or that you do the step yourself. Then continue. Where this skill's instructions name
+a missing skill, use your substitute for the rest of this run. Do not ask whether to install
+or what to substitute, and never install anything yourself.
+
 ## Tracking decisions
 
 Track a table of all decisions, which you update and extend as the discussion progresses.
