@@ -7,6 +7,21 @@ description: Confirm a change hasn't broken any current or past feature by runni
 
 Run the repo's entire test suite and all linters, and fix any failures. This is a full, exhaustive check of the whole codebase — covering current and past features, not just what you changed — so it is often slow. Be smart about choosing the fastest method to start tests.
 
+## Dependency check
+
+This skill uses other skills from triskweline/skills. Check which of them are available in
+this session by looking at the skills offered to you; do not search the filesystem.
+
+| Skill | Role in this skill |
+| --- | --- |
+| `/find-verification-tools` | Finds the project's test and lint commands when they are not already known. |
+
+If all are available, say nothing about it and go on. For each missing skill, say in one
+line that it is missing and what you use instead: another skill you have that fills the
+role, or that you do the step yourself. Then continue. Where this skill's instructions name
+a missing skill, use your substitute for the rest of this run. Do not ask whether to install
+or what to substitute, and never install anything yourself.
+
 ## Check which tools are available
 
 If you are unsure what testing and linting tools are used in this project, use the `/find-verification-tools` skill.
