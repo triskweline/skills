@@ -15,6 +15,21 @@ description: >-
 
 # Explore solutions
 
+## Dependency check
+
+This skill uses other skills from triskweline/skills. Check which of them are available in
+this session by looking at the skills offered to you; do not search the filesystem.
+
+| Skill | Role in this skill |
+| --- | --- |
+| `/agree-on-everything` | Recommended to the human as the alignment pass that follows this exploration. |
+
+If all are available, say nothing about it and go on. For each missing skill, say in one
+line that it is missing and what you use instead: another skill you have that fills the
+role, or that you do the step yourself. Then continue. Where this skill's instructions name
+a missing skill, use your substitute for the rest of this run. Do not ask whether to install
+or what to substitute, and never install anything yourself.
+
 ## Your mission
 
 Your human has been handed some software requirements.
@@ -473,7 +488,7 @@ If no candidate is `kept`, there is no result. Say so in one line and stop. Don'
 Otherwise, print an overview of the result set: the primary candidate, the fallbacks, and the `killed` candidates, each group clearly labeled.
 `merged` candidates are not part of the result set. Whatever they had to offer has survived in a `kept` candidate.
 Recommend that the human now makes an alignment pass to align on every detail required for an implementation plan.
-Check which alignment skills are available in this session and name them in your recommendation. Only skills available to you count; do not hunt for skill definitions elsewhere. Popular examples are `/agree-on-everything` and `/grill-me`, but the human may have others or none. If none is installed, recommend the alignment pass without naming a skill.
+Name the alignment skills available to you in your recommendation, e.g. `/agree-on-everything` or `/grill-me`.
 
 Then ask the human explicitly whether they want a hand-off file, and wait for the answer. Never write one unasked.
 Say that the file is useful when they want to attach the exploration to a story or issue, or when they plan to continue alignment in another agent session.
