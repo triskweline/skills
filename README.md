@@ -2,65 +2,182 @@
 
 A personal collection of [Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) for use with Claude Code and other agent tools.
 
-Each skill lives in `skills/<name>/SKILL.md` and encodes a reusable workflow.
+## Software development lifecycle
 
-## Available skills
+A comprehensive set of skills to move software requirements from idea to deployment,
+with strong human direction but minimal context switches. Each skill hands off to the
+next, and every skill also works on its own.
 
-| Skill | What it does |
-| --- | --- |
-| [`explore-solutions`](skills/explore-solutions/SKILL.md) | Explore the solution space for a requirement before planning: generate distinct approaches, compare their trade-offs from a birdseye view, and narrow down to a set of candidates. |
-| [`agree-on-everything`](skills/agree-on-everything/SKILL.md) | Turn requirements into an autonomously executable plan by resolving every open decision with the user before any code is written. |
-| [`build-alone`](skills/build-alone/SKILL.md) | End-to-end workflow for implementing a full set of requirements on your own: confirm requirements, branch, test, verify, self-review, then hand off. |
-| [`self-review`](skills/self-review/SKILL.md) | Have a sub-agent review your changes against the requirements, then reconcile and apply valid feedback. |
-| [`diff-tour`](skills/diff-tour/SKILL.md) | Walk a human through a diff they did not write: one self-contained HTML report where the real hunks sit beside narration explaining what each change is for, clustered into themed chapters. |
-| [`work-in-branch`](skills/work-in-branch/SKILL.md) | Make sure work happens on a properly named feature branch, following the repo's naming convention. |
-| [`find-verification-tools`](skills/find-verification-tools/SKILL.md) | Discover which test runners and linters a project uses, and the exact CLI commands to run them. |
-| [`full-verification`](skills/full-verification/SKILL.md) | Run the entire test suite and all linters (locally, in parallel, or via CI) and fix every failure — the slow, exhaustive check across current and past features. |
-| [`effective-rails-testing`](skills/effective-rails-testing/SKILL.md) | Default testing strategy for Ruby on Rails apps — unit specs for logic, a few E2E feature specs for frontend behavior, request specs for APIs. |
+### 🧭 [`/explore-solutions`](skills/explore-solutions/SKILL.md)
 
-## Installing skills
+> Explores the solution space for a requirement before planning: scans the codebase, generates
+> genuinely different approaches, compares their trade-offs from a bird's-eye view, and narrows
+> down to a primary candidate and its fallbacks. Ends with candidates, not a plan.
 
-These commands use the [`skills` CLI](https://github.com/vercel-labs/skills) to install skills straight from this repo — no clone needed.
+<details>
+<summary>Install this skill</summary>
 
-Open an interactive menu where you can list and install available skills:
+> ```bash
+> npx skills add triskweline/skills --global --skill explore-solutions
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
 
-```bash
-npx skills add triskweline/skills
-```
+</details>
 
-Install everything without prompts (`--all` installs every skill to every detected agent):
+### 🤝 [`/agree-on-everything`](skills/agree-on-everything/SKILL.md)
 
-```bash
-npx skills add triskweline/skills --all
-```
+> Turns a requirement with a settled approach into a plan an agent can execute without further
+> questions. Walks through the future implementation, surfaces every decision, edge case and
+> blocker, and settles each one with you before any code is written.
 
-Install a single skill by name:
+<details>
+<summary>Install this skill</summary>
 
-```bash
-npx skills add triskweline/skills --skill effective-rails-testing
-```
+> ```bash
+> npx skills add triskweline/skills --global --skill agree-on-everything
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
 
-By default skills install into the current project.\
-Install skills globally using `--global`.
+</details>
 
+### 🏗️ [`/build-alone`](skills/build-alone/SKILL.md)
 
-## Skills that work together
+> Carries a set of requirements all the way to a tested, self-reviewed implementation that is
+> ready to hand back. Confirms requirements, branches, tests, verifies and self-reviews on its
+> own, interrupting you only for true showstoppers.
 
-Some skills use other skills from this repo for a step of their process, and say so in a
-"Dependency check" section at the top of their `SKILL.md`. `build-alone` is the main example.
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill build-alone \
+>   agree-on-everything \
+>   work-in-branch \
+>   find-verification-tools \
+>   full-verification \
+>   self-review
+> ```
+>
+> The first name is the skill itself, the rest are the skills it uses for single steps of its
+> process. They are optional: leave any of them out and the agent tells you in one line what
+> is missing and what it does instead. Drop `--global` to install into the current project instead
+> of your user account.
+
+</details>
+
+### 🗺️ [`/diff-tour`](skills/diff-tour/SKILL.md)
+
+> Walks you through a diff you did not write but must review and take responsibility for.
+> Produces one self-contained HTML report that narrates the change as a tour: chapters in a
+> reading order that builds understanding, every hunk beside prose that says what it is for,
+> and a mark on each hunk saying how carefully it deserves to be read.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill diff-tour
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
+## Utility skills
+
+Smaller skills that do one job well. The lifecycle skills above use them for single steps of
+their process.
 
 You can install a skill without the skills it uses. It will then tell you in one line what
 is missing and what it does instead: either a skill of yours that fills the same role, or
-the step done by hand. If you would rather have the original, install it with the `--skill`
-command above.
+the step done by hand. If you would rather have the original, add its name to the `--skill` list
+of the install command, which takes any number of skill names.
 
-To install `build-alone` with everything it uses:
+### 🌿 [`/work-in-branch`](skills/work-in-branch/SKILL.md)
 
-```bash
-npx skills add triskweline/skills --skill build-alone --skill agree-on-everything \
-  --skill work-in-branch --skill find-verification-tools --skill full-verification \
-  --skill self-review --skill effective-rails-testing
-```
+> Makes sure work happens on a properly named feature branch, following the repo's naming
+> convention, instead of landing unreviewed on a protected branch like `main`.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill work-in-branch
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
+### 🧰 [`/find-verification-tools`](skills/find-verification-tools/SKILL.md)
+
+> Discovers which test runners and linters a project uses, and the exact CLI commands to run
+> them, so an agent can verify its changes without guessing.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill find-verification-tools
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
+### ✅ [`/full-verification`](skills/full-verification/SKILL.md)
+
+> Runs the entire test suite and all linters, picking the fastest route (local, parallel, or
+> CI), and fixes every failure. The slow, exhaustive check across current and past features.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill full-verification \
+>   find-verification-tools
+> ```
+>
+> The first name is the skill itself, the second is the skill it uses to find the project's
+> test and lint commands. It is optional: leave it out and the agent tells you in one line that
+> it is missing and what it does instead. Drop `--global` to install into the current project instead
+> of your user account.
+
+</details>
+
+### 🔍 [`/self-review`](skills/self-review/SKILL.md)
+
+> Has a sub-agent review your changes against the requirements for correctness, simplicity,
+> regressions and missing tests, then reconciles the feedback and applies what is valid.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill self-review
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
+### 💎 [`/effective-rails-testing`](skills/effective-rails-testing/SKILL.md)
+
+> Decides what kind of test to write for a change in a Ruby on Rails app: unit specs for logic,
+> a few end-to-end feature specs for frontend behavior, request specs for APIs.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill effective-rails-testing
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
 
 ## Development
 
