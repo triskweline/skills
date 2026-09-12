@@ -92,10 +92,27 @@ else. The one-line role in the table is all the agent needs to substitute, and a
 the call site invites it to skip the installed skill.
 
 When you add, remove or rename a reference to another skill, update the table, and the
-companion install line in the README when build-alone is affected.
+install command in the README entry of the skill you changed (see below).
 `tests/test_skill_references.py` fails when a referenced skill does not exist or when a
-table and its body disagree. The template wording and the README line are not checked;
+table and its body disagree. The template wording and the README are not checked;
 keep them in step by hand.
+
+## The README has one entry per skill
+
+Every skill under `skills/` has an entry in the README: a heading with an emoji and the
+skill name linked to its `SKILL.md`, a blockquoted paragraph saying what it does, and a
+collapsed `<details>` block with the `npx skills add` command. Copy an existing entry
+when you add a skill; remove the entry when you remove one; update the paragraph when a
+skill's purpose changes. The lifecycle section lists the skills in the order they are
+used, the utility section holds everything else.
+
+The install command names the skill first and then, one per line, the skills it depends
+on, so that installing them together is one paste. As a rule every skill in the
+dependency table goes there. The human sometimes decides that a listed skill is not a
+hard requirement and leaves it out; `effective-rails-testing` is left out of `build-alone`
+because it only matters for Rails projects. Do not add such a skill back on your own, and
+do not drop one on your own either: when a table and its install command disagree and
+you do not know why, ask.
 
 ## Never commit a corpus from a private repository
 
