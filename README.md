@@ -55,8 +55,7 @@ next, and every skill also works on its own.
 > npx skills add triskweline/skills --global --skill build-alone \
 >   agree-on-everything \
 >   work-in-branch \
->   find-verification-tools \
->   full-verification \
+>   pass-all-checks \
 >   self-review
 > ```
 >
@@ -111,39 +110,20 @@ of the install command, which takes any number of skill names.
 
 </details>
 
-### 🧰 [`/find-verification-tools`](skills/find-verification-tools/SKILL.md)
+### ✅ [`/pass-all-checks`](skills/pass-all-checks/SKILL.md)
 
-> Discovers which test runners and linters a project uses, and the exact CLI commands to run
-> them, so an agent can verify its changes without guessing.
+> Enumerates every check the project runs, from its CI config and docs, so that no linter is
+> forgotten. Then runs the entire test suite by the fastest route (local, parallel, or CI) and
+> fixes every failure. The slow, exhaustive check across current and past features.
 
 <details>
 <summary>Install this skill</summary>
 
 > ```bash
-> npx skills add triskweline/skills --global --skill find-verification-tools
+> npx skills add triskweline/skills --global --skill pass-all-checks
 > ```
 >
 > Drop `--global` to install into the current project instead of your user account.
-
-</details>
-
-### ✅ [`/full-verification`](skills/full-verification/SKILL.md)
-
-> Runs the entire test suite and all linters, picking the fastest route (local, parallel, or
-> CI), and fixes every failure. The slow, exhaustive check across current and past features.
-
-<details>
-<summary>Install this skill</summary>
-
-> ```bash
-> npx skills add triskweline/skills --global --skill full-verification \
->   find-verification-tools
-> ```
->
-> The first name is the skill itself, the second is the skill it uses to find the project's
-> test and lint commands. It is optional: leave it out and the agent tells you in one line that
-> it is missing and what it does instead. Drop `--global` to install into the current project instead
-> of your user account.
 
 </details>
 

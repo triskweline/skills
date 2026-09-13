@@ -16,9 +16,8 @@ this session by looking at the skills offered to you; do not search the filesyst
 | --- | --- |
 | `/agree-on-everything` | Settles every open requirement question with the human before the autonomous run starts. |
 | `/work-in-branch` | Moves the work onto a properly named feature branch. |
-| `/find-verification-tools` | Finds the project's test and lint commands when they are not already known. |
 | `/effective-rails-testing` | Picks the kind of test to add for each change when the project is a Rails app. |
-| `/full-verification` | Runs the whole test suite and all linters at the end and fixes failures. |
+| `/pass-all-checks` | Runs the whole test suite and all linters at the end and fixes failures. |
 | `/self-review` | Has a sub-agent review the finished change; valid findings are folded back in. |
 
 If all are available, say nothing about it and go on. For each missing skill, say in one
@@ -48,7 +47,6 @@ Only ask the user when you encounter true showstoppers, or when choosing wrong o
 ## Verify with tests
 
 Most projects will come heavily tested and linted. Tests are a great way to check if new code fulfills requirements, or if you broke existing functionality.
-If you are unsure what testing and linting tools are used in this project, use the `/find-verification-tools` skill.
 Assume all checks were passing before you started your changes.
 
 Verify *any* change by running possibly related tests (e.g. tests that mention the code identifiers, screens or UI elements you worked with). If you're unsure if a test is related, run it.
@@ -57,7 +55,7 @@ Tests can be useful before your implementation is complete. Consider verifying i
 Add tests for everything you do or change. For Ruby on Rails apps, use the `/effective-rails-testing` skill.
 Also fix existing tests that broke because of behavior changes.
 
-Any non-trivial change must *additionally* be verified by running the *full* test suite and linters. Use the `/full-verification` skill.
+Any non-trivial change must *additionally* be verified by running the *full* test suite and linters. Use the `/pass-all-checks` skill.
 The full test suite is slow. Only run the full test suite *after* possibly related tests (fast) already pass.
 
 ## Self-review
