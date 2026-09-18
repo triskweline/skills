@@ -9,8 +9,9 @@ Your task is to implement requirements on your own, without further human input.
 
 ## Dependency check
 
-This skill uses other skills from triskweline/skills. Check which of them are available in
-this session by looking at the skills offered to you; do not search the filesystem.
+This skill uses other skills from triskweline/skills. Your harness may announce only some
+of the installed skills to you, so check which of them are installed by looking in its
+standard skill locations. A skill you do not find there is missing.
 
 | Skill | Role in this skill |
 | --- | --- |
