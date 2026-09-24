@@ -458,6 +458,17 @@ class Repo(RepoCase):
         self.assertEqual(ranges['dim'], [(1, 3)])   # the first `end` below the head, not the last
         self.assertEqual(problems, [])
 
+    def test_moved_runs_shorter_than_three_lines_are_not_dimmed(self):
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour_html
+        class H:
+            id = 'h9'
+            body = ['@@', '+a', '+b', '+c', '+x', '+d', '+', '+e', '+f', '+y', '+g']
+            moved = {1, 2, 3, 5, 7, 10}   # a run of three, then two lines bridged by a blank, then a lone line
+        ranges, problems = difftour_html.resolve_marks(H(), [])
+        self.assertEqual(ranges['dim'], [(1, 3)])
+        self.assertEqual(problems, [])
+
     def test_moved_blocks_are_flagged_in_the_marker_and_dimmed_on_the_page(self):
         d = self.dir
         self.write('c.rb', 'class A\n  def alpha_value(input)\n    input.to_s.strip.downcase\n  end\n\n'

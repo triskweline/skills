@@ -63,7 +63,7 @@ class Hunk:
     def marker(self):
         where = self.path if self.line is None else '%s:%d' % (self.path, self.line)
         note = '' if self.body else '  (no text hunk: binary, mode or rename)'
-        if len(self.moved) >= 3:          # one relocated line is not worth the reader's attention
+        if len(self.moved) >= difftour_html.MOVED_MIN:   # a line or two relocated is not worth attention
             note += '  (moved: %d of %d lines)' % (len(self.moved), len(self.body) - 1)
         return '### %s  %s%s' % (self.id, where, note)
 

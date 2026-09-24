@@ -205,6 +205,7 @@ def _norm(line):
     return ' '.join(line.split())
 
 
+MOVED_MIN = 3    # moved lines a run needs before the script dims it; the marker's hint uses the same floor
 GAP = '[...]'   # alone on a line inside a block: "from the lines above to the lines below"
 
 
@@ -297,15 +298,14 @@ def resolve_marks(h, marks):
     # Moved code is dimmed by the script: nothing in those lines is new to the reader. git
     # marks the identical lines only, so a blank line between two moved runs is bridged; a
     # changed line inside a moved block stays undimmed, which is exactly the line to read.
-    moved, run = sorted(getattr(h, 'moved', ())), None
+    # Like a worker's dim, a run of one or two moved lines is not worth a mark.
+    moved, runs = sorted(getattr(h, 'moved', ())), []
     for n in moved:
-        if run and (n == run[1] + 1 or all(body[k - 1] == '' for k in range(run[1] + 1, n))):
-            run = (run[0], n)
+        if runs and (n == runs[-1][1] + 1 or all(body[k - 1] == '' for k in range(runs[-1][1] + 1, n))):
+            runs[-1] = (runs[-1][0], n, runs[-1][2] + 1)
         else:
-            if run: ranges['dim'].append(run)
-            run = (n, n)
-    if run:
-        ranges['dim'].append(run)
+            runs.append((n, n, 1))
+    ranges['dim'].extend((a, b) for a, b, count in runs if count >= MOVED_MIN)
     if focused and moved:
         ranges['dim'], _ = _trim(ranges['dim'], focused)
     return ranges, problems
