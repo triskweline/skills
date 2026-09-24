@@ -29,13 +29,16 @@ or what to substitute, and never install anything yourself.
 
 ## Preparing your autonomous run
 
-Before you begin changing code, there is a small window where you can still access the human to ask questions and resolve blockers.
+Before you begin changing code, there is a small window where you can still access the human to ask questions, resolve blockers and get permission pre-emptively.
 Use this window to pull everything you need from the human, so you can work independently later.
 After the preparatory window, the human will be away for a long time. When the human returns, they expect you to be ready to hand-off a high-quality implementation with no major issues.
 
 The most important preparation is ensuring your requirements are complete. There must be no undecided questions that would block you from implementing the requirements without further user input.
 If you just ran the `/agree-on-everything` skill, you already know everything you will need for an autonomous implementation.
 If you are still unsure about anything, use the `/agree-on-everything` skill to fully align with your human.
+
+Your harness or instructions might require you to ask permission for certain actions during your work, e.g. for pushing a branch or running commands against a remote system. Ask now for the permissions you expect to need, so your run won't stall on a permission prompt while the human is away. Bundle your asks into a single question that explains what you need and why.
+If during your run you discover more permissions are needed, postpone the affected actions and finish the part of your work you already have permission for. Don't get around a missing permission by other means, and don't complicate your work just to avoid an action it needs. When you can no longer continue, accept the interruption and ask for another permission batch.
 
 Non-trivial requirements should be implemented in a feature branch, using the `/work-in-branch` skill.
 
