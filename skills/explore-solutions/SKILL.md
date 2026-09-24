@@ -310,13 +310,15 @@ Always print the table in full. Skip no rows.
 You have now reached the main body of the exploration.
 This usually involves researching, comparing and mutating the candidate table in multiple turns of *actions*. The actions are described below; the human triggers them with the commands in the `help` table.
 
-You will repeatedly ask the human for the next turn's action until they are happy with the result set, or until they explicitly quit the exploration.
+You will repeatedly ask the human for the next turn's action until they are happy with the result set, or until they explicitly end the exploration with `done`.
 
 ### How the human steers
 
 This is a free-flowing conversation. The human usually steers by typing action commands into the chat. The human can also make arbitrary requests, or start a conversation with you.
 
 Never use a multiple-choice widget, not for picking an action and not for picking a candidate. It cannot hold the options, and it breaks the flow of the conversation.
+
+Never offer `quit` or `exit` as a command, not even as a synonym. The terminal intercepts these words and ends the whole session before you see them.
 
 Commands take a candidate's letter code as parameter where needed, e.g. `kill D`. If a command needs a code and the human didn't give one, ask for it in one line.
 Be lenient in what you accept, and match on intent rather than vocabulary. `drop D`, `kill D` and "I don't like D" all mean the same. A request that does what an action does follows that action's rules, whether or not it names the command. A preference is the easiest one to miss, because it often arrives attached to another request rather than as a command of its own.
@@ -350,7 +352,7 @@ When the human asks for help, print this table verbatim. Do not rephrase it, sho
 | `table` | Reprint the candidates table. |
 | `preferences` | Show or change what you value and what's off the table. |
 | `help` | Show this help. |
-| `quit` | End the exploration and hand off. |
+| `done` | End the exploration and hand off. |
 
 After the table, add one line: anything else the human types is a request in prose.
 
@@ -375,7 +377,7 @@ In the first turn, the most helpful actions are usually:
 - Show a broad comparison to get a feeling for what's on the table, e.g. using the *Discriminator table*.
 - Ask if the human's intuition says to immediately `kill` or `swap` one or more candidates. Expect experienced developers to always have a gut reaction to new ideas, while novices need more information to form an opinion.
 
-If the table is down to a single active candidate, ask whether the human wants to mark it as primary kept and quit, or see alternatives first.
+If the table is down to a single active candidate, ask whether the human wants to mark it as primary kept and finish with `done`, or see alternatives first.
 
 If the table is empty, recommend to generate 3 more candidates.
 
@@ -468,7 +470,7 @@ Make sure you understand a new preference. If not, ask follow-up questions.
 
 Once the new preferences are clear, summarize the consolidated list, say what changes for comparisons and recommendations as well as for generation, and end the turn.
 
-### Action `quit`: Quit exploration
+### Action `done`: End the exploration
 
 Ends the exploration loop and moves to the hand-off.
 
@@ -478,7 +480,7 @@ An undecided candidate carries no signal of substance, and passing it on would g
 Then, if more than one candidate is `kept`, ask the human which one is the *primary* candidate that the alignment session should start with.
 Explain that the other kept candidates remain as *fallbacks*: wiggle room in case alignment reveals more problems with the primary than the exploration could see.
 Offer your own recommendation with the question, in the usual style: the reason, and the condition that would flip it.
-If the human cannot name a primary, the exploration isn't done. Suggest one more comparison between the kept candidates instead of quitting.
+If the human cannot name a primary, the exploration isn't done. Suggest one more comparison between the kept candidates instead of ending.
 
 You can recommend this action when you believe the human has decided on one or two candidates, or when the generators don't produce new distinct solutions.
 
