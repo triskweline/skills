@@ -342,6 +342,22 @@ h2.legend-title { font-size: 1.37rem; line-height: 1.3; font-weight: 600; margin
 .legend .row { display: contents; }
 .legend b { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
 .legend button.level { justify-self: end; }
+/* Under the levels, the line marks by example: a mini hunk split into one block per group
+   of lines, each labelled beside it. Only the card's outer edges are padded. */
+h3.marks-title { font-size: 1.05rem; margin: 1.8rem 0 .6rem; color: var(--ink); }
+.marks-demo { max-width: 960px; display: grid; grid-template-columns: 380px 1fr; column-gap: 1.2rem; --gutter-w: 5px; }
+.marks-demo .code { background: var(--panel); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.marks-demo .code:first-of-type { border-top: 1px solid var(--line); border-radius: 8px 8px 0 0; padding-top: .45rem; }
+.marks-demo .code:nth-last-child(2) { border-bottom: 1px solid var(--line); border-radius: 0 0 8px 8px; padding-bottom: .45rem; }
+.marks-demo pre.diff { overflow: hidden; }
+.marks-demo pre.diff .ln, .marks-demo pre.diff .ln:first-child, .marks-demo pre.diff .ln:last-child { --line-pt: 0; --line-pb: 0; }
+.marks-demo .say { align-self: center; font-size: 14px; color: var(--ink-2); white-space: nowrap; padding-left: .9rem; border-left: 2px solid var(--line); }
+.marks-demo .say:empty { border-left: none; }
+.marks-demo .say b { font: 600 11px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); margin-right: .35rem; }
+@media (max-width: 900px) {
+  .marks-demo { grid-template-columns: 1fr; }
+  .marks-demo .say { white-space: normal; border-left: none; padding: .3rem 0 .6rem; }
+}
 /* Every viewed-state button on the page, pressed: the per-hunk button, a beat's group
    button, a legend level button. JS sets aria-pressed; this draws it. */
 button.seen[aria-pressed="true"] { color: var(--seen); border-color: var(--seen); }

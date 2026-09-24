@@ -583,7 +583,34 @@ def legend():
                     % (lvl, name, text,
                        ('<button type="button" class="seen level" data-level="%d">Mark viewed</button>' % lvl)
                        if button else '<span></span>'))
-    return '<h2 class="legend-title">How to read this tour</h2>\n<div class="legend">%s</div>' % ''.join(rows)
+    return ('<h2 class="legend-title">How to read this tour</h2>\n<div class="legend">%s</div>\n%s'
+            % (''.join(rows), marks_example()))
+
+
+# The line marks, explained by example: a fixed mini hunk, the same on every tour, with each
+# group of lines labelled beside it. Static markup in the page's own line classes, so it
+# needs no highlighting and hovering the faded lines lifts them like in any hunk.
+MARKS_EXAMPLE = [
+    ('dim', [(' ', 'def initialize(user, deck)'), (' ', '  @user = user'), (' ', '  @deck = deck'), (' ', 'end')],
+     'Skippable', 'Its name or shape says what is there. Hover to read it.'),
+    ('', [(' ', ''), (' ', 'def allowed?'), ('-', '  @deck.public?'), ('+', '  return true if @user.admin?')],
+     'Normal', 'What you need to understand the change.'),
+    ('focus', [('+', '  @deck.public? &amp;&amp; !@user.suspended?')],
+     'Must see', 'Read these if you read nothing else.'),
+    ('', [(' ', 'end')], '', ''),
+]
+
+
+def marks_example():
+    rows = []
+    for cls, lines, name, text in MARKS_EXAMPLE:
+        code = ''.join('<span class="ln%s"><span class="token %s"><span class="token prefix %s">%s</span>%s</span></span>'
+                       % (' ' + cls if cls else '', tok, tok, sign, line)
+                       for sign, line in lines
+                       for tok in [{'+': 'inserted', '-': 'deleted', ' ': 'unchanged'}[sign]])
+        rows.append('<div class="code"><pre class="diff"><code class="language-diff highlighted">%s</code></pre></div>'
+                    '<div class="say">%s</div>' % (code, '<b>%s</b> %s' % (name, text) if name else ''))
+    return '<h3 class="marks-title">Inside a hunk</h3>\n<div class="marks-demo">%s</div>' % ''.join(rows)
 
 
 def _git(*args):

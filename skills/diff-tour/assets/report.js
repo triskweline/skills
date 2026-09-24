@@ -483,6 +483,8 @@
       run.forEach(function (l) { l.classList.remove('lit'); });
     });
   }
+  /* The legend's example hunk is static, so its faded lines get their hover here. */
+  [].forEach.call(document.querySelectorAll('.marks-demo .ln.dim'), hoverDim);
 
   function light(el) {
     if (el.classList.contains('highlighted')) return;
