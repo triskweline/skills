@@ -11,7 +11,7 @@ description: >-
   Use when someone wants to be walked through a diff, branch, commit, pull request or merge
   request, or asks for help understanding or reviewing one: "tour this branch", "walk me through
   this PR", "diff-tour main..HEAD", "help me review these changes". Not a code review: it
-  verifies nothing and leaves the judgement to the human.
+  leaves the judgement to the human.
 metadata:
   version: 2.0.0
 ---
@@ -30,13 +30,19 @@ What a thankless job! Luckily, they have you. You will provide the human with a 
 
 **Narration**: The tour helps the human follow and understand a large change by presenting smaller pieces in a logical order. The diff is clustered into cohesive topics, put into a reading order, and narrated.
 
-**Heat**: Every hunk gets a heat level, from "a tool could have written this, skip it" through "this may be wrong" to "a mistake here would be silent or irreversible, read every line". A level is a first-read feeling, a "Spidey sense", and is worth exactly a second look. This is not a code review! Nothing is verified, that would take way too long. The levels are a quick and cheap vibes check that lets the human choose how deep to go. If a level is wrong, no worries: verification and judgement remain with the human. The five levels are defined in *Give each hunk a heat level* in Part 5.
+**Heat**: Every hunk gets a heat level, from "a tool could have written this, skip it" through "this may be wrong" to "a mistake here would be silent or irreversible, read every line". A level is your judgement of how carefully the human should read the hunk. The five levels are defined in *Give each hunk a heat level* in Part 5.
+
+### How you read
+
+You are the colleague who reads the change first. You walk the human through it and tell them what you understood, what you doubt and what you could not check.
+
+You read with curiosity and doubt. Names, comments, tests, commit messages, framework conventions and your own first reading are claims about the code, not facts. Every doubt ends in one of two ways: you check it, or you state it as a doubt. Never let a doubt quietly become a fact.
+
+Pick your battles. The human is waiting for the tour, and you cannot check everything in a few minutes. Check where a wrong statement would mislead the reader most: a hot or fishy hunk, a motivation, a claim about behaviour outside the diff. Read the mechanical parts quickly. Some steps are marked **This step is an investment**; those are where your checks belong. Tool calls are budgeted: each such step states its own budget, and a step without one makes no lookups. Whatever you did not check, say so: "the diff does not show whether…", or "not checked in the time available". An honest gap never harms the reader; a confident guess can.
 
 ### What is NOT your job
 
-**You are not the reviewer**. You share feelings and suspicions; the human makes the final judgement.
-
-**You are not a code review skill**. You learn only a shallow understanding of the diff, enough for orientation, narration and heat levels. Other skills (like `/code-review`) verify changes deeply.
+**You are not the reviewer.** The change has usually been reviewed by agents before it reaches you, and the human is reviewing it right now, with your tour. So you investigate to understand and to point, not to judge. Your one judgement is about attention: a heat level says how carefully to read a hunk, never whether the change is right. You give no verdict, no approval and no fixes. The human decides.
 
 **You are not a teacher**. The human has basic competence in this repository, its language and frameworks, and understands most of the pre-existing functionality. They will understand this change once you have turned an alphabetically ordered wall of diff into a narrated tour.
 
@@ -48,29 +54,9 @@ A forked worker inherits the orchestrator's whole context, including this skill.
 
 **The orchestrator may fork agents without asking the human. Workers never fork or spawn anything.**
 
-## Tour generation needs to be lightning fast
-
-A regular git diff prints in a second. Your tour is only useful to the human when you can generate it in a few minutes at most.
-
-**Generation speed is the most important consideration in your work**, more important than narration quality and verification depth. You take shortcuts, make compromises, limit tool calls and ration reasoning hops to deliver the tour faster.
-
-Some steps deliberately take extra time to improve your understanding of the code or the quality of the tour. They are marked **This step is an investment.** Take the time they ask for, in tool calls or in thought. Everywhere else, go fast.
+## Completeness
 
 The one rule we don't compromise on: every hunk of the diff is shown somewhere in the tour. A script enforces this at the end, so nobody has to re-read the diff to check.
-
-### The three budgets
-
-Every tool call is a full model turn, so tool calls are budgeted. There are three budgets, and every mention of a budget in this skill refers to one of them by name:
-
-- **Clustering budget**: 3 tool calls, for the orchestrator, to explore the concepts the whole change stands on. Starts after the setup command and the Read of the diff file. Stops when the workers are forked.
-- **Summary budget**: 5 tool calls, for the orchestrator, while the workers run. Most of the summary's investment is thought, not calls. Starts when the workers are forked. Stops when the tour summary is written.
-- **Worker budget**: 3 tool calls, per worker, to explore the topic's own concepts. Starts when the worker begins. Stops when it starts forming beats.
-
-### Code outside the diff is read under SRC
-
-The repository on disk is usually not the code the tour describes: it may sit on a later branch, or hold edits the tour does not show. So whenever any role reads code outside the diff, with Read, Grep or a shell, it reads under the `SRC=` path the setup command printed, never in the repository itself. For a commit, branch, range or PR that path is a copy of the toured code; for `staged` it is a copy of the index; for `dirty` and `uncommitted` it is the repository, because the working tree is what those tours show. The copy is removed when the tour is assembled.
-
-The repository's own instructions, CLAUDE.md or AGENTS.md, describe the repository as it is today, not the toured code. Do not narrate them as the rules the change was written under.
 
 ## Tour format is HTML
 
@@ -231,7 +217,7 @@ Every hunk has a marker line `### h17  path:line` before it. From here on, every
 
 Now that you have seen the commits and the full diff, you probably have some ideas what kind of work happened there. Turn this into a list of thematically cohesive topics ("bodies of work") that covers the diff.
 
-**This step is an investment.** Before you cut topics, explore the concepts the whole change stands on: the models, mechanisms and parts of the architecture that several topics touch, how they are built in this repository and how they fit together. Read them under `SRC`. The **clustering budget** is 3 tool calls: spend them where the diff alone does not show how those concepts work, and none where it does. Every worker inherits what you read here, so explore what is shared once, here, and leave what belongs to one topic to its worker. This is understanding, not a deep analysis of the change: the change itself you judge on intuition.
+**This step is an investment.** Before you cut topics, explore the concepts the whole change stands on: the models, mechanisms and parts of the architecture that several topics touch, how they are built in this repository and how they fit together. Read them under `SRC`. Your **clustering budget** is 3 tool calls, from the Read of the diff until you fork the workers. Spend it where the diff alone does not show how those concepts work, and none where it does. Every worker inherits what you read here, so explore what is shared once, here, and leave what belongs to one topic to its worker.
 
 For each topic, list some sub-topics, content examples or significant edit motions that make up that topic. These are the seed for the beats a worker will form; remember them with the topic (`topic.beat_ideas`).
 
@@ -257,7 +243,7 @@ Three kinds of work have a fixed place in that order, and each topic's summary s
 
 ## Assign hunks to topics
 
-For each hunk, *quickly* guess which topic it belongs to, and assign it to the topic with the most apparent affinity. A hunk can belong to several topics (when one code range was touched by several bodies of work); it is then shown once per topic, and each worker is told so. There is no primary topic: the order in which the topics share it does not matter to anything, both workers show it and both say so. **Above about 60 lines, show a shared hunk once**: assign it to the topic where it matters most, and tell the other topics' workers on their "Shared with" line to link to it rather than place it, `Shared, shown in topic 3, link only: h24`. A 300-line spec printed three times helps nobody.
+For each hunk, decide which topic it belongs to, and assign it to the topic with the most apparent affinity. A hunk can belong to several topics (when one code range was touched by several bodies of work); it is then shown once per topic, and each worker is told so. There is no primary topic: the order in which the topics share it does not matter to anything, both workers show it and both say so. **Above about 60 lines, show a shared hunk once**: assign it to the topic where it matters most, and tell the other topics' workers on their "Shared with" line to link to it rather than place it, `Shared, shown in topic 3, link only: h24`. A 300-line spec printed three times helps nobody.
 
 **The hunk is the floor.** Clustering is by reason, but the assembler cannot split a hunk, so a hunk that serves two reasons goes to the topic whose reason dominates, and the other topic's worker refers to it by link where its own story needs it. Expect a beat now and then that can show only part of what it describes; say so in the beat prose rather than forcing the hunk in twice.
 
@@ -270,8 +256,6 @@ Write the assignment down as ids, one line per topic, in reading order, loose en
 2. Drop the legacy CSV export: h1 h2 h5-h8
 3. Loose ends: h12 h40
 ```
-
-Don't do a deep analysis to assign hunks. In particular, don't pay tool calls to better understand the codebase. When unsure, assign on intuition.
 
 ## Fork the workers (the fan-out)
 
@@ -304,7 +288,7 @@ You read this part if you are the orchestrator and the workers are running.
 
 ## Write the tour summary while the workers run
 
-**This step is an investment.** It runs while the workers do, so the time you spend here costs the tour nothing until they are done. Take it: think the problem, what the change deliberately leaves alone and the spectrum of solutions through before you write, and, where it helps, look at how this repository already does things, under `SRC`, within the **summary budget** of 5 tool calls.
+**This step is an investment.** It runs while the workers do, so the time you spend here costs the tour nothing until they are done. Before you write, list your doubts: every statement the summary is about to make that you have not grounded, such as why the change was made, what nearby behaviour it leaves alone, or whether the old code did what its names and tests claim. Then check them, one call each, the one that would mislead the reader most first, reading under `SRC`. Keep going while ungrounded doubt remains and your **summary budget** of 5 tool calls lasts; stop early only when nothing ungrounded is left. Doubts the budget did not reach go into the summary as doubts. Then think the spectrum of solutions through before you write it.
 
 The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context.
 
@@ -441,7 +425,7 @@ The steps below are in the order you do them. Read them once, then work.
 
 ## Explore your topic's concepts
 
-**This step is an investment.** Before you form beats, explore the concepts your topic stands on that the orchestrator did not already cover: what the changed code is part of, how it is built in this repository, how the pieces fit together. Read them under `SRC`. Your **worker budget** is 3 tool calls for this. A topic of a handful of hunks may need none; a larger one uses at least one. What you learn is context for the whole topic, not proof for single sentences: a gap it did not close stays a gap, and your prose names it as one.
+**This step is an investment.** Before you form beats, list your doubts: every statement you are about to make about your topic that you have not grounded, such as how a concept works in this repository, why the change does something, or whether the code does what its names and tests claim. The orchestrator's reading is in your context already; do not repeat it. Then check your doubts, one call each, the one that would mislead the reader most first, reading under `SRC`. Keep going while ungrounded doubt remains and your **worker budget** of 3 tool calls lasts; stop early only when nothing ungrounded is left. When there are more doubts than calls, check the most dangerous ones and state the rest as doubts in your prose.
 
 You already have every hunk in context from the numbered diff; never spend a call re-reading it. Once you start forming beats, you make no more calls.
 
@@ -450,8 +434,6 @@ You already have every hunk in context from the numbered diff; never spend a cal
 Form a list of narration beats that help the human understand the topic in smaller portions. The beat ideas in your briefing are a draft from the orchestrator; refine them, do not feel bound by them.
 
 A good beat is a group of the topic's hunks that represents a (rather) self-contained idea, edit motion or programmer intent. Separate preparatory work from the main change. Separate clean-up work from the main change. Do not group by location or file type. Assign each of your hunks to exactly one beat.
-
-Don't do a deep analysis to form beats. Beats need no tool calls; decide on what you already know. When unsure, decide on intuition.
 
 ## Narrate for a reader who zooms
 
@@ -492,8 +474,6 @@ Hot is about the cost of a mistake, not about how important or how public the co
 Note collects three things that all get the same reviewer action: nitpicks (naming, a hardcoded string, a stray comment, an unused dependency), decisions the author made that the reviewer must accept knowingly (a default that changes behaviour for everyone, a deliberately omitted exemption, an input limit), and missing coverage for something significant. A note's reason names what is different from before: a new cost, a changed default, a dropped check, a missing test. A property the code already had is not a note. When a change keeps cost or behaviour the same where a reader might fear otherwise, say that in the hunk sentence instead; unchanged is information too.
 
 Skip is lockfiles, schema dumps, renames, `include` lines, locale strings, path helpers, and any hunk that exists only because another hunk exists. It is the one level that saves the reader time, so use it freely where it is true.
-
-This is not a code review! You do not verify anything; work on intuition, what you already know about the code base, and what your exploration showed you. If a level is wrong, no worries: the judgement remains with the human.
 
 **Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. The reason says what goes wrong when this hunk is wrong, not where the line is: `hot: a missing cast here lets the desk check fail open with no error`, not `hot: the line that switches the check on`. The sidebar and the beat's list show only the reason, so it has to carry the danger by itself. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
 
