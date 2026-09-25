@@ -54,15 +54,17 @@ A regular git diff prints in a second. Your tour is only useful to the human whe
 
 **Generation speed is the most important consideration in your work**, more important than narration quality and verification depth. You take shortcuts, make compromises, limit tool calls and ration reasoning hops to deliver the tour faster.
 
+Some steps deliberately take extra time to improve your understanding of the code or the quality of the tour. They are marked **This step is an investment.** Take the time they ask for, in tool calls or in thought. Everywhere else, go fast.
+
 The one rule we don't compromise on: every hunk of the diff is shown somewhere in the tour. A script enforces this at the end, so nobody has to re-read the diff to check.
 
 ### The three budgets
 
 Every tool call is a full model turn, so tool calls are budgeted. There are three budgets, and every mention of a budget in this skill refers to one of them by name:
 
-- **Clustering budget**: 10 tool calls, for the orchestrator. Starts after the setup command and the Read of the diff file. Stops when the workers are forked.
-- **Spectrum budget**: 10 tool calls and about 3 minutes of reasoning, for the orchestrator. Starts when the workers are forked. Stops when the tour summary is written.
-- **Worker budget**: 5 tool calls, per worker. Starts when the worker begins. Stops when it writes its fragment.
+- **Clustering budget**: 3 tool calls, for the orchestrator, to explore the concepts the whole change stands on. Starts after the setup command and the Read of the diff file. Stops when the workers are forked.
+- **Summary budget**: 5 tool calls, for the orchestrator, while the workers run. Most of the summary's investment is thought, not calls. Starts when the workers are forked. Stops when the tour summary is written.
+- **Worker budget**: 3 tool calls, per worker, to explore the topic's own concepts. Starts when the worker begins. Stops when it starts forming beats.
 
 ### Code outside the diff is read under SRC
 
@@ -229,7 +231,7 @@ Every hunk has a marker line `### h17  path:line` before it. From here on, every
 
 Now that you have seen the commits and the full diff, you probably have some ideas what kind of work happened there. Turn this into a list of thematically cohesive topics ("bodies of work") that covers the diff.
 
-Don't do a deep analysis. The **clustering budget** (10 tool calls, from now until the workers are forked) is for understanding concepts you need in order to cluster; spend it on key questions only, and work on intuition for the rest.
+**This step is an investment.** Before you cut topics, explore the concepts the whole change stands on: the models, mechanisms and parts of the architecture that several topics touch, how they are built in this repository and how they fit together. Read them under `SRC`. The **clustering budget** is 3 tool calls: spend them where the diff alone does not show how those concepts work, and none where it does. Every worker inherits what you read here, so explore what is shared once, here, and leave what belongs to one topic to its worker. This is understanding, not a deep analysis of the change: the change itself you judge on intuition.
 
 For each topic, list some sub-topics, content examples or significant edit motions that make up that topic. These are the seed for the beats a worker will form; remember them with the topic (`topic.beat_ideas`).
 
@@ -302,6 +304,8 @@ You read this part if you are the orchestrator and the workers are running.
 
 ## Write the tour summary while the workers run
 
+**This step is an investment.** It runs while the workers do, so the time you spend here costs the tour nothing until they are done. Take it: think the problem, what the change deliberately leaves alone and the spectrum of solutions through before you write, and, where it helps, look at how this repository already does things, under `SRC`, within the **summary budget** of 5 tool calls.
+
 The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context.
 
 **The whole summary is under 400 words**, the before/after table's cells not counted. The last tour's ran to 944 and read as a wall of text; a reader spent four minutes on it before the first chapter. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. The before/after table is a plain `<table>` with `<tr>`, `<th>` and `<td>`. No other markup, no emojis.
@@ -361,9 +365,9 @@ At most 100 words. The mechanisms that carry the change, one list item each, and
 
 ### The spectrum of solutions
 
-The most useful thing a tour can give a reviewer is a sense of where this solution sits among the solutions that were possible. This part is worth real thought, and it has its own budget, the **spectrum budget**: up to 10 tool calls and about 3 minutes of reasoning, from the fork until the summary is written. The tool calls are for looking at how this repository does things today, so the alternatives are grounded in this codebase rather than generic.
+The most useful thing a tour can give a reviewer is a sense of where this solution sits among the solutions that were possible. This part is worth the most thought: before choosing, think through several genuinely different approaches for each heading and discard the weaker ones. Where it helps, look at how this repository does things today, so the alternatives are grounded in this codebase rather than generic; those calls come from the summary budget.
 
-The budget is the limit, not the workers. If they return before you are done, finish the spectrum within the budget, then assemble. Never hand the reader a partial spectrum; two solutions and a missing third reads as a judgement that there is no third.
+If the workers return before you are done, finish the summary, then assemble. Never hand the reader a partial spectrum; two solutions and a missing third reads as a judgement that there is no third.
 
 Lay out three alternatives, an exercise borrowed from [Caleb Porzio's deconstructed pull requests](https://calebporzio.com/), under the three fixed headings above, **at most 60 words each**: what the alternative changes about the system, what it buys, what it costs.
 
@@ -435,11 +439,11 @@ If your briefing seems wrong (a hunk id that is not in the diff, a topic that do
 
 The steps below are in the order you do them. Read them once, then work.
 
-## Get a cursory understanding of your hunks
+## Explore your topic's concepts
 
-Your **worker budget** is 5 tool calls, from now until you write your fragment. Every tool call counts, including git. Use them only for a cursory, shallow understanding of what changed in this topic, and only where it makes the narration better. Focus on key questions; work on intuition for everything else.
+**This step is an investment.** Before you form beats, explore the concepts your topic stands on that the orchestrator did not already cover: what the changed code is part of, how it is built in this repository, how the pieces fit together. Read them under `SRC`. Your **worker budget** is 3 tool calls for this. A topic of a handful of hunks may need none; a larger one uses at least one. What you learn is context for the whole topic, not proof for single sentences: a gap it did not close stays a gap, and your prose names it as one.
 
-You already have every hunk in context from the numbered diff. Do not spend a tool call re-reading it.
+You already have every hunk in context from the numbered diff; never spend a call re-reading it. Once you start forming beats, you make no more calls.
 
 ## Form the narration beats
 
@@ -447,7 +451,7 @@ Form a list of narration beats that help the human understand the topic in small
 
 A good beat is a group of the topic's hunks that represents a (rather) self-contained idea, edit motion or programmer intent. Separate preparatory work from the main change. Separate clean-up work from the main change. Do not group by location or file type. Assign each of your hunks to exactly one beat.
 
-Don't do a deep analysis to form beats. Don't pay tool calls to understand the codebase for this. When unsure, decide on intuition.
+Don't do a deep analysis to form beats. Beats need no tool calls; decide on what you already know. When unsure, decide on intuition.
 
 ## Narrate for a reader who zooms
 
@@ -489,7 +493,7 @@ Note collects three things that all get the same reviewer action: nitpicks (nami
 
 Skip is lockfiles, schema dumps, renames, `include` lines, locale strings, path helpers, and any hunk that exists only because another hunk exists. It is the one level that saves the reader time, so use it freely where it is true.
 
-This is not a code review! You do not verify anything; work on intuition and what you already know about the code base. If a level is wrong, no worries: the judgement remains with the human.
+This is not a code review! You do not verify anything; work on intuition, what you already know about the code base, and what your exploration showed you. If a level is wrong, no worries: the judgement remains with the human.
 
 **Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. The reason says what goes wrong when this hunk is wrong, not where the line is: `hot: a missing cast here lets the desk check fail open with no error`, not `hot: the line that switches the check on`. The sidebar and the beat's list show only the reason, so it has to carry the danger by itself. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
 
