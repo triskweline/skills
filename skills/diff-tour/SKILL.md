@@ -64,6 +64,12 @@ Every tool call is a full model turn, so tool calls are budgeted. There are thre
 - **Spectrum budget**: 10 tool calls and about 3 minutes of reasoning, for the orchestrator. Starts when the workers are forked. Stops when the tour summary is written.
 - **Worker budget**: 5 tool calls, per worker. Starts when the worker begins. Stops when it writes its fragment.
 
+### Code outside the diff is read under SRC
+
+The repository on disk is usually not the code the tour describes: it may sit on a later branch, or hold edits the tour does not show. So whenever any role reads code outside the diff, with Read, Grep or a shell, it reads under the `SRC=` path the setup command printed, never in the repository itself. For a commit, branch, range or PR that path is a copy of the toured code; for `staged` it is a copy of the index; for `dirty` and `uncommitted` it is the repository, because the working tree is what those tours show. The copy is removed when the tour is assembled.
+
+The repository's own instructions, CLAUDE.md or AGENTS.md, describe the repository as it is today, not the toured code. Do not narrate them as the rules the change was written under.
+
 ## Tour format is HTML
 
 The tour is *not* printed to this session. It is one self-contained HTML file, opened in a browser.
@@ -176,6 +182,7 @@ WORK=/home/me/app/tmp/diff-tour.sLxCWm          the working directory; fragments
 ARGS=-- 9b1f3c2a7e4d..feature/x                 paste this into --assemble in Part 4, verbatim
 BASE=origin/main  (fetched now; local main is 12 behind)      what the branch is compared against
 TIP=feature/x  (local; 2 ahead of and 3 behind origin/feature/x)   the branch being toured
+SRC=/home/me/app/tmp/diff-tour.sLxCWm/src  (a copy of feature/x)   where code outside the diff is read
 COMMITS:                                        the commit list, or "(none: working tree)"
 ...
 STAT:                                           git diff --stat

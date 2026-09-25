@@ -8,6 +8,8 @@
       no local branch and no file is touched) so a branch is compared against origin's
       default branch, not a stale local one. Prints WORK=, ARGS= (to paste into --assemble),
       BASE= and TIP= (which refs are compared and how the local branches relate to origin),
+      SRC= (where to read code outside the diff: a copy of the toured tip inside the working
+      directory, or the repository itself for the working-tree targets),
       the commit list, the stat, TOPICS= (the folder names), DIFF=, and for a commit tour an
       ASK: line with OPTION: lines under it, the question the human answers before the tour
       is built; an option may end in `=> --setup <target>`, the command that implements it.
@@ -218,6 +220,9 @@ def assemble(out_path, hunks, fragments, git_args):
     page, report = difftour_html.render(hunks, texts, git_args, out_path)
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(page)
+    # The page is self-contained and every agent has finished reading, so the setup's copy
+    # of the source can go. remove_source_copy() touches nothing it did not make.
+    remove_source_copy(os.path.dirname(os.path.abspath(out_path)))
     missing, unknown, dupes = report['missing'], report['unknown'], report['dupes']
     if missing:
         sys.stderr.write('%d hunk(s) were not placed and were appended as "Unsorted hunks": %s\n'
@@ -434,6 +439,72 @@ def resolve_target(target):
     raise SetupError('%s is not a branch, commit, range, PR/MR number or URL here%s' % (t, hint))
 
 
+# The copy of the toured code that agents read outside the diff. It lives in a folder of
+# this fixed name inside the working directory, and a marker file next to it records that
+# the setup made it. Cleanup deletes the folder only when the marker is there and names
+# exactly that folder, so a tour whose SRC is the repository itself can never touch it.
+SRC_DIR = 'src'
+SRC_MARKER = '.src-copy'
+
+
+def tip_of(log_range):
+    """The right-hand side of a range, which is the code the tour describes."""
+    tip = log_range.split('..')[-1].lstrip('.')
+    return tip or 'HEAD'
+
+
+def make_source_copy(work, target, log_range, top):
+    """-> (SRC path, note). Commit tours get a snapshot of their tip, `staged` gets a snapshot
+    of the index, `dirty` and `uncommitted` read the working tree, which is their code."""
+    t = target.strip()
+    if t in ('dirty', 'uncommitted'):
+        return top, 'the working tree, which is what this tour shows'
+    dest = os.path.join(work, SRC_DIR)
+    os.makedirs(dest)
+    try:
+        if t == 'staged':
+            what = 'the index'
+            r = subprocess.run(['git', '-C', top, 'checkout-index', '-a', '--prefix=%s/' % dest],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+            ok = r.returncode == 0
+        else:
+            tip = tip_of(log_range)
+            what = tip
+            archive = subprocess.Popen(['git', 'archive', '--format=tar', tip], stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+            untar = subprocess.run(['tar', '-x', '-C', dest], stdin=archive.stdout,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+            archive.stdout.close()
+            ok = archive.wait(timeout=120) == 0 and untar.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        ok = False
+    with open(os.path.join(work, SRC_MARKER), 'w', encoding='utf-8') as f:
+        f.write(os.path.realpath(dest) + '\n')
+    if not ok:
+        return None, 'the copy of %s could not be made; read outside code with git show' % what
+    return dest, 'a copy of %s' % what
+
+
+def remove_source_copy(work):
+    """Delete the copy the setup made in `work`, and only that. Every condition must hold:
+    the marker exists and names `work`/src exactly, that folder is inside `work`, and it
+    holds no git repository. Anything else leaves the disk untouched."""
+    work = os.path.realpath(work)
+    marker = os.path.join(work, SRC_MARKER)
+    dest = os.path.realpath(os.path.join(work, SRC_DIR))
+    if not os.path.isfile(marker):
+        return
+    with open(marker, encoding='utf-8') as f:
+        named = f.read().strip()
+    if named != dest or os.path.dirname(dest) != work or not os.path.basename(work).startswith('diff-tour.'):
+        return
+    if os.path.lexists(os.path.join(dest, '.git')) or os.path.islink(dest):
+        return
+    if os.path.isdir(dest):
+        shutil.rmtree(dest)
+    os.remove(marker)
+
+
 def setup(target):
     import tempfile
     if git_out('rev-parse', '--show-toplevel') is None:
@@ -461,6 +532,7 @@ def setup(target):
     body = full_text(hunks)
     with open(diff_path, 'w', encoding='utf-8') as f:
         f.write(body)
+    src, src_note = make_source_copy(work, target, log_range, top)
     print('WORK=%s' % work)
     print(('ARGS=%s-- %s' % ('--untracked ' if untracked else '', ' '.join(args))).rstrip())
     base = default_branch() if info['kind'] in ('branch', 'pr') else None
@@ -468,6 +540,7 @@ def setup(target):
         print('BASE=%s  (%s)' % (base, describe_base(base, fetch_failed)))
     if info['kind'] == 'branch':
         print('TIP=%s  (%s)' % (info['tip'], describe_tip(info)))
+    print('SRC=%s  (%s)' % (src or '(none)', src_note))
     print('COMMITS:')
     log = git_out('log', '--oneline', '--no-decorate', log_range) if log_range else None
     if log_range:

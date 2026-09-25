@@ -597,6 +597,102 @@ class Setup(RepoCase):
         self.assertIn('5 hunks', facts['DIFF'])
         shutil.rmtree(facts['WORK'])
 
+    def test_a_commit_tour_reads_a_copy_of_its_tip_and_assemble_removes_only_that(self):
+        d = self.dir
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'second')
+        self.write('b.txt', 'edited after the commit\n')        # the working tree moves on
+        code, facts, out, err = setup(d, 'HEAD')
+        self.assertEqual(code, 0, err)
+        src = facts['SRC'].split('  (')[0]
+        work = facts['WORK']
+        self.assertEqual(src, os.path.join(work, 'src'))
+        self.assertEqual(read(os.path.join(src, 'b.txt')), 'hello world\n')   # the tip, not the working tree
+        self.assertFalse(os.path.exists(os.path.join(src, '.git')))
+        frag = os.path.join(work, 'topic-01', 'fragment.html')
+        with open(frag, 'w') as f:
+            f.write('<h2>A</h2><!-- hunk h1 --><p>S.</p>')
+        out_path = os.path.join(work, 'diff-tour.html')
+        r = sh(d, sys.executable, SCRIPT, '--assemble', out_path, *facts['ARGS'].split(), '++', work)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(os.path.isfile(out_path))
+        self.assertFalse(os.path.exists(src))                     # the copy is gone
+        self.assertTrue(os.path.isfile(os.path.join(work, 'diff.txt')))   # the rest of the tour stays
+        self.assertEqual(read(os.path.join(d, 'b.txt')), 'edited after the commit\n')
+        shutil.rmtree(work)
+
+    def test_a_staged_tour_reads_the_index_not_the_working_tree(self):
+        d = self.dir
+        sh(d, 'git', 'add', 'b.txt')                               # staged: "hello world"
+        self.write('b.txt', 'unstaged on top\n')
+        code, facts, out, err = setup(d, 'staged')
+        self.assertEqual(code, 0, err)
+        src = facts['SRC'].split('  (')[0]
+        self.assertEqual(read(os.path.join(src, 'b.txt')), 'hello world\n')
+        shutil.rmtree(facts['WORK'])
+
+    def test_working_tree_tours_read_the_repository_and_assemble_never_deletes_it(self):
+        d = self.dir
+        before = sorted(os.listdir(d))
+        for target in ('dirty', 'uncommitted'):
+            code, facts, out, err = setup(d, target)
+            self.assertEqual(code, 0, err)
+            work = facts['WORK']
+            self.assertEqual(os.path.realpath(facts['SRC'].split('  (')[0]), os.path.realpath(d))
+            self.assertFalse(os.path.exists(os.path.join(work, 'src')))
+            self.assertFalse(os.path.exists(os.path.join(work, '.src-copy')))
+            with open(os.path.join(work, 'topic-01', 'fragment.html'), 'w') as f:
+                f.write('<h2>A</h2><!-- hunk h1 --><p>S.</p>')
+            r = sh(d, sys.executable, SCRIPT, '--assemble', os.path.join(work, 'diff-tour.html'),
+                   *facts['ARGS'].split(), '++', work)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            shutil.rmtree(work)
+        self.assertEqual(sorted(os.listdir(d)), before)
+        self.assertEqual(read(os.path.join(d, 'a.py')).splitlines()[1], 'CHANGED <b>&')
+        self.assertEqual(sh(d, 'git', 'status', '--short').returncode, 0)
+
+    def test_cleanup_refuses_anything_it_did_not_make(self):
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour
+        base = tempfile.mkdtemp(prefix='difftour-guard-')
+        try:
+            # A marker that points somewhere else: nothing is deleted.
+            work = os.path.join(base, 'diff-tour.x1')
+            os.makedirs(os.path.join(work, 'src'))
+            victim = os.path.join(base, 'precious')
+            os.makedirs(victim)
+            with open(os.path.join(work, '.src-copy'), 'w') as f:
+                f.write(victim + '\n')
+            difftour.remove_source_copy(work)
+            self.assertTrue(os.path.isdir(victim))
+            self.assertTrue(os.path.isdir(os.path.join(work, 'src')))
+            # A src folder without a marker: kept.
+            os.remove(os.path.join(work, '.src-copy'))
+            difftour.remove_source_copy(work)
+            self.assertTrue(os.path.isdir(os.path.join(work, 'src')))
+            # A src that is a git repository or a symlink: kept, even with a correct marker.
+            os.makedirs(os.path.join(work, 'src', '.git'))
+            with open(os.path.join(work, '.src-copy'), 'w') as f:
+                f.write(os.path.realpath(os.path.join(work, 'src')) + '\n')
+            difftour.remove_source_copy(work)
+            self.assertTrue(os.path.isdir(os.path.join(work, 'src', '.git')))
+            work2 = os.path.join(base, 'diff-tour.x2')
+            os.makedirs(work2)
+            os.symlink(victim, os.path.join(work2, 'src'))
+            with open(os.path.join(work2, '.src-copy'), 'w') as f:
+                f.write(os.path.realpath(os.path.join(work2, 'src')) + '\n')
+            difftour.remove_source_copy(work2)
+            self.assertTrue(os.path.isdir(victim))
+            # A working directory not named like a tour: kept.
+            work3 = os.path.join(base, 'elsewhere')
+            os.makedirs(os.path.join(work3, 'src'))
+            with open(os.path.join(work3, '.src-copy'), 'w') as f:
+                f.write(os.path.realpath(os.path.join(work3, 'src')) + '\n')
+            difftour.remove_source_copy(work3)
+            self.assertTrue(os.path.isdir(os.path.join(work3, 'src')))
+        finally:
+            shutil.rmtree(base)
+
     def test_a_repository_tmp_folder_hosts_the_tour_and_is_never_toured(self):
         os.makedirs(os.path.join(self.dir, 'tmp'))
         code, facts, out, err = setup(self.dir, 'dirty')
