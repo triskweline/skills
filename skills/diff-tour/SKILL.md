@@ -540,6 +540,8 @@ A dim is written the same way with `dim:`. For a long run, quote its first and l
 -->
 ```
 
+The range is inclusive: the dim covers both quoted ends and everything between them. To dim a group of methods, end on the last method's closing line, never on the first line of the method after it.
+
 A focus inside a dim run is fine: the script cuts the dim around the focused lines, so a long sweep is one dim from its first line to its last, with its essential lines focused inside.
 
 Quoting the lines is all it takes in nearly every case. Only when the very same lines could stand twice in the hunk, a lone `end` or `raise`, a repeated generated line, add `@N` with the line number of your block's first line, counting from 1 at the line below `@@`: in the hunk above `end` is line 8, so `<!-- focus @8: end -->`. Count carefully; the script uses the number only to choose between the matches and takes the nearest. Never quote more lines than you mean to mark: a mark covers exactly the lines quoted.
