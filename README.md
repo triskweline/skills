@@ -110,6 +110,24 @@ of the install command, which takes any number of skill names.
 
 </details>
 
+### ✂️ [`/trim-code`](skills/trim-code/SKILL.md)
+
+> Makes a working change smaller. A sub-agent looks for restructurings that keep the
+> behavior, and for behavior the change doesn't need, like handling for unlikely edge cases
+> or extras nobody asked for. Applies the first kind itself and brings the second kind to you
+> as proposals.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill trim-code
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
 ### ✅ [`/pass-all-checks`](skills/pass-all-checks/SKILL.md)
 
 > Enumerates every check the project runs, from its CI config and docs, so that no linter is
