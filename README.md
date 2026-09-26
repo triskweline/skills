@@ -45,8 +45,8 @@ next, and every skill also works on its own.
 ### 🏗️ [`/build-alone`](skills/build-alone/SKILL.md)
 
 > Carries a set of requirements all the way to a tested, self-reviewed implementation that is
-> ready to hand back. Confirms requirements, branches, tests, verifies and self-reviews on its
-> own, interrupting you only for true showstoppers.
+> ready to hand back. Confirms requirements, branches, tests, trims, verifies and self-reviews
+> on its own, interrupting you only for true showstoppers.
 
 <details>
 <summary>Install this skill</summary>
@@ -55,6 +55,7 @@ next, and every skill also works on its own.
 > npx skills add triskweline/skills --global --skill build-alone \
 >   agree-on-everything \
 >   work-in-branch \
+>   trim-code \
 >   pass-all-checks \
 >   self-review
 > ```

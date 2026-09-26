@@ -18,6 +18,7 @@ standard skill locations. A skill you do not find there is missing.
 | `/agree-on-everything` | Settles every open requirement question with the human before the autonomous run starts. |
 | `/work-in-branch` | Moves the work onto a properly named feature branch. |
 | `/effective-rails-testing` | Picks the kind of test to add for each change when the project is a Rails app. |
+| `/trim-code` | Makes the working change smaller; proposals to cut behavior are kept for the hand-off. |
 | `/pass-all-checks` | Runs the whole test suite and all linters at the end and fixes failures. |
 | `/self-review` | Has a sub-agent review the finished change; valid findings are folded back in. |
 
@@ -59,8 +60,15 @@ Tests can be useful before your implementation is complete. Consider verifying i
 Add tests for everything you do or change. For Ruby on Rails apps, use the `/effective-rails-testing` skill.
 Also fix existing tests that broke because of behavior changes.
 
+## Trim the change
+
+Once the related tests pass, make your change smaller using the `/trim-code` skill.
+It applies trims that keep the behavior, and returns proposals that would change behavior. Don't apply the proposals: they need the human's approval. Keep them for the hand-off.
+
+## Run all checks
+
 Any non-trivial change must *additionally* be verified by running the *full* test suite and linters. Use the `/pass-all-checks` skill.
-The full test suite is slow. Only run the full test suite *after* possibly related tests (fast) already pass.
+The full test suite is slow. Only run the full test suite *after* possibly related tests (fast) already pass, and after trimming.
 
 ## Self-review
 
@@ -72,7 +80,8 @@ Review your work using a sub-agent, using the `/self-review` skill.
 
 Only when your implementation is complete, verified and reviewed, hand off your work to the human:
 
-- Recap your work (implementation, verification, self-review).
+- Recap your work (implementation, trimming, verification, self-review).
+- List the proposals from trimming that you did not apply, each with its recommendation, and ask which to apply.
 - Point out any decision that you are unsure about.
 - Point out code locations that should get a thorough human review.
 - Flag anything that took you a long time to find out you think is worth adding to AGENTS.md or CLAUDE.md.
@@ -80,4 +89,4 @@ Only when your implementation is complete, verified and reviewed, hand off your 
 
 ## Begin your work
 
-Now implement the requirements end-to-end: verify with tests, self-review, and only then hand off to the human.
+Now implement the requirements end-to-end: verify with tests, trim, self-review, and only then hand off to the human.
