@@ -137,7 +137,7 @@ class Repo(RepoCase):
         self.assertIn('data-level="3" data-reason="the greeting lost its exclamation"', page)
         # The sentence opens with the badge, the reason follows in the level's colour, then the card.
         self.assertIn('<div class="note"><p><span class="lvl">fishy</span>Desc of h3.</p></div>\n'
-                      '<p class="flag fishy"><b>May be wrong:</b> the greeting lost its exclamation</p>\n'
+                      '<p class="flag fishy"><b>Weird:</b> the greeting lost its exclamation</p>\n'
                       '<div class="card">\n<figcaption><span class="where">b.txt:1', page)
         self.assertIn('<figure class="hunk lvl-plain" id="h1" data-key="', page)
         self.assertIn('data-level="1"', page)
@@ -541,7 +541,7 @@ console.log('ok');
 
     def test_fishy_without_reason_gets_a_default(self):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 fishy --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
-        self.assertIn('<p class="flag fishy"><b>May be wrong:</b> please check this change</p>', page)
+        self.assertIn('<p class="flag fishy"><b>Weird:</b> please check this change</p>', page)
 
     def test_all_five_levels_render(self):
         page, out, err = self.assemble(
@@ -553,10 +553,10 @@ console.log('ok');
         self.assertIn('<span class="lvl">skip</span>', page)
         self.assertNotIn('class="flag skip"', page)
         self.assertIn('<figure class="hunk lvl-note" id="h2"', page)
-        self.assertIn('<p class="flag note"><b>A choice to accept knowingly:</b> a default worth a conscious yes</p>', page)
+        self.assertIn('<p class="flag note"><b>Decide:</b> a default worth a conscious yes</p>', page)
         self.assertIn('<figure class="hunk lvl-hot" id="h3"', page)
         self.assertIn('data-level="4" data-reason="verification runs on every request"', page)
-        self.assertIn('<p class="flag hot"><b>Silent or irreversible if wrong:</b> verification runs on every request</p>', page)
+        self.assertIn('<p class="flag hot"><b>Costly if wrong:</b> verification runs on every request</p>', page)
         self.assertIn('<figure class="hunk lvl-plain file" id="h4"', page)
         # Reasons are escaped into the attribute and the aside alike.
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 note: uses <b> & "quotes" --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
@@ -616,7 +616,10 @@ class Setup(RepoCase):
         r = sh(d, sys.executable, SCRIPT, '--assemble', out_path, *facts['ARGS'].split(), '++', work)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertTrue(os.path.isfile(out_path))
-        self.assertFalse(os.path.exists(src))                     # the copy is gone
+        self.assertTrue(os.path.isdir(src))                       # assembling keeps it, for a replacement worker
+        r = sh(d, sys.executable, SCRIPT, '--cleanup', work)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(os.path.exists(src))                     # the final cleanup removes it
         self.assertTrue(os.path.isfile(os.path.join(work, 'diff.txt')))   # the rest of the tour stays
         self.assertEqual(read(os.path.join(d, 'b.txt')), 'edited after the commit\n')
         shutil.rmtree(work)
@@ -645,6 +648,8 @@ class Setup(RepoCase):
                 f.write('<h2>A</h2><!-- hunk h1 --><p>S.</p>')
             r = sh(d, sys.executable, SCRIPT, '--assemble', os.path.join(work, 'diff-tour.html'),
                    *facts['ARGS'].split(), '++', work)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            r = sh(d, sys.executable, SCRIPT, '--cleanup', work)
             self.assertEqual(r.returncode, 0, r.stderr)
             shutil.rmtree(work)
         self.assertEqual(sorted(os.listdir(d)), before)

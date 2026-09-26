@@ -494,9 +494,9 @@ def _key(h):
 
 
 FLAG_LABEL = {
-    'note': 'A choice to accept knowingly',
-    'fishy': 'May be wrong',
-    'hot': 'Silent or irreversible if wrong',
+    'note': 'Decide',
+    'fishy': 'Weird',
+    'hot': 'Costly if wrong',
 }
 
 
@@ -568,11 +568,11 @@ STANDFIRST = (
 # reader on the right, and for the three lower levels a button that marks every hunk
 # of that level viewed, which is how a reader chooses how deep to go.
 LEGEND = [
-    (0, 'skip', 'A tool could have written it, or it is fallout of another hunk. Trust the description.', True),
-    (1, 'read', 'Ordinary hand-written code. Read it once.', True),
-    (2, 'note', 'A choice or a nit to accept knowingly. The phrase says what to decide.', True),
-    (3, 'fishy', 'It may be wrong. Verify before approving.', False),
-    (4, 'hot', 'A mistake here would be silent or irreversible. Read every line, however it looks.', False),
+    (0, 'skip', 'Nothing to decide or fear. Trust the description.', True),
+    (1, 'read', 'Ordinary code. One attentive pass.', True),
+    (2, 'note', 'You have a decision to make. The explanation says which.', True),
+    (3, 'fishy', 'Something here does not add up. The explanation says how far it was checked.', False),
+    (4, 'hot', 'This hunk decides something costly. Read every line, however it looks.', False),
 ]
 
 

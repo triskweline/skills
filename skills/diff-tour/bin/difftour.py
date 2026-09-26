@@ -15,6 +15,12 @@
       is built; an option may end in `=> --setup <target>`, the command that implements it.
       Exit 3 with one line saying what went wrong when the target cannot be resolved.
 
+  difftour.py --cleanup <working dir>
+      Remove the copy of the toured code that --setup made in the working directory, and
+      nothing else: it acts only on a folder the setup marked as its own copy. The last step
+      of a tour, after every assemble. Does nothing for dirty and uncommitted, which read
+      the repository itself.
+
   difftour.py --assemble OUT.html [--untracked] -- <git diff args> ++ FRAGMENT|DIR...
       Lay the fragments out, in order (a directory means every .html under it, in
       path order, minus OUT.html itself), as one self-contained HTML page: sidebar,
@@ -220,9 +226,6 @@ def assemble(out_path, hunks, fragments, git_args):
     page, report = difftour_html.render(hunks, texts, git_args, out_path)
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(page)
-    # The page is self-contained and every agent has finished reading, so the setup's copy
-    # of the source can go. remove_source_copy() touches nothing it did not make.
-    remove_source_copy(os.path.dirname(os.path.abspath(out_path)))
     missing, unknown, dupes = report['missing'], report['unknown'], report['dupes']
     if missing:
         sys.stderr.write('%d hunk(s) were not placed and were appended as "Unsorted hunks": %s\n'
@@ -640,6 +643,12 @@ def main(argv):
         except SetupError as e:
             sys.stderr.write('difftour: %s\n' % e)
             return 3
+        return 0
+    if args[:1] == ['--cleanup']:
+        if len(args) != 2:
+            sys.stderr.write('usage: difftour.py --cleanup <working dir>\n')
+            return 2
+        remove_source_copy(args[1])
         return 0
     if '--' not in args:
         sys.stderr.write(__doc__)

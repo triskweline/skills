@@ -28,6 +28,17 @@ Oh no! Your human just received a ton of vibe-coded changes to this repository. 
 
 What a thankless job! Luckily, they have you. You will provide the human with a narrated tour through that steaming pile of code, marking the places that deserve a closer look.
 
+The changes were mostly written by agents, so they rarely contain typos, formatting slips or simple local bugs. What the reader looks for instead:
+
+1. A misunderstanding or wrong assumption that many consistent changes follow.
+2. Code in the wrong place, a module stretched past its purpose, a missed extraction.
+3. An implementation more complicated or longer than the job needs.
+4. Code for edge cases that may not be worth their lines.
+5. A style of solution with no precedent in this repository, and not common in the ecosystem.
+6. A different approach that would have avoided the verbose code, or made the edge cases disappear.
+
+Your tour helps them find these. You point at them; they judge them.
+
 **Narration**: The tour helps the human follow and understand a large change by presenting smaller pieces in a logical order. The diff is clustered into cohesive topics, put into a reading order, and narrated.
 
 **Heat**: Every hunk gets a heat level, from "a tool could have written this, skip it" through "this may be wrong" to "a mistake here would be silent or irreversible, read every line". A level is your judgement of how carefully the human should read the hunk. The five levels are defined in *Give each hunk a heat level* in Part 5.
@@ -58,6 +69,10 @@ A forked worker inherits the orchestrator's whole context, including this skill.
 
 The one rule we don't compromise on: every hunk of the diff is shown somewhere in the tour. A script enforces this at the end, so nobody has to re-read the diff to check.
 
+## Code outside the diff is read under SRC
+
+The repository on disk is not always the code the tour describes: it may sit on a later branch, or hold edits the tour does not show. So whenever any role reads code outside the diff, with Read, Grep or a shell, it reads under the `SRC=` path the setup command printed, never in the repository itself. For a commit, branch, range or PR that path is a copy of the toured code; for `staged` it is a copy of the index; for `dirty` and `uncommitted` it is the repository, because the working tree is what those tours show. The copy is removed as the tour's last step, after every assemble.
+
 ## Tour format is HTML
 
 The tour is *not* printed to this session. It is one self-contained HTML file, opened in a browser.
@@ -70,11 +85,12 @@ Everything that makes the page pleasant is mechanical and costs no agent tokens:
 
 The skill ships one script, `bin/difftour.py` in the skill directory (the directory this SKILL.md lives in, called `<skill dir>` below), with the page layout beside it in `bin/difftour_html.py`, `assets/` and the vendored `vendor/prism`. It needs only git and python3.
 
-A run uses two modes:
+A run uses three modes:
 
 ```
 difftour.py --setup <target>                                        Part 2: resolve the target, create the working directory, write the numbered diff
 difftour.py --assemble OUT.html <ARGS from setup> ++ <working dir>  Part 4: lay the fragments out as the tour
+difftour.py --cleanup <working dir>                                 Part 4: remove the copy of the toured code, as the last step
 ```
 
 Three more modes exist for tests, for checking a tour by hand, and for a worker that has lost a hunk from its context. A normal run never calls them:
@@ -114,9 +130,9 @@ Beat # One narration beat within a topic
 
 Hunk # One annotated diff hunk
 + id: string                 # h17, minted by the script
-+ sentence: html             # always present, in a <p>; one sentence, up to three for note/fishy/hot
++ sentence: html             # always present, in a <p>; one sentence
 + heat_level: 'skip' | none | 'note' | 'fishy' | 'hot'  # one word in the placeholder
-+ heat_reason: text          # required for note, fishy and hot; lives in the placeholder
++ heat_reason: text          # the explanation; required for note, fishy and hot; lives in the placeholder
 + focus: text[]              # rare: quoted blocks of lines a reader must not miss; comments after the placeholder
 + dim: text[]                # rare: quoted blocks of lines a reader of this topic can pass over
 + diff_content: text         # spliced in by the script, never typed by an agent
@@ -292,7 +308,7 @@ You read this part if you are the orchestrator and the workers are running.
 
 The workers need two to three minutes. You are idle for all of it, so this is when you write the opening fragment, `<working dir>/00-intro.html`: the `<h1>` headline and the tour summary. It is the widest zoom level of the tour and the one piece of prose that puts the whole change in context.
 
-**The whole summary is under 400 words**, the before/after table's cells not counted. The last tour's ran to 944 and read as a wall of text; a reader spent four minutes on it before the first chapter. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. The before/after table is a plain `<table>` with `<tr>`, `<th>` and `<td>`. No other markup, no emojis.
+**The whole summary is at most 600 words**, the before/after table's cells not counted. It is an optional lead chapter: a reader who wants the context reads it, and one who does not skips straight to the first topic, at the start or half-way through. So every heading stands on its own, and none prepares the next. A summary of 944 words once read as a wall of text; that is the length this limit keeps out. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. The before/after table is a plain `<table>` with `<tr>`, `<th>` and `<td>`. No other markup, no emojis.
 
 **The enumeration guard applies here too, and matters most here**, because at this zoom level the reader has no diff beside the prose to anchor names to. Describe what a solution or a mechanism changes about the system, never the classes, methods or files it would touch. "Trusted devices become records instead of a cookie" is a mechanism; a list of the six classes that would change is not.
 
@@ -389,7 +405,17 @@ Assemble in one command, pasting the `ARGS=` value from the setup command verbat
 
 Given the working directory, the script takes every `.html` file under it in path order, which puts `00-intro.html` first and the workers' `topic-NN/fragment.html` after it in reading order; the output file itself is skipped. The script splices every placeholder, and appends any hunk no fragment placed in a final "Unsorted hunks" chapter, listing those ids on stderr. That is the completeness rule, enforced without anyone re-reading the diff. It also lists placeholders that name no hunk, and hunks placed more than once; the latter is expected for shared hunks.
 
-A few unplaced hunks are acceptable for speed: they are shown. Lines starting `line mark:` are informational: a worker's focus or dim block that the script could not place; the mark is simply absent from the page, and nothing needs doing. If the unplaced list is long and its hunks all belong to one topic, that worker's fragment is missing; fork a replacement for that topic and assemble again. Never edit a fragment by hand.
+A few unplaced hunks are acceptable: they are shown at the end, and forking a replacement for them would keep the human waiting. Lines starting `line mark:` are informational: a worker's focus or dim block that the script could not place; the mark is simply absent from the page, and nothing needs doing. If the unplaced list is long and its hunks all belong to one topic, that worker's fragment is missing; fork a replacement for that topic and assemble again. Never edit a fragment by hand.
+
+## Clean up
+
+When the last assemble is done, remove the copy of the toured code:
+
+```
+<skill dir>/bin/difftour.py --cleanup <working dir>
+```
+
+It removes only the copy the setup made, and does nothing for `dirty` and `uncommitted` tours, which read the repository itself. Run it once, after any replacement and second assemble, and before the hand-over.
 
 ## Hand over the tour
 
@@ -425,7 +451,7 @@ The steps below are in the order you do them. Read them once, then work.
 
 ## Explore your topic's concepts
 
-**This step is an investment.** Before you form beats, list your doubts: every statement you are about to make about your topic that you have not grounded, such as how a concept works in this repository, why the change does something, or whether the code does what its names and tests claim. The orchestrator's reading is in your context already; do not repeat it. Then check your doubts, one call each, the one that would mislead the reader most first, reading under `SRC`. Keep going while ungrounded doubt remains and your **worker budget** of 3 tool calls lasts; stop early only when nothing ungrounded is left. When there are more doubts than calls, check the most dangerous ones and state the rest as doubts in your prose.
+**This step is an investment.** Before you form beats, list your doubts about your topic, such as how a concept works in this repository, why the change does something, or whether the code does what its names and tests claim. The orchestrator's reading is in your context already; do not repeat it. Then check your doubts, one call each, the one that would mislead the reader most first, reading under `SRC`. Keep going while ungrounded doubt remains and your **worker budget** of 3 tool calls lasts; stop early only when nothing ungrounded is left. When there are more doubts than calls, check the most dangerous ones and state the rest as doubts in your prose.
 
 You already have every hunk in context from the numbered diff; never spend a call re-reading it. Once you start forming beats, you make no more calls.
 
@@ -445,37 +471,50 @@ What no layer does is spell the code out in prose: naming each column a migratio
 
 **Say why only when you have seen why.** A motivation may come from anything you have actually seen: a comment or a commit message, a test name, a constraint removed elsewhere in the diff, something a tool call returned. State those plainly. When you are connecting dots instead, say so in the sentence: "presumably to let the admin form reopen a booking; the diff does not say." When you have neither, name the gap: "the diff does not say why the indexes go." A reason stated as fact that nothing supports is the one thing a summary must never contain; a reviewer trusts the summary instead of reading, and a wrong reason on the riskiest chapter sends them the wrong way.
 
+**Say what you found, never how you looked**: no tool names, no `SRC`, no "I checked" or "a search found". Where it matters how solid a statement is, say so in a word: confirmed, or not checked. Don't turn a doubt into a task for the reader, such as "worth confirming that X". State it as a doubt: "X is not checked". Which doubts to check is decided when you explore, not when you write.
+
 **Beat prose** (the paragraph under your `<h3>`). Always present. What these hunks do together and why they are one step; how this step follows from the previous beat when it does. Give the gist of what the hunks would show, and say "nothing surprising below" when that is true. This is where a reader decides whether to open the hunks. When a beat holds test hunks, its prose says in one clause what the tests cover and in one clause what they do not; that is the value of a test to a reviewer, and the hunk sentences below must not try to deliver it by listing cases.
 
 **Refer to other topics and hunks in your own words, as links.** Free prose is better than titles, and a link makes it exact: `<a href="#topic-4">the locking chapter</a>`, `<a href="#h17">the migration</a>`. Topic numbers are on the "Topics in order" line of your briefing; hunk ids are in the diff. A nickname without a link leaves the reader guessing which of eight sidebar entries you meant.
 
-**Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. It says what the hunk is about so the reader knows what they would be opening, and for note, fishy and hot it says what to look for beyond the badge reason. If your briefing says a hunk is shared with another topic, say so here, in a few words.
+**Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. It says what the hunk is about, so the reader knows what they would be opening. For note, fishy and hot, why the hunk deserves attention is the explanation's job, not the sentence's. If your briefing says a hunk is shared with another topic, say so here, in a few words.
 
-Length follows the level. Skip and read: one sentence. Note, fishy and hot: up to three sentences, because the reader has been told to stop here and this is where you tell them why.
+One sentence, whatever the level.
 
-Whatever the length, never list what the hunk contains. Not the columns a migration adds, not the keys of a settings block, not the methods of a trait, not the cases a test checks, not the sections of a template. For a test hunk the sentence says what the test is for; which cases it runs through is the diff's job. "The migration adding the three 2FA columns", not the three column names and their types. "The four knobs that configure the feature", not the four keys in order. The reader has the diff one glance below; a sentence that lists its contents makes them read the change twice. For note, fishy and hot, the badge already carries the reason; do not repeat it, add to it if there is more.
+Never list what the hunk contains. Not the columns a migration adds, not the keys of a settings block, not the methods of a trait, not the cases a test checks, not the sections of a template. For a test hunk the sentence says what the test is for; which cases it runs through is the diff's job. "The migration adding the three 2FA columns", not the three column names and their types. "The four knobs that configure the feature", not the four keys in order. The reader has the diff one glance below; a sentence that lists its contents makes them read the change twice. Do not repeat the explanation.
 
 ## Give each hunk a heat level
 
-Every hunk gets one of five heat levels. The scale is not "how suspicious" but **how carefully the human should read this**, and it has room for two things suspicion cannot express: code that looks fine but everything stands on, and code a tool wrote that nobody needs to read.
+Every hunk gets one of five heat levels. A level is a reading instruction: it tells the human how carefully to read the hunk, not whether the change is right. Readers use it to triage: they skip skip hunks, skim read hunks, and read note, fishy and hot hunks fully. In a hurry they drop note as well, but never fishy or hot.
 
-| Level | Written as | The reviewer | Your one question |
-|---|---|---|---|
-| skip | `<!-- hunk h17 skip -->` | trusts your sentence, does not read the diff | Could a tool have written this, or is it pure fallout of another hunk? |
-| (none) | `<!-- hunk h17 -->` | reads once at normal speed | the default when no other question is a yes |
-| note | `<!-- hunk h17 note: why -->` | reads, then consciously decides; your phrase says what | Is there a choice or a nit here the reviewer should knowingly accept? |
-| fishy | `<!-- hunk h17 fishy: why -->` | verifies before approving | Can I name a specific way this is wrong? |
-| hot | `<!-- hunk h17 hot: why -->` | reads line by line, however it looks | If this were subtly wrong, would the mistake be impossible to undo, or go unnoticed while affecting everyone? |
+| Level | Written as | Means |
+|---|---|---|
+| skip | `<!-- hunk h17 skip -->` | nothing to decide or fear; trust the sentence |
+| read | `<!-- hunk h17 -->` | ordinary code; one attentive pass |
+| note | `<!-- hunk h17 note: explanation -->` | the reader has a decision to make |
+| fishy | `<!-- hunk h17 fishy: explanation -->` | something here does not add up |
+| hot | `<!-- hunk h17 hot: explanation -->` | this hunk decides something costly |
 
-**Classify as a cascade, top down, and stop at the first yes: hot, fishy, note, skip, else no level.** Every question is answered from the hunk itself and what you already know. Most hunks fall through in a glance.
+Take the highest level whose description fits. A factor lowers a level only when the diff or a check establishes it, never on assumption. Do not classify by file type or by the area of code a hunk sits in; weigh what the hunk itself does.
 
-Hot is about the cost of a mistake, not about how important or how public the code is. A broken public method fails loudly and a revert fixes it; that is fishy at most, and if the method is rarely used it gets no level. Hot is an auth or permission check that would fail open silently, a verification that would accept bad input without complaint, a gate on every request, a data rewrite, a delete, a payment, a sent email. Do not classify by file type or by category of code; ask the question.
+**Hot: this hunk decides something costly, and a subtle mistake in that decision would be irreversible, or silent and wide.** The hunk must contain the decision itself: the condition that grants access, the query that selects what gets deleted, the amount that gets charged, the list of who receives an email, the filter that decides what leaves the system in an export. Hot is about cost, not suspicion: a correct payment call is still hot. The renamed variable next to it is not, and neither is a moved method, a log line or wiring in payment or auth code; a mistake there fails loudly or does not matter. A broken public method that raises at once is not hot either: the mistake announces itself.
 
-Note collects three things that all get the same reviewer action: nitpicks (naming, a hardcoded string, a stray comment, an unused dependency), decisions the author made that the reviewer must accept knowingly (a default that changes behaviour for everyone, a deliberately omitted exemption, an input limit), and missing coverage for something significant. A note's reason names what is different from before: a new cost, a changed default, a dropped check, a missing test. A property the code already had is not a note. When a change keeps cost or behaviour the same where a reader might fear otherwise, say that in the hunk sentence instead; unchanged is information too.
+**Fishy: something here does not add up.** The code contradicts itself, its own names or comments, its tests, the goal of the change, or how the framework actually works. A guard whose name says it blocks something that the framework's semantics let through. A test whose title claims more than its assertions prove. Two hunks that expect different things of the same method. An assumption about the codebase that the code around it seems to contradict. Fishy is the one level that may rest on a hunch, when something feels off before you can say why. Its explanation always ends with how far you got: checked, not checked, or a hunch.
 
-Skip is lockfiles, schema dumps, renames, `include` lines, locale strings, path helpers, and any hunk that exists only because another hunk exists. It is the one level that saves the reader time, so use it freely where it is true.
+**Note: the reader has a decision to make.** Either the change takes a decision the reader should accept knowingly, or it raises one of the questions they read for (see *Your basic job*). A note names what is different from before; a property the code already had is not a note. How to write the common ones:
 
-**Note, fishy and hot each need a reason**, one phrase or one sentence, written into the placeholder after the colon. No reason, no badge. The reason says what goes wrong when this hunk is wrong, not where the line is: `hot: a missing cast here lets the desk check fail open with no error`, not `hot: the line that switches the check on`. The sidebar and the beat's list show only the reason, so it has to carry the danger by itself. A hunk that is both hot and fishy is hot, and the reason carries the suspicion. Plain text, no HTML, no `--` inside. Skip never has a reason.
+- **An assumption the change stands on.** Where many hunks follow from one belief about the codebase or the problem, the hunk where that belief is decided gets the badge, and the explanation says how far it reaches. The hunks that follow from it stay cool: if the root is right, they are right.
+- **Code in the wrong place.** Badge the hunk that puts code where it does not belong or grows a module past its purpose, and say where the code belongs or what could be extracted.
+- **More code than the job needs.** Say the proportion: "about 80 lines for what reads like a 20-line job".
+- **Edge-case code.** Name the case and when it occurs, so the reader can decide whether it is worth its lines.
+- **No precedent, or a better approach.** Say in one clause what the repository or the ecosystem usually does, or which approach would have avoided the code.
+- **A behaviour decision.** A default that changes behaviour for everyone, a deliberately omitted case, a new limit, a new dependency, or an important behaviour no test covers.
+
+**Skip: nothing to decide or fear, and a reader loses nothing by trusting your sentence.** Lockfiles, schema dumps, generated code, a rename carried through its call sites, `include` lines, locale strings, and any hunk that exists only because another hunk does. Skip saves the reader the most time, so use it wherever it is true, and only there: when in doubt, read.
+
+**Read: ordinary hand-written code that needs one attentive pass.** The default for every hunk that fits none of the descriptions above. A misleading name or a small nit belongs here, with a word in the hunk sentence if it matters.
+
+**Note, fishy and hot each carry an explanation**, one or two sentences written into the placeholder after the colon. It says why the hunk deserves this level: what goes wrong if it is wrong, what does not add up, or what the reader has to decide. It does not say what the hunk does; the hunk sentence says that. A second sentence adds a second reason, not detail on the first. `hot: a missing cast here lets the desk check fail open, and no error or test would show it`, not `hot: the line that switches the check on`. Plain text, no HTML, no `--` inside. Skip and read have no explanation.
 
 ## Mark lines inside a hunk
 
@@ -551,8 +590,8 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 <!-- hunk h3 -->
 <p>One sentence.</p>
 
-<!-- hunk h4 fishy: what feels off, in one phrase or sentence -->
-<p>One to three sentences.</p>
+<!-- hunk h4 fishy: what does not add up, in one or two sentences, ending with how far you checked -->
+<p>One sentence.</p>
 
 <!-- hunk h5 skip -->
 <p>One sentence.</p>
@@ -562,7 +601,7 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
   return unless current_user
   return if exempt?(current_user)
 -->
-<p>One to three sentences.</p>
+<p>One sentence.</p>
 
 <h3>Next beat</h3>
 ...
