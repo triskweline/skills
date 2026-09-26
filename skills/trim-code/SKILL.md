@@ -29,7 +29,10 @@ Ask a fresh sub-agent to find trims and proposals, not a fork of your context: i
 see the code, not your justifications for it. It reports; it does not edit.
 
 Brief it with what you know about the requirements, but leave out technical details from
-the implementation. Tell it how to see the change: a commit range, or a diff against the
+the implementation. Quote the ticket or the human's own words where you can: one
+paraphrased word can steer the proposals. Include the decisions the human has already
+made, stated as what was decided, not why. Only the human's decisions count, not your own
+design choices. Tell it how to see the change: a commit range, or a diff against the
 base branch that includes uncommitted work. Tell it to search the whole codebase, not just
 the diff; reuse findings depend on it. Pass it the intro and sections 2 and 3 of this
 skill, verbatim.
@@ -37,7 +40,8 @@ skill, verbatim.
 ## 2. Rules
 
 Start with proportion: say in one sentence what the change does, and how much code you'd
-expect that to take compared to the change. The surplus is what you are looking for.
+expect that to take compared to the change. Count logic only, not comments, docs or
+tests. The surplus is what you are looking for.
 
 ### Restructure
 
@@ -73,8 +77,9 @@ expect that to take compared to the change. The surplus is what you are looking 
   gets inlined. With more than one caller outside the change, it's a proposal.
 - Parameters, options, hooks or configuration that nothing uses yet go.
 - Compatibility code for old callers goes when the change already updated every caller.
-- Logging and comments that only restate what the code does go. Comments that say why
-  stay.
+- Logging and comments that only restate what the code does go. Comments that say why the
+  code is the way it is stay, including a measurement behind a value. A comment that tells
+  history ("this used to …") belongs in the commit message.
 
 ### Use what exists
 
@@ -108,22 +113,26 @@ These are all proposals.
   authorization rule used by a single controller still belongs with the other
   authorization rules, not in the controller.
 - A check against hostile input (authorization, tampering, injection, limits on what a
-  client may send) is not an edge case. Leave it, and don't propose dropping it.
+  client may send) is not an edge case. Leave it, even when it looks unreachable: defense
+  in depth is deliberate. Don't propose dropping it.
 - Don't merge two cases that mean different things just because they're handled the same
   today.
 - Don't add types or structure that only add boilerplate.
-- Don't trim tests. Repetition in tests is often deliberate: overlapping coverage across
-  layers, or independent setup instead of shared hooks.
+- Don't trim tests for their own sake. Repetition in tests is often deliberate:
+  overlapping coverage across layers, or independent setup instead of shared hooks. When
+  code is deleted or inlined, its tests are deleted or moved with it. Code that only a
+  test uses is dead code and goes with its test.
 - Stay on size and structure. Naming and style are for other reviews.
 
 ## 3. What to return
 
 First the one sentence from section 2, and how much code you'd expect compared to the
-change. Then two lists. Prefer a few findings that matter over many small ones: group
-small deletions of one kind into one finding, and order each list by how much it removes.
-If there is nothing to trim, say so.
+change. Then three lists. Prefer a few findings that matter over many small ones: group
+small deletions of one kind into one finding, and order the trims and proposals by how
+much they remove. If there is nothing to trim, say so.
 
-**Trims** keep the behavior and change little or nothing outside the change. For each:
+**Trims** keep the behavior on every input, and change little or nothing outside the
+change, meaning lines the change didn't add or modify. For each:
 
 - where it is,
 - what disappears,
@@ -134,11 +143,14 @@ If there is nothing to trim, say so.
 
 **Proposals** are everything else: cuts of behavior, a new dependency, a change to a
 public interface or a data schema, a restructuring that changes more than a few lines
-outside the change. When unsure whether a finding keeps the behavior, it's a proposal.
+outside the change. A finding that changes behavior on any input, however unlikely, is a
+proposal; say how unlikely under "who would notice". When unsure whether a finding keeps
+the behavior, it's a proposal.
 
 Every proposal costs the human a decision, so it has to be worth one. Propose only what
-removes a large part of the change, or a whole concept, branch, layer or dependency. Leave
-out small behavior changes that save a few lines. For each proposal:
+removes a large part of the change, roughly a few dozen lines of logic or more, or a whole
+concept, branch, layer or dependency. Leave out small behavior changes that save a few
+lines, and anything that contradicts a decision in your brief. For each proposal:
 
 - where it is,
 - what behavior is lost and who would notice, or what else the caller is agreeing to,
@@ -146,14 +158,18 @@ out small behavior changes that save a few lines. For each proposal:
 - roughly how much smaller the result is,
 - your recommendation.
 
+**Bugs** you noticed along the way, even though finding them is not your task: where, what
+goes wrong, and on which input.
+
 ## 4. Apply the trims
 
 Check each trim's evidence, and read its sketch against the requirements. A trim without
 evidence goes back to the sub-agent; dismiss it as unverified only if the sub-agent can't
-supply the evidence either. Dismiss a verified trim only for a concrete reason: the input
-that reaches the deleted code, the requirement it conflicts with, the named code that
-gets harder to follow and why, or the intent a removed name carried or the place a moved
-rule belongs. "The current version is fine" is not a reason.
+supply the evidence either. Dismiss a verified trim only for a concrete reason that names
+what is affected: the input that reaches the deleted code, the requirement or decision it
+conflicts with, a project convention it breaks (e.g. for security or architecture), the
+code that gets harder to follow and why, or the intent a removed name carried. "The
+current version is fine" is not a reason.
 
 Apply restructurings first; smaller trims often vanish with them. After each
 restructuring, and after the batch of small trims, run the tests related to the code you
@@ -162,8 +178,16 @@ input that can't occur, an option nothing passes) is deleted with that code. A t
 fails for any other reason means the trim changed behavior: revert the trim, don't fix
 the test.
 
+When you commit the trims, match the shape of the branch: in a history curated for
+review, fold each trim into the commit that introduced the code; otherwise make one
+separate commit. History taken out of comments goes into those commit messages.
+
+Fix a clear bug the sub-agent found inside the change, and run its related tests. Report
+the other bugs.
+
 Go through the proposals, but don't apply them, and don't ask about them while you work.
-Drop a proposal that falls below the bar in section 3. Drop a proposal for behavior the
+Drop a proposal that falls below the bar in section 3, or that contradicts a decision the
+human already made. Drop a proposal for behavior the
 requirements ask for, unless the requirement costs far more code than it seems worth; keep
 that one, with its cost. Give your own recommendation on the rest; it may differ from the
 sub-agent's.
@@ -176,6 +200,7 @@ If another skill called you, hand this report back to it. Otherwise give it to t
 - The trims you applied, one line each.
 - The trims you dismissed, and why.
 - The proposals, each with your recommendation.
+- The bugs you fixed, and the ones you only report.
 - Which tests ran: only the related ones, or the full suite.
 
 If proposals are accepted, apply them, run the related tests, and delete the tests that
