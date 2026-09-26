@@ -487,7 +487,7 @@ A hurried reader reads the chapter summaries and stops, a careful one opens the 
 
 **Beat prose** (the paragraph under your `<h3>`). At most 40 words. It answers: what do these hunks do together, and how does this step follow from the one before? End on whether the hunks need reading: where the weight lies, or that nothing surprising waits below. For a beat of tests: in one clause what they cover, in one clause what they do not.
 
-**Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. One sentence, at most 20 words. It says what the hunk is, so the reader knows what they would be opening: "The migration adding the three 2FA columns", not the three column names. When a hunk is trivial, a phrase is its whole sentence: "The renamed factory trait." When it only follows from another hunk, say that and nothing more: "The call sites of the rename above." If your briefing says a hunk is shared with another topic, say so in a few words. Why a hunk deserves attention is its heat explanation's job, not this sentence's.
+**Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. One sentence, at most 20 words. It says what the hunk is, so the reader knows what they would be opening: "The migration adding the three 2FA columns", not the three column names. When a hunk is trivial, a phrase is its whole sentence: "The renamed factory trait." When it only follows from another hunk, say that and nothing more: "The call sites of the rename above." Don't state the hunk's size; its header already shows it. If your briefing says a hunk is shared with another topic, say so in a few words. Why a hunk deserves attention is its heat explanation's job, not this sentence's.
 
 **Heat explanation** (the text after a note, fishy or hot level, shown under its label). One or two sentences, at most 40 words. It says why the hunk deserves its level, never what the hunk is; the hunk sentence says that. Its rules are in *Give each hunk a heat level*.
 
@@ -519,7 +519,7 @@ Where each of the reader's questions shows, and how to write it:
 
 - **An assumption the change stands on.** The badge goes on the hunk where the belief is decided, and the heat explanation says how far it reaches: "the eight hunks in this chapter follow from it". Note it when the assumption is plausible but decisive; when it looks wrong, it is fishy. The hunks that follow from it stay cool: if the root is right, they are right.
 - **Code in the wrong place.** The badge goes on the hunk that puts code where it does not belong or grows a module past its purpose; say where the code belongs or what could be extracted.
-- **More code than the job needs.** The badge goes on the verbose hunk; say the proportion: "about 80 lines for what reads like a 20-line job".
+- **More code than the job needs.** The badge goes on the verbose hunk; say the proportion, the size against what the job needs: "about 80 lines for what reads like a 20-line job". A size alone says nothing, and a note about something else does not mention the size at all.
 - **Edge-case code.** The badge goes on the hunk that handles the case; name the case and when it occurs, so the reader can decide whether it is worth its lines.
 - **No precedent.** The badge goes on the hunk that introduces the style; say in one clause what the repository or the ecosystem usually does instead.
 - **A better approach.** The badge goes on the hunk where that approach would have applied; say in one clause which approach would have avoided the code or the edge cases.
