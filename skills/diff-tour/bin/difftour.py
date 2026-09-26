@@ -201,13 +201,16 @@ def parse(diff_text, moved=None):
 def expand_fragments(args, out_path):
     """A directory stands for every .html file under it, in path order, so the intro
     (00-intro.html) comes first and topic-NN/fragment.html follow in reading order.
-    The output file is skipped, so re-assembling into the same directory is safe."""
+    The output file is skipped, so re-assembling into the same directory is safe, and so
+    is the setup's copy of the toured code, which holds whatever HTML the repository has."""
     skip = os.path.abspath(out_path) if out_path else None
     files = []
     for a in args:
         if os.path.isdir(a):
             found = []
             for root, dirs, names in os.walk(a):
+                if os.path.abspath(root) == os.path.abspath(a) and SRC_DIR in dirs:
+                    dirs.remove(SRC_DIR)
                 dirs.sort()
                 for n in sorted(names):
                     if n.endswith('.html'):

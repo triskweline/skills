@@ -607,6 +607,8 @@ class Setup(RepoCase):
         src = facts['SRC'].split('  (')[0]
         work = facts['WORK']
         self.assertEqual(src, os.path.join(work, 'src'))
+        with open(os.path.join(src, 'javadoc.html'), 'w') as f:        # the repository's own HTML
+            f.write('<title>U-Index</title><h2>Not a chapter</h2>')
         self.assertEqual(read(os.path.join(src, 'b.txt')), 'hello world\n')   # the tip, not the working tree
         self.assertFalse(os.path.exists(os.path.join(src, '.git')))
         frag = os.path.join(work, 'topic-01', 'fragment.html')
@@ -616,6 +618,7 @@ class Setup(RepoCase):
         r = sh(d, sys.executable, SCRIPT, '--assemble', out_path, *facts['ARGS'].split(), '++', work)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertTrue(os.path.isfile(out_path))
+        self.assertNotIn('Not a chapter', read(out_path))          # the copy's HTML is never a fragment
         self.assertTrue(os.path.isdir(src))                       # assembling keeps it, for a replacement worker
         r = sh(d, sys.executable, SCRIPT, '--cleanup', work)
         self.assertEqual(r.returncode, 0, r.stderr)
