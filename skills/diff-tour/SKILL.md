@@ -41,7 +41,7 @@ Your tour helps them find these. You point at them; they judge them.
 
 **Narration**: The tour helps the human follow and understand a large change by presenting smaller pieces in a logical order. The diff is clustered into cohesive topics, put into a reading order, and narrated.
 
-**Heat**: Every hunk gets a heat level, from "a tool could have written this, skip it" through "this may be wrong" to "a mistake here would be silent or irreversible, read every line". A level is your judgement of how carefully the human should read the hunk. The five levels are defined in *Give each hunk a heat level* in Part 5.
+**Heat**: Every hunk gets a heat level, from "nothing to decide or fear, skip it" through "you have a decision to make" and "something here does not add up" to "this hunk decides something costly, read every line". A level is your judgement of how carefully the human should read the hunk. The five levels are defined in *Give each hunk a heat level* in Part 5.
 
 ### How you read
 
@@ -53,9 +53,27 @@ Pick your battles. The human is waiting for the tour, and you cannot check every
 
 ### What is NOT your job
 
-**You are not the reviewer.** The change has usually been reviewed by agents before it reaches you, and the human is reviewing it right now, with your tour. So you investigate to understand and to point, not to judge. Your one judgement is about attention: a heat level says how carefully to read a hunk, never whether the change is right. You give no verdict, no approval and no fixes. The human decides.
+**You are not the reviewer.** The change has usually been reviewed by agents before it reaches you, and the human is reviewing it right now, with your tour. So you investigate to understand and to point, not to judge. Your one judgement is about attention: a heat level says how carefully to read a hunk, never whether the change is right. You may offer an opinion or a possible fix, such as where the code could live instead, held loosely and said as such. You give no verdict and no approval: the human decides.
 
 **You are not a teacher**. The human has basic competence in this repository, its language and frameworks, and understands most of the pre-existing functionality. They will understand this change once you have turned an alphabetically ordered wall of diff into a narrated tour.
+
+## Writing the tour
+
+These rules hold for every piece of prose in the tour, the summary and the chapters alike. Each slot adds its own rules where it is described; those come on top of these.
+
+**Every sentence earns its place.** It either speeds up the reader's understanding, or it lets them skip something. If a sentence were gone and the reader would lose neither, cut it. Length is a cost: every sentence you add is one more the reader has to get through.
+
+**Short is right when little happens.** The limits in this skill are ceilings, not targets. The reader saves the most time where you write the least.
+
+**Outer layers summarise their inner layers.** The tour's prose is nested in layers: a chapter's summary, the prose of its beats, and for each hunk its sentence and, where it has one, its heat explanation. A reader moves inwards only as far as they need to. So an outer layer says what its inner layers hold, well enough for the reader to decide whether to open them at all.
+
+**Never list what the code shows.** Not the columns a migration adds, not the keys of a settings block, not the methods of a trait, not the cases a test runs through. The diff sits one glance below; a list of its contents makes the reader read the change twice. List only when a list is the clearest way to say something the diff does not show.
+
+**Say why only when you have seen or researched the reason.** A motivation may come from anything you have actually seen: a comment or a commit message, a test name, a constraint removed elsewhere in the diff, something a tool call returned. State those plainly. When you are connecting dots instead, say so in the sentence: "presumably to let the admin form reopen a booking; the diff does not say." When you have neither, name the gap: "the diff does not say why the indexes go." A reason stated as fact that nothing supports is the one thing a summary must never contain; a reviewer trusts the summary instead of reading, and a wrong reason on the riskiest chapter sends them the wrong way.
+
+**A doubt takes one clause, attached to its claim.** "The old guard presumably blocked destroy; not checked", not a separate sentence of hedging, and never several hedges in one sentence.
+
+**Say what you found, never how you looked**: no tool names, no `SRC`, no "I checked" or "a search found". Where it matters how solid a statement is, say so in a word: confirmed, or not checked. Don't turn a doubt into a task for the reader, such as "worth confirming that X". State it as a doubt: "X is not checked". Which doubts to check is decided when you explore, not when you write.
 
 ## Who does what: orchestrator, workers, fan-out
 
@@ -132,7 +150,7 @@ Hunk # One annotated diff hunk
 + id: string                 # h17, minted by the script
 + sentence: html             # always present, in a <p>; one sentence
 + heat_level: 'skip' | none | 'note' | 'fishy' | 'hot'  # one word in the placeholder
-+ heat_reason: text          # the explanation; required for note, fishy and hot; lives in the placeholder
++ heat_reason: text          # the heat explanation; required for note, fishy and hot; lives in the placeholder
 + focus: text[]              # rare: quoted blocks of lines a reader must not miss; comments after the placeholder
 + dim: text[]                # rare: quoted blocks of lines a reader of this topic can pass over
 + diff_content: text         # spliced in by the script, never typed by an agent
@@ -310,7 +328,7 @@ The workers need two to three minutes. You are idle for all of it, so this is wh
 
 **The whole summary is at most 600 words**, the before/after table's cells not counted. It is an optional lead chapter: a reader who wants the context reads it, and one who does not skips straight to the first topic, at the start or half-way through. So every heading stands on its own, and none prepares the next. A summary of 944 words once read as a wall of text; that is the length this limit keeps out. Short paragraphs, and a `<ul>` with one line per item where you would otherwise write "first, second, third" inside a paragraph. `<strong>` may open a list item. The before/after table is a plain `<table>` with `<tr>`, `<th>` and `<td>`. No other markup, no emojis.
 
-**The enumeration guard applies here too, and matters most here**, because at this zoom level the reader has no diff beside the prose to anchor names to. Describe what a solution or a mechanism changes about the system, never the classes, methods or files it would touch. "Trusted devices become records instead of a cookie" is a mechanism; a list of the six classes that would change is not.
+Like all prose in the tour, the summary follows *Writing the tour* in Part 1; the rules below come on top. **The rule against listing what the code shows matters most here**, because at this zoom level the reader has no diff beside the prose to anchor names to. Describe what a solution or a mechanism changes about the system, never the classes, methods or files it would touch. "Trusted devices become records instead of a cookie" is a mechanism; a list of the six classes that would change is not.
 
 The fragment has this shape. It is the only fragment with an `<h1>`, and that is how the script recognises it; its headings never become chapters. **The headings are fixed text, copy them verbatim**: the script adds a one-line byline under the spectrum heading and under each of the three solutions, the same on every tour, so a returning reader knows the labels at a glance. You write only the paragraphs.
 
@@ -463,25 +481,17 @@ A good beat is a group of the topic's hunks that represents a (rather) self-cont
 
 ## Narrate for a reader who zooms
 
-The tour has three layers of prose, chapter, beat and hunk, and they are zoom levels. A hurried reader reads the chapter summaries and stops. A careful one opens the beats. Only the most careful opens hunks, and reading a hunk always costs more than reading a sentence about it. Every layer has the same job: **tell the reader what they would find one level down, well enough to decide whether to go there.** The layers overlap, and that is fine; a reader who zooms in expects to meet the same thing again, closer up.
+A hurried reader reads the chapter summaries and stops, a careful one opens the beats, and only the most careful opens the hunks. Each slot below follows *Writing the tour* in Part 1, and adds its own rules.
 
-What no layer does is spell the code out in prose: naming each column a migration adds, each key a settings block sets, each method a trait defines, each case a test checks. That is the diff again, only harder to read, and the real diff sits one glance below. The test for a sentence: after reading it, would the reader still want to open the diff? Good. Would they no longer need to? Then the sentence is doing the diff's job. Cut it.
+**Chapter summary** (the paragraph under your `<h2>`). At most 60 words. It answers: what does this body of work achieve, what is the one decision in it if there is one, and which beat carries the weight when that is not obvious? A reader who stops here must know what changed and whether to read on. Say which kind of work it is when that helps the reader skip: preparation for a later chapter, clean-up after an earlier one, or unrelated to the main change.
 
-**Chapter summary** (the paragraph under your `<h2>`). One paragraph. What this body of work achieves and the one decision in it, so a reader who stops here still knows what changed. Say which kind of work it is when that matters: preparation for a later chapter, clean-up after an earlier one, or unrelated to the main change. End with where the weight lies: the beat to open if they open only one.
+**Beat prose** (the paragraph under your `<h3>`). At most 40 words. It answers: what do these hunks do together, and how does this step follow from the one before? End on whether the hunks need reading: where the weight lies, or that nothing surprising waits below. For a beat of tests: in one clause what they cover, in one clause what they do not.
 
-**Say why only when you have seen why.** A motivation may come from anything you have actually seen: a comment or a commit message, a test name, a constraint removed elsewhere in the diff, something a tool call returned. State those plainly. When you are connecting dots instead, say so in the sentence: "presumably to let the admin form reopen a booking; the diff does not say." When you have neither, name the gap: "the diff does not say why the indexes go." A reason stated as fact that nothing supports is the one thing a summary must never contain; a reviewer trusts the summary instead of reading, and a wrong reason on the riskiest chapter sends them the wrong way.
+**Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. One sentence, at most 20 words. It says what the hunk is, so the reader knows what they would be opening: "The migration adding the three 2FA columns", not the three column names. When a hunk is trivial, a phrase is its whole sentence: "The renamed factory trait." When it only follows from another hunk, say that and nothing more: "The call sites of the rename above." If your briefing says a hunk is shared with another topic, say so in a few words. Why a hunk deserves attention is its heat explanation's job, not this sentence's.
 
-**Say what you found, never how you looked**: no tool names, no `SRC`, no "I checked" or "a search found". Where it matters how solid a statement is, say so in a word: confirmed, or not checked. Don't turn a doubt into a task for the reader, such as "worth confirming that X". State it as a doubt: "X is not checked". Which doubts to check is decided when you explore, not when you write.
-
-**Beat prose** (the paragraph under your `<h3>`). Always present. What these hunks do together and why they are one step; how this step follows from the previous beat when it does. Give the gist of what the hunks would show, and say "nothing surprising below" when that is true. This is where a reader decides whether to open the hunks. When a beat holds test hunks, its prose says in one clause what the tests cover and in one clause what they do not; that is the value of a test to a reviewer, and the hunk sentences below must not try to deliver it by listing cases.
+**Heat explanation** (the text after a note, fishy or hot level, shown under its label). One or two sentences, at most 40 words. It says why the hunk deserves its level, never what the hunk is; the hunk sentence says that. Its rules are in *Give each hunk a heat level*.
 
 **Refer to other topics and hunks in your own words, as links.** Free prose is better than titles, and a link makes it exact: `<a href="#topic-4">the locking chapter</a>`, `<a href="#h17">the migration</a>`. Topic numbers are on the "Topics in order" line of your briefing; hunk ids are in the diff. A nickname without a link leaves the reader guessing which of eight sidebar entries you meant.
-
-**Hunk sentence** (the paragraph after each placeholder). Always present, also on skip hunks. It says what the hunk is about, so the reader knows what they would be opening. For note, fishy and hot, why the hunk deserves attention is the explanation's job, not the sentence's. If your briefing says a hunk is shared with another topic, say so here, in a few words.
-
-One sentence, whatever the level.
-
-Never list what the hunk contains. Not the columns a migration adds, not the keys of a settings block, not the methods of a trait, not the cases a test checks, not the sections of a template. For a test hunk the sentence says what the test is for; which cases it runs through is the diff's job. "The migration adding the three 2FA columns", not the three column names and their types. "The four knobs that configure the feature", not the four keys in order. The reader has the diff one glance below; a sentence that lists its contents makes them read the change twice. Do not repeat the explanation.
 
 ## Give each hunk a heat level
 
@@ -491,30 +501,35 @@ Every hunk gets one of five heat levels. A level is a reading instruction: it te
 |---|---|---|
 | skip | `<!-- hunk h17 skip -->` | nothing to decide or fear; trust the sentence |
 | read | `<!-- hunk h17 -->` | ordinary code; one attentive pass |
-| note | `<!-- hunk h17 note: explanation -->` | the reader has a decision to make |
-| fishy | `<!-- hunk h17 fishy: explanation -->` | something here does not add up |
-| hot | `<!-- hunk h17 hot: explanation -->` | this hunk decides something costly |
+| note | `<!-- hunk h17 note: heat explanation -->` | the reader has a decision to make |
+| fishy | `<!-- hunk h17 fishy: heat explanation -->` | something here does not add up |
+| hot | `<!-- hunk h17 hot: heat explanation -->` | this hunk decides something costly |
 
 Take the highest level whose description fits. A factor lowers a level only when the diff or a check establishes it, never on assumption. Do not classify by file type or by the area of code a hunk sits in; weigh what the hunk itself does.
 
 **Hot: this hunk decides something costly, and a subtle mistake in that decision would be irreversible, or silent and wide.** The hunk must contain the decision itself: the condition that grants access, the query that selects what gets deleted, the amount that gets charged, the list of who receives an email, the filter that decides what leaves the system in an export. Hot is about cost, not suspicion: a correct payment call is still hot. The renamed variable next to it is not, and neither is a moved method, a log line or wiring in payment or auth code; a mistake there fails loudly or does not matter. A broken public method that raises at once is not hot either: the mistake announces itself.
 
-**Fishy: something here does not add up.** The code contradicts itself, its own names or comments, its tests, the goal of the change, or how the framework actually works. A guard whose name says it blocks something that the framework's semantics let through. A test whose title claims more than its assertions prove. Two hunks that expect different things of the same method. An assumption about the codebase that the code around it seems to contradict. Fishy is the one level that may rest on a hunch, when something feels off before you can say why. Its explanation always ends with how far you got: checked, not checked, or a hunch.
+**Fishy: something here does not add up.** The code contradicts itself, its own names or comments, its tests, the goal of the change, or how the framework actually works. A guard whose name says it blocks something that the framework's semantics let through. A test whose title claims more than its assertions prove. Two hunks that expect different things of the same method. An assumption about the codebase that the code around it seems to contradict. Fishy is the one level that may rest on a hunch, when something feels off before you can say why. Its heat explanation always ends with how far you got: checked, not checked, or a hunch.
 
-**Note: the reader has a decision to make.** Either the change takes a decision the reader should accept knowingly, or it raises one of the questions they read for (see *Your basic job*). A note names what is different from before; a property the code already had is not a note. How to write the common ones:
+**Note: the reader has a decision to make.** Either the change takes a decision the reader should accept knowingly, or it raises one of the questions they read for (see *Your basic job*). A note names what is different from before; a property the code already had is not a note.
 
-- **An assumption the change stands on.** Where many hunks follow from one belief about the codebase or the problem, the hunk where that belief is decided gets the badge, and the explanation says how far it reaches. The hunks that follow from it stay cool: if the root is right, they are right.
-- **Code in the wrong place.** Badge the hunk that puts code where it does not belong or grows a module past its purpose, and say where the code belongs or what could be extracted.
-- **More code than the job needs.** Say the proportion: "about 80 lines for what reads like a 20-line job".
-- **Edge-case code.** Name the case and when it occurs, so the reader can decide whether it is worth its lines.
-- **No precedent, or a better approach.** Say in one clause what the repository or the ecosystem usually does, or which approach would have avoided the code.
-- **A behaviour decision.** A default that changes behaviour for everyone, a deliberately omitted case, a new limit, a new dependency, or an important behaviour no test covers.
+Its heat explanation first says what the consequence is if nothing more changes, then asks the question the reader decides: "Inactive admins are now erased like everyone else. Should they be kept?" If you cannot put a decision into such a question, it is not a note; use read. A real decision is a non-rhetorical question with several answers a competent colleague could defend. If every answer but one is absurd, the hunk only does the obvious thing; use read. If your own explanation concludes that nothing needs deciding, such as "harmless here", drop the badge. And one decision gets one badge: when several hunks share it, only the hunk where it is taken gets the note, and the others stay read.
+
+Where each of the reader's questions shows, and how to write it:
+
+- **An assumption the change stands on.** The badge goes on the hunk where the belief is decided, and the heat explanation says how far it reaches: "the eight hunks in this chapter follow from it". Note it when the assumption is plausible but decisive; when it looks wrong, it is fishy. The hunks that follow from it stay cool: if the root is right, they are right.
+- **Code in the wrong place.** The badge goes on the hunk that puts code where it does not belong or grows a module past its purpose; say where the code belongs or what could be extracted.
+- **More code than the job needs.** The badge goes on the verbose hunk; say the proportion: "about 80 lines for what reads like a 20-line job".
+- **Edge-case code.** The badge goes on the hunk that handles the case; name the case and when it occurs, so the reader can decide whether it is worth its lines.
+- **No precedent.** The badge goes on the hunk that introduces the style; say in one clause what the repository or the ecosystem usually does instead.
+- **A better approach.** The badge goes on the hunk where that approach would have applied; say in one clause which approach would have avoided the code or the edge cases.
+- **A behaviour decision.** A default that changes behaviour for everyone, a deliberately omitted case, a new limit, a new dependency, an important behaviour no test covers, or a test removed that was the only check of a behaviour. The badge goes on the hunk that takes the decision.
 
 **Skip: nothing to decide or fear, and a reader loses nothing by trusting your sentence.** Lockfiles, schema dumps, generated code, a rename carried through its call sites, `include` lines, locale strings, and any hunk that exists only because another hunk does. Skip saves the reader the most time, so use it wherever it is true, and only there: when in doubt, read.
 
 **Read: ordinary hand-written code that needs one attentive pass.** The default for every hunk that fits none of the descriptions above. A misleading name or a small nit belongs here, with a word in the hunk sentence if it matters.
 
-**Note, fishy and hot each carry an explanation**, one or two sentences written into the placeholder after the colon. It says why the hunk deserves this level: what goes wrong if it is wrong, what does not add up, or what the reader has to decide. It does not say what the hunk does; the hunk sentence says that. A second sentence adds a second reason, not detail on the first. `hot: a missing cast here lets the desk check fail open, and no error or test would show it`, not `hot: the line that switches the check on`. Plain text, no HTML, no `--` inside. Skip and read have no explanation.
+**Note, fishy and hot each carry a heat explanation**, one or two sentences written into the placeholder after the colon. It says why the hunk deserves this level: what goes wrong if it is wrong, what does not add up, or what the reader has to decide. It does not say what the hunk does; the hunk sentence says that. A second sentence adds a second reason, not detail on the first. When a hot hunk also does not add up, that second reason says what, and how far it was checked. `hot: a missing cast here lets the desk check fail open, and no error or test would show it`, not `hot: the line that switches the check on`. Plain text, no HTML, no `--` inside. Skip and read have no explanation.
 
 ## Mark lines inside a hunk
 
