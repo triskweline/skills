@@ -18,7 +18,7 @@ standard skill locations. A skill you do not find there is missing.
 | `/agree-on-everything` | Settles every open requirement question with the human before the autonomous run starts. |
 | `/work-in-branch` | Moves the work onto a properly named feature branch. |
 | `/effective-rails-testing` | Picks the kind of test to add for each change when the project is a Rails app. |
-| `/trim-code` | Makes the working change smaller; its proposals (behavior cuts, larger rewrites of existing code) are kept for the hand-off. |
+| `/trim-code` | Makes the working change smaller; the L2 refactorings and L3 behavior cuts it leaves for approval are kept for the hand-off. |
 | `/pass-all-checks` | Runs the whole test suite and all linters at the end and fixes failures. |
 | `/self-review` | Has a sub-agent review the finished change; valid findings are folded back in. |
 
@@ -47,7 +47,7 @@ Include one more question in that bundle, for trimming with `/trim-code`:
 > - (b) Proportionate (default): simplify the change itself and apply only small rewrites of existing code. I'll propose the larger ones to you.
 > - (c) None: skip simplifying.
 
-Pass the choice to `/trim-code`: (a) is an explicit request for ambitious trimming, (b) is its default. Without a clear answer, use (b). With (c), skip the trimming step below.
+Pass the choice to `/trim-code`: (a) approves its L2 refactorings up front, (b) is its default. Without a clear answer, use (b). With (c), skip the trimming step below.
 
 If during your run you discover more permissions are needed, postpone the affected actions and finish the part of your work you already have permission for. Don't get around a missing permission by other means, and don't complicate your work just to avoid an action it needs. When you can no longer continue, accept the interruption and ask for another permission batch.
 
@@ -73,8 +73,8 @@ Also fix existing tests that broke because of behavior changes.
 ## Trim the change
 
 Unless the human chose to skip it, make your change smaller once the related tests pass, using the `/trim-code` skill.
-It applies trims that keep the behavior and stay in proportion to the change. It returns proposals for the rest: behavior cuts, and rewrites of existing code beyond that proportion. Don't apply the proposals: they need the human's approval. Keep them for the hand-off.
-Its report names the existing code that trims reshaped. Point those locations out for a thorough human review in the hand-off.
+It applies its L1 trims, and its L2 refactorings if the human chose (a). It returns the rest for approval: L2 refactorings otherwise, and L3 behavior cuts always. Don't apply those yourself: they need the human's approval. Keep them for the hand-off.
+Its report names the existing code that applied trims and refactorings touched. Point those locations out for a thorough human review in the hand-off.
 
 ## Run all checks
 
@@ -92,7 +92,7 @@ Review your work using a sub-agent, using the `/self-review` skill.
 Only when your implementation is complete, verified and reviewed, hand off your work to the human:
 
 - Recap your work (implementation, trimming, verification, self-review).
-- List the proposals from trimming that you did not apply, each with its recommendation and its review cost as `/trim-code` reports it: the code outside the change it would touch, and roughly how many lines it writes, changes and deletes. Ask which to apply.
+- List the L2 refactorings and L3 behavior cuts from trimming that await approval, as `/trim-code` reports them: each with the lines it saves, its review effort, for L3 the behavior it changes, and the recommendation. Ask which to apply.
 - Point out any decision that you are unsure about.
 - Point out code locations that should get a thorough human review.
 - Flag anything that took you a long time to find out you think is worth adding to AGENTS.md or CLAUDE.md.
