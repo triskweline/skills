@@ -39,7 +39,16 @@ If you just ran the `/agree-on-everything` skill, you already know everything yo
 If you are still unsure about anything, use the `/agree-on-everything` skill to fully align with your human.
 
 Your harness or instructions might require you to ask permission for certain actions during your work, e.g. for pushing a branch or running commands against a remote system. Ask now for the permissions you expect to need, so your run won't stall on a permission prompt while the human is away. Bundle your asks into a single question that explains what you need and why.
-Include one more question in that bundle, for trimming with `/trim-code`: "After implementing, I'll simplify the code. May I also apply larger rewrites of existing code that make the change simpler? That means more code for you to review. (Default: I only propose them.)" Pass the answer to `/trim-code`. Without a clear yes, the default applies.
+Include one more question in that bundle, for trimming with `/trim-code`:
+
+> After implementing, I can simplify the code. The analysis takes extra time. How far should it go?
+>
+> - (a) Ambitious: also apply larger rewrites of existing code that make the change simpler. This means more code for you to review.
+> - (b) Proportionate (default): simplify the change itself and apply only small rewrites of existing code. I'll propose the larger ones to you.
+> - (c) None: skip simplifying.
+
+Pass the choice to `/trim-code`: (a) is an explicit request for ambitious trimming, (b) is its default. Without a clear answer, use (b). With (c), skip the trimming step below.
+
 If during your run you discover more permissions are needed, postpone the affected actions and finish the part of your work you already have permission for. Don't get around a missing permission by other means, and don't complicate your work just to avoid an action it needs. When you can no longer continue, accept the interruption and ask for another permission batch.
 
 Non-trivial requirements should be implemented in a feature branch, using the `/work-in-branch` skill.
@@ -63,14 +72,14 @@ Also fix existing tests that broke because of behavior changes.
 
 ## Trim the change
 
-Once the related tests pass, make your change smaller using the `/trim-code` skill.
+Unless the human chose to skip it, make your change smaller once the related tests pass, using the `/trim-code` skill.
 It applies trims that keep the behavior and stay in proportion to the change. It returns proposals for the rest: behavior cuts, and rewrites of existing code beyond that proportion. Don't apply the proposals: they need the human's approval. Keep them for the hand-off.
 Its report names the existing code that trims reshaped. Point those locations out for a thorough human review in the hand-off.
 
 ## Run all checks
 
 Any non-trivial change must *additionally* be verified by running the *full* test suite and linters. Use the `/pass-all-checks` skill.
-The full test suite is slow. Only run the full test suite *after* possibly related tests (fast) already pass, and after trimming.
+The full test suite is slow. Only run the full test suite *after* possibly related tests (fast) already pass, and after trimming, if you trimmed.
 
 ## Self-review
 
