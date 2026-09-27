@@ -18,7 +18,7 @@ standard skill locations. A skill you do not find there is missing.
 | `/agree-on-everything` | Settles every open requirement question with the human before the autonomous run starts. |
 | `/work-in-branch` | Moves the work onto a properly named feature branch. |
 | `/effective-rails-testing` | Picks the kind of test to add for each change when the project is a Rails app. |
-| `/trim-code` | Makes the working change smaller; proposals to cut behavior are kept for the hand-off. |
+| `/trim-code` | Makes the working change smaller; its proposals (behavior cuts, larger rewrites of existing code) are kept for the hand-off. |
 | `/pass-all-checks` | Runs the whole test suite and all linters at the end and fixes failures. |
 | `/self-review` | Has a sub-agent review the finished change; valid findings are folded back in. |
 
@@ -39,6 +39,7 @@ If you just ran the `/agree-on-everything` skill, you already know everything yo
 If you are still unsure about anything, use the `/agree-on-everything` skill to fully align with your human.
 
 Your harness or instructions might require you to ask permission for certain actions during your work, e.g. for pushing a branch or running commands against a remote system. Ask now for the permissions you expect to need, so your run won't stall on a permission prompt while the human is away. Bundle your asks into a single question that explains what you need and why.
+Include one more question in that bundle, for trimming with `/trim-code`: "After implementing, I'll simplify the code. May I also apply larger rewrites of existing code that make the change simpler? That means more code for you to review. (Default: I only propose them.)" Pass the answer to `/trim-code`. Without a clear yes, the default applies.
 If during your run you discover more permissions are needed, postpone the affected actions and finish the part of your work you already have permission for. Don't get around a missing permission by other means, and don't complicate your work just to avoid an action it needs. When you can no longer continue, accept the interruption and ask for another permission batch.
 
 Non-trivial requirements should be implemented in a feature branch, using the `/work-in-branch` skill.
@@ -63,7 +64,8 @@ Also fix existing tests that broke because of behavior changes.
 ## Trim the change
 
 Once the related tests pass, make your change smaller using the `/trim-code` skill.
-It applies trims that keep the behavior, and returns proposals that would change behavior. Don't apply the proposals: they need the human's approval. Keep them for the hand-off.
+It applies trims that keep the behavior and stay in proportion to the change. It returns proposals for the rest: behavior cuts, and rewrites of existing code beyond that proportion. Don't apply the proposals: they need the human's approval. Keep them for the hand-off.
+Its report names the existing code that trims reshaped. Point those locations out for a thorough human review in the hand-off.
 
 ## Run all checks
 
@@ -81,7 +83,7 @@ Review your work using a sub-agent, using the `/self-review` skill.
 Only when your implementation is complete, verified and reviewed, hand off your work to the human:
 
 - Recap your work (implementation, trimming, verification, self-review).
-- List the proposals from trimming that you did not apply, each with its recommendation, and ask which to apply.
+- List the proposals from trimming that you did not apply, each with its recommendation and its review cost as `/trim-code` reports it: the code outside the change it would touch, and roughly how many lines it writes, changes and deletes. Ask which to apply.
 - Point out any decision that you are unsure about.
 - Point out code locations that should get a thorough human review.
 - Flag anything that took you a long time to find out you think is worth adding to AGENTS.md or CLAUDE.md.
