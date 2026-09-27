@@ -113,10 +113,11 @@ of the install command, which takes any number of skill names.
 
 ### ✂️ [`/trim-code`](skills/trim-code/SKILL.md)
 
-> Makes a working change smaller. A sub-agent looks for restructurings that keep the
-> behavior, and for behavior the change doesn't need, like handling for unlikely edge cases
-> or extras nobody asked for. Applies the first kind itself and brings the second kind to you
-> as proposals.
+> Makes a working change simpler, with fewer concepts for a reader to understand. Two
+> sub-agents look for missing structure and for local waste. Applies what keeps the
+> behavior and stays in proportion to the change. Brings the rest to you as proposals:
+> behavior cuts like unlikely edge cases or extras nobody asked for, and larger rewrites
+> of existing code.
 
 <details>
 <summary>Install this skill</summary>
