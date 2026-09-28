@@ -52,8 +52,9 @@ the diff doesn't need is out of scope.
 - **The ratio** limits how much existing code an idea pulls into the diff. The lines of
   existing code it modifies or adds to may be at most about twice the lines of logic it
   deletes from the diff. Deletions in existing code don't count toward it: an idea earns
-  its place among the trims by shrinking the diff. Clearly more is over the ratio; close
-  is within it. Every line counts, including renames and updated call sites. Code the
+  its place among the trims by shrinking the diff. Everywhere else, e.g. whether an idea
+  is worth it, they count like any other savings. Clearly more is over the ratio; close is
+  within it. Every line counts, including renames and updated call sites. Code the
   idea writes inside the diff doesn't count: the human reviews the result anyway.
 
 ## Three lists
@@ -381,7 +382,7 @@ Name every idea by its code from step 3, and say which list it is on.
   for them.
 - Each L2 refactoring and L3 behavior cut that awaits approval:
   - the idea in a sentence or two,
-  - roughly how many lines of logic it saves,
+  - roughly how many lines of logic it saves, in the diff and in existing code,
   - its review effort: which existing code it touches, and roughly how much,
   - for L3: which intended behavior changes and who would notice, or which dependency or
     schema change it needs,
