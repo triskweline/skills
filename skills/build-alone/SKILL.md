@@ -41,13 +41,12 @@ If you are still unsure about anything, use the `/agree-on-everything` skill to 
 Your harness or instructions might require you to ask permission for certain actions during your work, e.g. for pushing a branch or running commands against a remote system. Ask now for the permissions you expect to need, so your run won't stall on a permission prompt while the human is away. Bundle your asks into a single question that explains what you need and why.
 Include one more question in that bundle, for trimming with `/trim-code`:
 
-> After implementing, I can simplify the code. The analysis takes extra time. How far should it go?
+> After implementing, I can simplify the code. The analysis takes extra time. Should I?
 >
-> - (a) Ambitious: also apply larger rewrites of existing code that make the change simpler. This means more code for you to review.
-> - (b) Proportionate (default): simplify the change itself and apply only small rewrites of existing code. I'll propose the larger ones to you.
-> - (c) None: skip simplifying.
+> - (a) Yes (default): simplify the change itself, with small rewrites of existing code where they help. I'll propose larger rewrites and behavior changes to you at the end.
+> - (b) No: skip simplifying.
 
-Pass the choice to `/trim-code`: (a) approves its L2 refactorings up front, (b) is its default. Without a clear answer, use (b). With (c), skip the trimming step below.
+Without a clear answer, use (a). With (b), skip the trimming step below.
 
 If during your run you discover more permissions are needed, postpone the affected actions and finish the part of your work you already have permission for. Don't get around a missing permission by other means, and don't complicate your work just to avoid an action it needs. When you can no longer continue, accept the interruption and ask for another permission batch.
 
@@ -74,8 +73,8 @@ Also fix existing tests that broke because of behavior changes.
 
 Unless the human chose to skip it, make your change smaller once the related tests pass, using the `/trim-code` skill.
 The full test suite runs in the next step anyway, so while trimming, run the related tests `/trim-code` asks for, but not the full suite.
-It applies its L1 trims, and its L2 refactorings if the human chose (a). It returns the rest for approval: L2 refactorings otherwise, and L3 behavior cuts always. Don't apply those yourself: they need the human's approval. Keep them for the hand-off.
-Its report names the existing code that applied trims and refactorings touched. Point those locations out for a thorough human review in the hand-off.
+It applies its L1 trims, and returns its L2 refactorings and L3 behavior cuts for approval. Don't apply those yourself: they need the human's approval. Keep them for the hand-off.
+Its report names the existing code that applied trims touched. Point those locations out for a thorough human review in the hand-off.
 
 ## Run all checks
 
