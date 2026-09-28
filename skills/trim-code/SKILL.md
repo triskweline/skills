@@ -40,7 +40,10 @@ the diff doesn't need is out of scope.
   nor modifies.
 - **Intended behavior** is what the requirements, specs or docs ask for, what tests pin
   down, and what code in this codebase uses. Anything else a piece of code does is free to
-  change, including behavior that is clearly wrong.
+  change, including behavior that is clearly wrong. A detail nobody could sensibly rely on
+  doesn't count either, even where a test happens to pin it down: the order of keys in a
+  JSON object, whitespace, a typo in a message. A changed error type, a different error
+  winning, or new keys in a response are not such details.
 - **The obstruction sentence** ties an idea that touches existing code to the diff: "The
   diff needed X because existing code does, lacks or is shaped as Y; this idea makes one
   of them unnecessary by Z." X is concrete code in the diff: files and lines. The idea may
@@ -172,7 +175,10 @@ whole".
   need different parts, that is two representations, not one with optional fields.
 - Work that is computed and then thrown away on some path.
 - Two paths running the same steps, differing in one. Make it one sequence that takes the
-  differing step as input: as a block or an object, not a flag it branches on.
+  differing step as input: as a callback or an object, not a flag it branches on. The shared
+  sequence takes only that one step from its callers. Everything else it needs comes in as
+  arguments, and what it produces goes out as its return value; it never calls back into
+  its caller for anything else.
 - An argument threaded through a recursion or a chain of calls. It often means a missing
   object: a view, a context.
 - A side channel: state one method sets so another can read it. It usually means a missing
@@ -251,7 +257,8 @@ ones of one kind into one idea: the pattern, and the files it occurs in. For eac
 - **where** it is: files, rough location,
 - **the idea** in a few sentences: what goes, and what replaces it,
 - **its intent:** to keep the intended behavior, or to change it. If it changes it: what
-  changes, and whether a requirement asks for that behavior, quoted if one does,
+  changes, and whether a requirement asks for that behavior, quoted if one does. If it only
+  changes a detail like key order or a typo, say which,
 - **whether it touches existing code.** If it does: its obstruction sentence,
 - **which concepts** disappear, and which appear,
 - **rough estimates** in round numbers: the lines of logic it deletes and, if it touches
@@ -281,7 +288,8 @@ Kill an idea only for what its description shows:
 Doubt is never a reason to kill in this step; the execution steps judge the real plan.
 "The current version is fine", size and effort are never reasons at all.
 
-Sort the rest by their properties:
+Sort the rest by their properties. An idea that only changes a detail nobody could
+sensibly rely on (see the terms) counts as keeping the behavior; note it for the report.
 
 - Intent to change behavior, a new dependency, or a data schema change: **L3**. If a
   requirement asks for the behavior, kill the idea, unless the requirement costs far more
@@ -313,9 +321,10 @@ plan it anew. The plan says:
 
 Then check the plan:
 
-- It must not make control flow harder to follow, leave an abstraction that can't be
-  described in one sentence, lose intent, or move a rule away from where the project keeps
-  it. If it does, kill it.
+- It must not make control flow harder to follow, e.g. make a reader jump back and forth
+  between the same two classes more than once to follow one call. It must not leave an
+  abstraction that can't be described in one sentence, lose intent, or move a rule away
+  from where the project keeps it. If it does, kill it.
 - It must still meet the L1 conditions. Over the ratio: move it to L2. The intended
   behavior can't be shown to hold, e.g. untested existing code where no pin-down tests are
   possible: move it to L3. No net gain once planned: kill it.
@@ -327,8 +336,9 @@ related to the code you changed, including the tests of existing code you touche
 test fails, find out why:
 
 - It tested code the trim deleted: delete it with that code. It tested internals the trim
-  reshaped: move or rewrite it along with them. A test of intended behavior is never
-  changed to make it pass.
+  reshaped: move or rewrite it along with them. It pinned a detail nobody could sensibly
+  rely on (see the terms): update it, and name it in the report. A test of intended
+  behavior is never changed to make it pass.
 - Your implementation is wrong: fix it.
 - The idea itself changes intended behavior: revert it and move it to L3.
 
@@ -360,6 +370,8 @@ If another skill called you, hand this report back to it. Otherwise give it to t
 - The trims and refactorings you applied, one line each, naming the existing code each one
   touched, and the total lines of logic saved.
 - The bugs you fixed, each with its test.
+- The details nobody could sensibly rely on that you changed, and the tests you updated
+  for them.
 - Each L2 refactoring and L3 behavior cut that awaits approval:
   - the idea in a sentence or two,
   - roughly how many lines of logic it saves,
