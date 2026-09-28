@@ -5,11 +5,11 @@ description: >-
   understand. Find missing structure (the same thing built twice, steps repeated with one
   difference, mechanisms more general than their uses, existing code that could serve the
   change) and local waste (checks nothing can trigger, wrappers that only forward). Apply
-  what keeps the behavior and mainly shrinks the diff itself; bring larger refactorings of
-  existing code and behavior cuts (unlikely edge cases, extras nobody asked for) to the
-  human for approval. Use after implementing a change that works but is too much code for
-  what it does, when asked to trim, slim down or simplify a change, or to cut bloat from
-  agent-written code.
+  what keeps the behavior and leaves fewer concepts and lines in the diff itself; bring
+  larger refactorings of existing code and behavior cuts (unlikely edge cases, extras
+  nobody asked for) to the human for approval. Use after implementing a change that works
+  but is too much code for what it does, when asked to trim, slim down or simplify a
+  change, or to cut bloat from agent-written code.
 ---
 
 # Trim code
@@ -133,9 +133,10 @@ idea, say whether a requirement asks for that behavior, and quote it if one does
 
 #### What doesn't count as simpler
 
-- Shorter but denser doesn't count. No packing several statements into one line, no
-  deleting blank lines, no metaprogramming or generic mechanisms where two explicit cases
-  would do.
+- Shorter but denser doesn't count. If a reader has to take an expression apart to
+  understand it, it isn't simpler, whatever its form: several statements packed into one
+  line, a long call chain, a nested ternary, a clever trick. No deleting blank lines, no
+  metaprogramming or generic mechanisms where two explicit cases would do.
 - After the idea, each abstraction must still be describable in one sentence without "and"
   or "unless". A mode it needs to serve both uses counts as a concept (see the intro).
 - Don't lose intent or move knowledge. A function whose name says what the code means
@@ -342,10 +343,9 @@ plan it anew. The plan says:
 
 Then check the plan:
 
-- It must not make control flow harder to follow, e.g. make a reader jump back and forth
-  between the same two classes more than once to follow one call. It must not leave an
-  abstraction that can't be described in one sentence, lose intent, or move a rule away
-  from where the project keeps it. If it does, kill it.
+- It must not break a rule of "What doesn't count as simpler" (section 2.1), and must not
+  make control flow harder to follow, e.g. make a reader jump back and forth between the
+  same two classes more than once to follow one call. If it does, kill it.
 - It must still meet the L1 conditions. Over the ratio: move it to L2. The intended
   behavior can't be shown to hold, e.g. untested existing code where no pin-down tests are
   possible: move it to L3. Not worth it once planned (see step 3): kill it.
@@ -415,7 +415,9 @@ All but the last are tables with one row per idea, bugs at the top:
 | R5 | No `ParameterMissing` rescue. *Changed detail: a hand-made request gets a 400.* | `invoice_mailings_controller.rb` | −2 |
 
 - **Num** is the code. A row that groups ideas of one kind takes a range, like R17–R26.
-- **Description** is a short sentence or two. A bug's description starts with `🐞 Bug:`.
+- **Description** is a short sentence or two. When the idea removes a concept, it names
+  it, like "one view of the tree instead of two": that shows a win the line count may
+  not. A bug's description starts with `🐞 Bug:`.
   Notes go into the same cell, in italics. Apart from that prefix, emojis go in the
   headings only.
 - **Main file** is the basename of the file the idea changes most, or `various`.
@@ -437,7 +439,7 @@ What the sections say:
 - In both of these, each row says:
   - the idea; for a bug, the input that triggers it, the requirement it violates and the
     fix,
-  - its concept gain, where it has one,
+  - the concept it removes, named, where it removes one,
   - its review effort: which existing code it touches, and its existing churn,
   - for a behavior change: which intended behavior changes and who would notice, or which
     dependency or schema change it needs,

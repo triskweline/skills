@@ -99,7 +99,7 @@ of the install command, which takes any number of skill names.
 
 > Makes a working change simpler, with fewer concepts for a reader to understand. Two
 > sub-agents look for missing structure and for local waste. Applies what keeps the
-> behavior and mainly shrinks the diff itself. Brings larger refactorings of existing
+> behavior and leaves fewer concepts and lines in the diff itself. Brings larger refactorings of existing
 > code, and behavior cuts like unlikely edge cases or extras nobody asked for, to you for
 > approval.
 
