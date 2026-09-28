@@ -383,8 +383,10 @@ If another skill called you, hand this report back to it. Otherwise give it to t
 
 Name every idea by its code from step 3, and say which list it is on.
 
-- The trims you applied, one line each, naming the existing code each one touched, and the
-  total lines of logic saved.
+- The result, in three separate parts: lines of logic saved in the code, lines saved in
+  the tests, and the concepts that disappeared. Fewer concepts is a simplification in its
+  own right, even where it barely shows in the line counts.
+- The trims you applied, one line each, naming the existing code each one touched.
 - The bugs you fixed, each with its test.
 - The details nobody could sensibly rely on that you changed, and the tests you updated
   for them.
