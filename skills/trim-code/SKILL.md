@@ -38,7 +38,7 @@ the diff doesn't need is out of scope.
   it was before trimming began.
 - **Existing code** is code that existed before the diff: every line the diff neither adds
   nor modifies.
-- **Intended behavior** is what the requirements, specs or docs ask for, what tests pin
+- **Intended behavior** is what the requirements, specifications or docs ask for, what tests pin
   down, and what code in this codebase uses. Anything else a piece of code does is free to
   change, including behavior that is clearly wrong. A detail nobody could sensibly rely on
   doesn't count either, even where a test happens to pin it down: the order of keys in a
@@ -329,11 +329,16 @@ Then check the plan:
   behavior can't be shown to hold, e.g. untested existing code where no pin-down tests are
   possible: move it to L3. No net gain once planned: kill it.
 
-Then apply it. A trim that removes a whole concept, and every bug fix, goes on its own,
-with the related tests after it. Smaller trims go in batches, with one test run per batch;
-if a batch fails, find the trim that broke it and revert only that one. Run the tests
-related to the code you changed, including the tests of existing code you touched. When a
-test fails, find out why:
+Then apply it, and run the tests for the files it touched, including files of existing
+code. A trim that only edits comments, or deletes code nothing calls, needs no test run.
+
+Once all trims are in, and the refactorings of step 5 if there are any, run the related
+tests once: the tests for every file the trims changed, the tests that exercise the code
+calling those files, and the end-to-end tests of the feature the diff builds. Use the
+project's fastest way to run them, e.g. a parallel test runner if available. If this run
+fails, find the trim that broke it and revert only that one.
+
+When a test fails, find out why:
 
 - It tested code the trim deleted: delete it with that code. It tested internals the trim
   reshaped: move or rewrite it along with them. It pinned a detail nobody could sensibly
