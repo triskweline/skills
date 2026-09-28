@@ -39,11 +39,11 @@ the diff doesn't need is out of scope.
 - **Existing code** is code that existed before the diff: every line the diff neither adds
   nor modifies.
 - **Intended behavior** is what the requirements, specifications or docs ask for, what
-  tests pin down, and what code in this codebase uses. Anything else a piece of code does is
-  free to change, including behavior that is clearly wrong. A detail nobody could sensibly rely on
-  doesn't count either, even where a test happens to pin it down: the order of keys in a
-  JSON object, whitespace, a typo in a message. A changed error type, a different error
-  winning, or new keys in a response are not such details.
+  tests pin down, and what code in this codebase uses. Anything else a piece of code does
+  is free to change, including behavior that is clearly wrong. A detail nobody could
+  sensibly rely on doesn't count either, even where a test happens to pin it down: the
+  order of keys in a JSON object, whitespace, a typo in a message. A changed error type, a
+  different error winning, or new keys in a response are not such details.
 - **The obstruction sentence** ties an idea that touches existing code to the diff: "The
   diff needed X because existing code does, lacks or is shaped as Y; this idea makes one
   of them unnecessary by Z." X is concrete code in the diff: files and lines. The idea may
