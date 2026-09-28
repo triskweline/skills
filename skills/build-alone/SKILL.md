@@ -41,7 +41,7 @@ If you are still unsure about anything, use the `/agree-on-everything` skill to 
 Your harness or instructions might require you to ask permission for certain actions during your work, e.g. for pushing a branch or running commands against a remote system. Ask now for the permissions you expect to need, so your run won't stall on a permission prompt while the human is away. Bundle your asks into a single question that explains what you need and why.
 Include one more question in that bundle, for trimming with `/trim-code`:
 
-> After implementing, I can simplify the code. The analysis takes extra time. Should I?
+> After implementing, I can simplify the code. This takes extra time. Should I?
 >
 > - (a) Yes (default): simplify the change itself, with small rewrites of existing code where they help. I'll propose larger rewrites and behavior changes to you at the end.
 > - (b) No: skip simplifying.
