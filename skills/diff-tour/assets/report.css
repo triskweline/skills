@@ -464,7 +464,7 @@ div.note > :last-child { margin-bottom: 0; }
 .say li, .note li, .summary li, .intro li { margin: .3rem 0; }
 .say strong, .note strong, .summary strong, .intro strong { color: var(--ink); font-weight: 600; }
 .say a, .note a, .summary a, .intro a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
-.say code, .note code, .summary code, .intro code, .meta code {
+.say code, .note code, .flag code, .summary code, .intro code, .meta code {
   font: 0.86em/1.4 var(--mono);
   background: var(--panel-2); border: 1px solid var(--line-2);
   border-radius: 4px; padding: .1em .3em;

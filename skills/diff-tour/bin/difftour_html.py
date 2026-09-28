@@ -535,9 +535,10 @@ def figure(h, ident, level, reason, note='', ranges=None):
            % (name, ' file' if not h.body else '', ident, _key(h), LEVELS[level], attrs),
            '<div class="note">%s</div>' % note]
     if level in ('note', 'fishy', 'hot'):
-        out.append('<p class="flag %s"><b>%s:</b> %s</p>'
-                   % (level, FLAG_LABEL[level],
-                      html.escape(reason) if reason else 'please check this change'))
+        # A heat explanation is plain text inside a comment, so code names come in backticks;
+        # they become code spans after escaping, so nothing else in it can turn into markup.
+        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', html.escape(reason)) if reason else 'please check this change'
+        out.append('<p class="flag %s"><b>%s:</b> %s</p>' % (level, FLAG_LABEL[level], text))
     out.append('<div class="card">')
     out.append('<figcaption><span class="where">%s</span><span class="tools"></span></figcaption>' % where)
     if h.body:

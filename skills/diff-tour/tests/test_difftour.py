@@ -448,6 +448,12 @@ class Repo(RepoCase):
         self.assertIn('focus in h2: after [...], quoted block not found', err)
         self.assertIn('dim in h2: the block covers the whole hunk', err)
 
+    def test_backticks_in_a_heat_explanation_become_code_spans(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2><!-- hunk h1 note: `premium_plan?` now also covers <wire> transfers. Keep it? --><p>S.</p>'
+            '<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('<b>Decide:</b> <code>premium_plan?</code> now also covers &lt;wire&gt; transfers. Keep it?', page)
+
     def test_a_gap_tail_takes_the_first_match_below_the_head(self):
         sys.path.insert(0, os.path.join(SKILL, 'bin'))
         import difftour_html
