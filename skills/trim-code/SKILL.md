@@ -65,10 +65,10 @@ Every idea ends up on one of three lists, or is killed.
   local in the diff. Trims are always applied, without asking.
 - **L2 refactorings** keep the intended behavior, verifiably, but touch existing code
   beyond the ratio. They cost the human more review than they spare. They need the
-  human's approval, which can be given up front.
+  human's approval, given after the report.
 - **L3 behavior cuts** need a decision beyond review. They change intended behavior, or
   can't be shown to keep it, or add a dependency, or change a data schema. Uncertain bug
-  fixes belong here too. They need the human's approval, which is never given up front.
+  fixes belong here too. They need the human's approval, given after the report.
 
 ## Steps
 
@@ -76,10 +76,9 @@ Every idea ends up on one of three lists, or is killed.
 2. Gather ideas (sub-agents).
 3. Groom and sort the ideas (main agent).
 4. Execute the L1 trims (main agent).
-5. Execute the L2 refactorings, if approved up front (main agent).
-6. Report (main agent).
-7. Approve (human).
-8. Execute the approved ideas (main agent).
+5. Report (main agent).
+6. Approve (human).
+7. Execute the approved ideas (main agent).
 
 ## 1. Brief the sub-agents (main agent)
 
@@ -340,11 +339,11 @@ Then check the plan:
 Then apply it, and run the tests for the files it touched, including files of existing
 code. A trim that only edits comments, or deletes code nothing calls, needs no test run.
 
-Once all trims are in, and the refactorings of step 5 if there are any, run the related
-tests once: the tests for every file the trims changed, the tests that exercise the code
-calling those files, and the end-to-end tests of the feature the diff builds. Use the
-project's fastest way to run them, e.g. a parallel test runner if available. If this run
-fails, find the trim that broke it and revert only that one.
+Once all trims are in, run the related tests once: the tests for every file the trims
+changed, the tests that exercise the code calling those files, and the end-to-end tests of
+the feature the diff builds. Use the project's fastest way to run them, e.g. a parallel
+test runner if available. If this run fails, find the trim that broke it and revert only
+that one.
 
 When a test fails, find out why:
 
@@ -367,23 +366,14 @@ While you implement:
 When you revert, undo only that idea. Never discard the diff's own uncommitted work.
 Don't commit, unless the human asks for it.
 
-## 5. Execute the L2 refactorings, if approved up front (main agent)
-
-Skip this step unless the human approved L2 refactorings up front, in their own words or
-relayed by a calling skill that asked them. A calling skill never approves on its own.
-
-Execute every L2 refactoring as in step 4, with the L2 conditions: the intended behavior
-must still be shown to hold. If it can't, move it to L3. Not worth it once planned: kill
-it.
-
-## 6. Report (main agent)
+## 5. Report (main agent)
 
 If another skill called you, hand this report back to it. Otherwise give it to the human.
 
 Name every idea by its code from step 3, and say which list it is on.
 
-- The trims and refactorings you applied, one line each, naming the existing code each one
-  touched, and the total lines of logic saved.
+- The trims you applied, one line each, naming the existing code each one touched, and the
+  total lines of logic saved.
 - The bugs you fixed, each with its test.
 - The details nobody could sensibly rely on that you changed, and the tests you updated
   for them.
@@ -400,12 +390,12 @@ Name every idea by its code from step 3, and say which list it is on.
 - History taken out of comments, for the commit message.
 - Which tests ran: only the related ones, or the full suite.
 
-## 7. Approve (human)
+## 6. Approve (human)
 
 The human approves some, all or none of the waiting L2 and L3 ideas, by their codes.
 Nothing is executed until then.
 
-## 8. Execute the approved ideas (main agent)
+## 7. Execute the approved ideas (main agent)
 
 Execute each approved idea with a detailed plan as in step 4. For an L3 behavior cut, the
 plan also says what exactly changes, and which tests assert the old behavior: update
