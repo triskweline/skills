@@ -92,7 +92,7 @@ Review your work using a sub-agent, using the `/self-review` skill.
 Only when your implementation is complete, verified and reviewed, hand off your work to the human:
 
 - Recap your work (implementation, trimming, verification, self-review).
-- List the L2 refactorings and L3 behavior cuts from trimming that await approval, as `/trim-code` reports them, with their codes (R1, R2, …) and lists: each with the lines it saves, its review effort, for L3 the behavior it changes, and the recommendation. Ask which to apply.
+- List the L2 refactorings and L3 behavior cuts from trimming that await approval, as `/trim-code` reports them, with their codes (R1, R2, …) and under the headings it uses for them: each with the lines it saves, its review effort, for L3 the behavior it changes, and the recommendation. Ask which to apply.
 - Point out any decision that you are unsure about.
 - Point out code locations that should get a thorough human review.
 - Flag anything that took you a long time to find out you think is worth adding to AGENTS.md or CLAUDE.md.
