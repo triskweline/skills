@@ -381,7 +381,14 @@ Don't commit, unless the human asks for it.
 
 If another skill called you, hand this report back to it. Otherwise give it to the human.
 
-Name every idea by its code from step 3, and say which list it is on.
+Write the report for the human, in their words, not this skill's. Don't use L1, L2, L3,
+"killed", "the ratio" or "the obstruction sentence". Group the ideas under headings like
+these, and name every idea by its code from step 3:
+
+- **Applied simplifications** for L1 trims,
+- **Larger refactorings, for your approval** for L2 refactorings,
+- **Behavior changes, for your decision** for L3 behavior cuts,
+- **Ideas not pursued** for the ones you killed.
 
 - The result, in three separate parts: lines of logic saved in the code, lines saved in
   the tests, and the concepts that disappeared. Fewer concepts is a simplification in its
@@ -401,7 +408,7 @@ Name every idea by its code from step 3, and say which list it is on.
     another list.
   Include the structure pass's map, briefly, when an idea rests on it. When two ideas are
   alternatives on different lists, say which one goes further.
-- The ideas you killed, and why.
+- The ideas not pursued, and why.
 - History taken out of comments, for the commit message.
 - Which tests ran: only the related ones, or the full suite.
 
