@@ -372,6 +372,11 @@ it.
 
 If another skill called you, hand this report back to it. Otherwise give it to the human.
 
+Give every idea on the three lists a code, so the human can refer to it quickly: A1, A2, …
+for L1 trims, B1, B2, … for L2 refactorings, C1, C2, … for L3 behavior cuts. A bug fix
+takes the code of the list it is on. Keep these codes for the rest of the conversation,
+and use them whenever you talk about an idea.
+
 - The trims and refactorings you applied, one line each, naming the existing code each one
   touched, and the total lines of logic saved.
 - The bugs you fixed, each with its test.
@@ -392,8 +397,8 @@ If another skill called you, hand this report back to it. Otherwise give it to t
 
 ## 7. Approve (human)
 
-The human approves some, all or none of the waiting L2 and L3 ideas. Nothing is executed
-until then.
+The human approves some, all or none of the waiting L2 and L3 ideas, by their codes.
+Nothing is executed until then.
 
 ## 8. Execute the approved ideas (main agent)
 
