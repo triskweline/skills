@@ -130,22 +130,6 @@ of the install command, which takes any number of skill names.
 
 </details>
 
-### 🌿 [`/work-in-branch`](skills/work-in-branch/SKILL.md)
-
-> Makes sure work happens on a properly named feature branch, following the repo's naming
-> convention, instead of landing unreviewed on a protected branch like `main`.
-
-<details>
-<summary>Install this skill</summary>
-
-> ```bash
-> npx skills add triskweline/skills --global --skill work-in-branch
-> ```
->
-> Drop `--global` to install into the current project instead of your user account.
-
-</details>
-
 ### ✅ [`/pass-all-checks`](skills/pass-all-checks/SKILL.md)
 
 > Enumerates every check the project runs, from its CI config and docs, so that no linter is
@@ -157,6 +141,22 @@ of the install command, which takes any number of skill names.
 
 > ```bash
 > npx skills add triskweline/skills --global --skill pass-all-checks
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
+### 🌿 [`/work-in-branch`](skills/work-in-branch/SKILL.md)
+
+> Makes sure work happens on a properly named feature branch, following the repo's naming
+> convention, instead of landing unreviewed on a protected branch like `main`.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill work-in-branch
 > ```
 >
 > Drop `--global` to install into the current project instead of your user account.
