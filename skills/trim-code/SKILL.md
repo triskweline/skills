@@ -385,40 +385,80 @@ Don't commit, unless the human asks for it.
 If another skill called you, hand this report back to it. Otherwise give it to the human.
 
 Write the report for the human, in their words, not this skill's. Don't use L1, L2, L3,
-"killed", "the ratio" or "the obstruction sentence". Group the ideas under headings like
-these, and name every idea by its code from step 3:
+"killed", "the ratio" or "the obstruction sentence". Name every idea by its code from
+step 3. The sections split the ideas by whether the human has to decide on them.
 
-- **Applied simplifications** for L1 trims,
-- **Larger refactorings, for your approval** for L2 refactorings,
-- **Behavior changes, for your decision** for L3 behavior cuts,
-- **Ideas not pursued** for the ones you killed.
+Start with a heading that names the diff, like `## Trim report: invoice mailing
+(097aeb17)`. Below it, the result as a table with a single row: lines of logic saved in
+the code, lines saved in the tests, and the concepts that disappeared. Fewer concepts is a
+simplification in its own right, even where it barely shows in the line counts.
 
-- The result, in three separate parts: lines of logic saved in the code, lines saved in
-  the tests, and the concepts that disappeared. Fewer concepts is a simplification in its
-  own right, even where it barely shows in the line counts.
-- The trims you applied, one line each, naming the existing code each one touched.
-- The bugs you fixed, each with its test.
-- The details nobody could sensibly rely on that you changed, and the tests you updated
-  for them.
-- Each L2 refactoring and L3 behavior cut that awaits approval:
-  - the idea in a sentence or two,
-  - its concept gain and total savings,
+| Logic | Tests | Concepts |
+|:-----:|:-----:|:--------:|
+| −21 lines | ±0 lines | −5 |
+
+Then these sections, in this order. Leave out empty ones.
+
+- `### ✅ Applied changes` for L1 trims, certain bug fixes included,
+- `### 🛠️ Further improvements (decision required)` for L2 refactorings,
+- `### 🤔 Ideas that change behavior (decision required)` for L3 ideas, uncertain bug
+  fixes included,
+- `### 🚫 Ideas not pursued` for the ones you killed,
+- `### 🛡️ Tests` last.
+
+All but the last are tables with one row per idea, bugs at the top:
+
+| Num | Description | Main file | Win |
+|-----|-------------|-----------|----:|
+| R1 | 🐞 Bug: a custom PDF was attached under the generated filename, not its upload name. *Test: `mailing_spec.rb:197`.* | `mailing.rb` | ±0 |
+| R4 | Mailer builds the attachments directly | `invoice_mailer.rb` | −6 |
+| R5 | No `ParameterMissing` rescue. *Changed detail: a hand-made request gets a 400.* | `invoice_mailings_controller.rb` | −2 |
+
+- **Num** is the code. A row that groups ideas of one kind takes a range, like R17–R26.
+- **Description** is a short sentence or two. A bug's description starts with `🐞 Bug:`.
+  Notes go into the same cell, in italics. Apart from that prefix, emojis go in the
+  headings only.
+- **Main file** is the basename of the file the idea changes most, or `various`.
+- **Win** is its total savings in lines of logic, like −4, ±0 or ~−45.
+
+What the sections say:
+
+- **Applied changes:** each trim, naming the existing code it touched. A bug names the
+  input that triggers it and the requirement it violates, and gets an italic note naming
+  the test that now catches it. A detail nobody could sensibly rely on that a trim changed
+  gets an italic note, naming the test you updated for it. Below the table, what you did
+  outside the code, like migrating a local database.
+- **Further improvements** opens with: "These keep the behavior but reach deeper into
+  existing code, so they need more review. To apply one, reply with its number, e.g.
+  `apply R9`."
+- **Ideas that change behavior** opens with: "These change what the feature does, so I
+  didn't apply them. To apply one, bug fixes included, reply with its number, e.g.
+  `apply R10`."
+- In both of these, each row says:
+  - the idea; for a bug, the input that triggers it, the requirement it violates and the
+    fix,
+  - its concept gain, where it has one,
   - its review effort: which existing code it touches, and its existing churn,
-  - for L3: which intended behavior changes and who would notice, or which dependency or
-    schema change it needs,
-  - your recommendation, weighing taste (does it fit how this codebase does things?),
-    churn, risk, review effort and savings. It annotates the idea; it doesn't move it to
-    another list.
-  Include the structure pass's map, briefly, when an idea rests on it. When two ideas are
-  alternatives on different lists, say which one goes further.
-- The ideas not pursued, and why.
-- History taken out of comments, for the commit message.
-- Which tests ran: only the related ones, or the full suite.
+  - for a behavior change: which intended behavior changes and who would notice, or which
+    dependency or schema change it needs,
+  - your recommendation, as an italic note, weighing taste (does it fit how this codebase
+    does things?), churn, risk, review effort and savings. It annotates the idea; it
+    doesn't move it to another list.
+
+  When two ideas are alternatives on different lists, say which one goes further. When an
+  idea rests on the structure pass's map, give the map briefly below the table.
+- **Ideas not pursued:** the idea, then after a colon why not. Small ones of one kind
+  share a row.
+- **Tests:** which tests ran, only the related ones or the full suite, with their result,
+  linters and flaky failures included.
+
+End with the history taken out of comments, as a paragraph starting with **For the commit
+message:**, if there is any.
 
 ## 6. Approve (human)
 
-The human approves some, all or none of the waiting L2 and L3 ideas, by their codes.
-Nothing is executed until then.
+The human approves some, all or none of the waiting L2 and L3 ideas, unfixed bugs
+included, by their codes, e.g. `apply R10`. Nothing is executed until then.
 
 ## 7. Execute the approved ideas (main agent)
 
