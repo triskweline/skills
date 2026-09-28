@@ -285,7 +285,7 @@ Kill an idea only for what its description shows:
 
 - **Not worth it:** it removes neither concepts nor lines of logic, it adds more concepts
   than it removes, or it clearly costs more churn, risk and review time than it saves in
-  lines or concepts, e.g. rewriting a thousand lines of existing code to save one line.
+  lines or concepts, e.g. rewriting a thousand lines of existing code to save ten lines.
 - It touches existing code without an obstruction sentence whose X is concrete code in the
   diff. That is cleanup.
 - It contradicts a decision in the brief.
