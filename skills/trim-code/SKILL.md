@@ -274,6 +274,10 @@ Wait for both passes. Merge duplicates, and ideas that are alternatives to each 
 keep the stronger one per list. When alternatives land on different lists, keep both; the
 report says that the later one would go further.
 
+Number every idea that is left, bugs included: R1, R2, R3, … An idea keeps its code
+whatever list it ends up on and whether it is killed later, so the human can refer to it
+quickly. Use the codes whenever you talk about an idea, for the rest of the conversation.
+
 Kill an idea only for what its description shows:
 
 - **No net gain:** it removes neither concepts nor lines of logic, or it adds more concepts
@@ -372,10 +376,7 @@ it.
 
 If another skill called you, hand this report back to it. Otherwise give it to the human.
 
-Give every idea on the three lists a code, so the human can refer to it quickly: A1, A2, …
-for L1 trims, B1, B2, … for L2 refactorings, C1, C2, … for L3 behavior cuts. A bug fix
-takes the code of the list it is on. Keep these codes for the rest of the conversation,
-and use them whenever you talk about an idea.
+Name every idea by its code from step 3, and say which list it is on.
 
 - The trims and refactorings you applied, one line each, naming the existing code each one
   touched, and the total lines of logic saved.
