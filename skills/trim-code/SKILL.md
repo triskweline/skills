@@ -2,14 +2,14 @@
 name: trim-code
 description: >-
   Make a working change simpler and smaller, with fewer concepts for a reader to
-  understand. Two fresh sub-agents gather ideas, one for missing structure (the same thing
-  built twice, steps repeated with one difference, mechanisms more general than their
-  uses, existing code that could serve the change) and one for local waste (checks nothing
-  can trigger, wrappers that only forward). Apply the trims that keep the behavior and stay
-  in proportion; bring larger refactorings of existing code and behavior cuts (unlikely
-  edge cases, extras nobody asked for) to the human for approval. Use after implementing a
-  change that works but is too much code for what it does, or when asked to trim, slim down
-  or simplify a change.
+  understand. Find missing structure (the same thing built twice, steps repeated with one
+  difference, mechanisms more general than their uses, existing code that could serve the
+  change) and local waste (checks nothing can trigger, wrappers that only forward). Apply
+  what keeps the behavior and mainly shrinks the diff itself; bring larger refactorings of
+  existing code and behavior cuts (unlikely edge cases, extras nobody asked for) to the
+  human for approval. Use after implementing a change that works but is too much code for
+  what it does, when asked to trim, slim down or simplify a change, or to cut bloat from
+  agent-written code.
 ---
 
 # Trim code
