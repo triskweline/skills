@@ -51,9 +51,10 @@ the diff doesn't need is out of scope.
   worse. An idea without such an X is cleanup.
 - **The ratio** limits how much existing code an idea pulls into the diff. The lines of
   existing code it modifies or adds to may be at most about twice the lines of logic it
-  deletes, wherever they are. Clearly more is over the ratio; close is within it. Every
-  line counts, including renames and updated call sites. Code the idea writes inside the
-  diff doesn't count: the human reviews the result anyway.
+  deletes from the diff. Deletions in existing code don't count toward it: an idea earns
+  its place among the trims by shrinking the diff. Clearly more is over the ratio; close
+  is within it. Every line counts, including renames and updated call sites. Code the
+  idea writes inside the diff doesn't count: the human reviews the result anyway.
 
 ## Three lists
 
@@ -263,8 +264,9 @@ ones of one kind into one idea: the pattern, and the files it occurs in. For eac
   changes a detail like key order or a typo, say which,
 - **whether it touches existing code.** If it does: its obstruction sentence,
 - **which concepts** disappear, and which appear,
-- **rough estimates** in round numbers: the lines of logic it deletes and, if it touches
-  existing code, the lines of existing code it modifies or adds to,
+- **rough estimates** in round numbers: the lines of logic it deletes from the diff and,
+  if it touches existing code, the lines of existing code it deletes and the lines it
+  modifies or adds to,
 - the structure pass only: **the map entries** it merges or removes.
 
 Then list the bugs you noticed: the concrete input, the requirement it violates (quoted),
