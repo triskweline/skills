@@ -140,9 +140,9 @@ idea, say whether a requirement asks for that behavior, and quote it if one does
   or "unless". A mode it needs to serve both uses counts as a concept (see the intro).
 - Don't lose intent or move knowledge. A function whose name says what the code means
   stays, even with one caller. So does a variable or constant, even one used once: it
-  names an expression, saves reading it twice, or keeps a call out of a nested expression
-  (`current_desk = user.current_booking&.desk`, `SOURCES = %w[user automatic admin]`).
-  Inlining it saves a line, but no review effort. A rule stays where the project keeps that kind of rule: an
+  names an expression, saves reading it twice, or keeps a call out of a nested
+  expression, like `current_desk = user.current_booking&.desk` or
+  `SOURCES = %w[user automatic admin]`. Inlining it saves a line, but no review effort. A rule stays where the project keeps that kind of rule: an
   authorization rule used by a single controller still belongs with the other
   authorization rules, not in the controller.
 - A check against hostile input (authorization, tampering, injection, limits on what a
