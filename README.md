@@ -95,22 +95,6 @@ is missing and what it does instead: either a skill of yours that fills the same
 the step done by hand. If you would rather have the original, add its name to the `--skill` list
 of the install command, which takes any number of skill names.
 
-### 🌿 [`/work-in-branch`](skills/work-in-branch/SKILL.md)
-
-> Makes sure work happens on a properly named feature branch, following the repo's naming
-> convention, instead of landing unreviewed on a protected branch like `main`.
-
-<details>
-<summary>Install this skill</summary>
-
-> ```bash
-> npx skills add triskweline/skills --global --skill work-in-branch
-> ```
->
-> Drop `--global` to install into the current project instead of your user account.
-
-</details>
-
 ### ✂️ [`/trim-code`](skills/trim-code/SKILL.md)
 
 > Makes a working change simpler, with fewer concepts for a reader to understand. Two
@@ -130,6 +114,38 @@ of the install command, which takes any number of skill names.
 
 </details>
 
+### 🔍 [`/self-review`](skills/self-review/SKILL.md)
+
+> Has a sub-agent review your changes against the requirements for correctness, simplicity,
+> regressions and missing tests, then reconciles the feedback and applies what is valid.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill self-review
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
+### 🌿 [`/work-in-branch`](skills/work-in-branch/SKILL.md)
+
+> Makes sure work happens on a properly named feature branch, following the repo's naming
+> convention, instead of landing unreviewed on a protected branch like `main`.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill work-in-branch
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
 ### ✅ [`/pass-all-checks`](skills/pass-all-checks/SKILL.md)
 
 > Enumerates every check the project runs, from its CI config and docs, so that no linter is
@@ -141,22 +157,6 @@ of the install command, which takes any number of skill names.
 
 > ```bash
 > npx skills add triskweline/skills --global --skill pass-all-checks
-> ```
->
-> Drop `--global` to install into the current project instead of your user account.
-
-</details>
-
-### 🔍 [`/self-review`](skills/self-review/SKILL.md)
-
-> Has a sub-agent review your changes against the requirements for correctness, simplicity,
-> regressions and missing tests, then reconciles the feedback and applies what is valid.
-
-<details>
-<summary>Install this skill</summary>
-
-> ```bash
-> npx skills add triskweline/skills --global --skill self-review
 > ```
 >
 > Drop `--global` to install into the current project instead of your user account.
