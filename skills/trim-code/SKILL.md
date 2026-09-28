@@ -49,13 +49,21 @@ the diff doesn't need is out of scope.
   of them unnecessary by Z." X is concrete code in the diff: files and lines. The idea may
   delete either side, X or its counterpart in existing code, whichever fits the result
   worse. An idea without such an X is cleanup.
-- **The ratio** limits how much existing code an idea pulls into the diff. The lines of
-  existing code it modifies or adds to may be at most about twice the lines of logic it
-  deletes from the diff. Deletions in existing code don't count toward it: an idea earns
-  its place among the trims by shrinking the diff. Everywhere else, e.g. whether an idea
-  is worth it, they count like any other savings. Clearly more is over the ratio; close is
-  within it. Every line counts, including renames and updated call sites. Code the
-  idea writes inside the diff doesn't count: the human reviews the result anyway.
+
+Five numbers describe what an idea costs and saves, as rough estimates in round numbers:
+
+- **Diff savings:** the lines of logic the idea deletes from the diff.
+- **Existing savings:** the lines of logic it deletes in existing code.
+- **Total savings:** diff savings plus existing savings.
+- **Existing churn:** the lines of existing code it modifies or adds to. Every line counts,
+  including renames and updated call sites. Code the idea writes inside the diff doesn't
+  count: the human reviews the result anyway.
+- **Concept gain:** the concepts it removes, minus the ones it adds (see the intro).
+
+**The ratio** limits how much existing code an idea pulls into the diff: its existing churn
+may be at most about twice its diff savings. An idea earns its place among the trims by
+shrinking the diff, so existing savings don't count toward the ratio; everywhere else they
+count as part of total savings. Clearly more is over the ratio; close is within it.
 
 ## Three lists
 
@@ -265,9 +273,8 @@ ones of one kind into one idea: the pattern, and the files it occurs in. For eac
   changes a detail like key order or a typo, say which,
 - **whether it touches existing code.** If it does: its obstruction sentence,
 - **which concepts** disappear, and which appear,
-- **rough estimates** in round numbers: the lines of logic it deletes from the diff and,
-  if it touches existing code, the lines of existing code it deletes and the lines it
-  modifies or adds to,
+- **its diff savings** and, if it touches existing code, **its existing savings and
+  existing churn** (see the terms),
 - the structure pass only: **the map entries** it merges or removes.
 
 Then list the bugs you noticed: the concrete input, the requirement it violates (quoted),
@@ -285,14 +292,15 @@ quickly. Use the codes whenever you talk about an idea, for the rest of the conv
 
 Kill an idea only for what its description shows:
 
-- **Not worth it:** it removes neither concepts nor lines of logic, it adds more concepts
-  than it removes, or it clearly costs more churn, risk and review time than it saves in
-  lines or concepts, e.g. rewriting a thousand lines of existing code to save ten lines.
+- **Not worth it:** it has neither concept gain nor total savings, its concept gain is
+  negative, or its existing churn, risk and review time clearly outweigh its total savings
+  and concept gain, e.g. rewriting a thousand lines of existing code to save ten lines.
 - It touches existing code without an obstruction sentence whose X is concrete code in the
   diff. That is cleanup.
 - It contradicts a decision in the brief.
-- It is an L2 or L3 idea too small to be worth the human's decision: less than a whole
-  concept, or less than roughly a few dozen lines of logic once similar ideas are grouped.
+- It is an L2 or L3 idea too small to be worth the human's decision: a concept gain of
+  less than one whole concept, and total savings of less than roughly a few dozen lines of
+  logic once similar ideas are grouped.
 - It is obviously wrong.
 
 Doubt is never a reason to kill in this step; the execution steps judge the real plan.
@@ -308,7 +316,7 @@ sensibly rely on (see the terms) counts as keeping the behavior; note it for the
 - Intent to keep behavior: **L1** if it touches no existing code, or touches it within the
   ratio. **L2** if it is over the ratio.
 
-Order L1 and L2 by the net number of concepts each idea removes, largest first.
+Order L1 and L2 by concept gain, largest first.
 
 ## 4. Execute the L1 trims (main agent)
 
@@ -326,8 +334,8 @@ plan it anew. The plan says:
 - if the code it reshapes has no tests: the pin-down tests you will write first, to capture
   its current behavior. Code counts as tested when a test would fail if its behavior
   changed, whichever layer the test sits in,
-- if it touches existing code: its obstruction sentence, and the two numbers for the ratio,
-  updated from the plan.
+- if it touches existing code: its obstruction sentence, and its diff savings and existing
+  churn, updated from the plan.
 
 Then check the plan:
 
@@ -382,11 +390,13 @@ Name every idea by its code from step 3, and say which list it is on.
   for them.
 - Each L2 refactoring and L3 behavior cut that awaits approval:
   - the idea in a sentence or two,
-  - roughly how many lines of logic it saves, in the diff and in existing code,
-  - its review effort: which existing code it touches, and roughly how much,
+  - its concept gain and total savings,
+  - its review effort: which existing code it touches, and its existing churn,
   - for L3: which intended behavior changes and who would notice, or which dependency or
     schema change it needs,
-  - your recommendation.
+  - your recommendation, weighing taste (does it fit how this codebase does things?),
+    churn, risk, review effort and savings. It annotates the idea; it doesn't move it to
+    another list.
   Include the structure pass's map, briefly, when an idea rests on it. When two ideas are
   alternatives on different lists, say which one goes further.
 - The ideas you killed, and why.
