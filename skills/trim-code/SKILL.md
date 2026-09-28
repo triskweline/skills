@@ -283,8 +283,9 @@ quickly. Use the codes whenever you talk about an idea, for the rest of the conv
 
 Kill an idea only for what its description shows:
 
-- **No net gain:** it removes neither concepts nor lines of logic, or it adds more concepts
-  than it removes.
+- **Not worth it:** it removes neither concepts nor lines of logic, it adds more concepts
+  than it removes, or it clearly costs more churn, risk and review time than it saves in
+  lines or concepts, e.g. rewriting a thousand lines of existing code to save one line.
 - It touches existing code without an obstruction sentence whose X is concrete code in the
   diff. That is cleanup.
 - It contradicts a decision in the brief.
@@ -334,7 +335,7 @@ Then check the plan:
   from where the project keeps it. If it does, kill it.
 - It must still meet the L1 conditions. Over the ratio: move it to L2. The intended
   behavior can't be shown to hold, e.g. untested existing code where no pin-down tests are
-  possible: move it to L3. No net gain once planned: kill it.
+  possible: move it to L3. Not worth it once planned (see step 3): kill it.
 
 Then apply it, and run the tests for the files it touched, including files of existing
 code. A trim that only edits comments, or deletes code nothing calls, needs no test run.
@@ -372,7 +373,7 @@ Skip this step unless the human approved L2 refactorings up front, in their own 
 relayed by a calling skill that asked them. A calling skill never approves on its own.
 
 Execute every L2 refactoring as in step 4, with the L2 conditions: the intended behavior
-must still be shown to hold. If it can't, move it to L3. No net gain once planned: kill
+must still be shown to hold. If it can't, move it to L3. Not worth it once planned: kill
 it.
 
 ## 6. Report (main agent)
@@ -410,6 +411,7 @@ Execute each approved idea with a detailed plan as in step 4. For an L3 behavior
 plan also says what exactly changes, and which tests assert the old behavior: update
 those, and delete the ones that only covered it.
 
-Check the plan for readability as in step 4, and for net gain. An idea that turns out weak
-here is killed and reported; don't ask about it again, and don't move it to another list.
+Check the plan for readability as in step 4, and whether it is still worth it. An idea
+that turns out weak here is killed and reported; don't ask about it again, and don't move
+it to another list.
 Apply it as in step 4, with the same rules for tests and reverting.
