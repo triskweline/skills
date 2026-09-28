@@ -136,8 +136,11 @@ idea, say whether a requirement asks for that behavior, and quote it if one does
 - A check against hostile input (authorization, tampering, injection, limits on what a
   client may send) is not an edge case. Leave it, even when it can't fail today: defense
   in depth is deliberate. Don't report dropping it.
-- Don't merge two cases that mean different things just because they're handled the same
-  today.
+- Don't merge two things that mean different things just because they're handled the same
+  or used together today. Two concerns are different when one could be needed without the
+  other, or when they change for different reasons: booking a desk and booking lunch stay
+  separate, even if every caller does both. If callers repeat the pair, a third
+  abstraction that calls both is fine.
 - Don't add types or structure that only add boilerplate.
 - Don't trim tests for their own sake. Repetition in tests is often deliberate:
   overlapping coverage across layers, or independent setup instead of shared hooks. When
