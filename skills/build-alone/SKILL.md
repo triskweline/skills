@@ -73,6 +73,7 @@ Also fix existing tests that broke because of behavior changes.
 ## Trim the change
 
 Unless the human chose to skip it, make your change smaller once the related tests pass, using the `/trim-code` skill.
+The full test suite runs in the next step anyway, so while trimming, run the related tests `/trim-code` asks for, but not the full suite.
 It applies its L1 trims, and its L2 refactorings if the human chose (a). It returns the rest for approval: L2 refactorings otherwise, and L3 behavior cuts always. Don't apply those yourself: they need the human's approval. Keep them for the hand-off.
 Its report names the existing code that applied trims and refactorings touched. Point those locations out for a thorough human review in the hand-off.
 
