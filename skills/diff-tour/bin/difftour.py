@@ -221,12 +221,25 @@ def expand_fragments(args, out_path):
     return [f for f in files if os.path.abspath(f) != skip]
 
 
+def grow_sources(out_path, hunks, git_args):
+    """The toured files for the grow buttons: from the setup's copy when there is one, from
+    the working tree for a tour of it, and none otherwise, so a page is never grown from
+    code other than the toured one."""
+    work = os.path.dirname(os.path.abspath(out_path))
+    if os.path.isfile(os.path.join(work, SRC_MARKER)):
+        return difftour_html.source_files(hunks, os.path.join(work, SRC_DIR))
+    if git_args in ([], ['HEAD']):
+        top = git_out('rev-parse', '--show-toplevel')
+        return difftour_html.source_files(hunks, top) if top else {}
+    return {}
+
+
 def assemble(out_path, hunks, fragments, git_args):
     texts = []
     for frag in fragments:
         with open(frag, encoding='utf-8') as f:
             texts.append(f.read())
-    page, report = difftour_html.render(hunks, texts, git_args, out_path)
+    page, report = difftour_html.render(hunks, texts, git_args, out_path, grow_sources(out_path, hunks, git_args))
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(page)
     missing, unknown, dupes = report['missing'], report['unknown'], report['dupes']

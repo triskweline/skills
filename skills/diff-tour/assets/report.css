@@ -666,3 +666,36 @@ pre.diff code, pre.diff .ln { color: color-mix(in srgb, var(--ink) calc(var(--fg
 .token.prefix { user-select: none; }
 .token.bold { font-weight: 600; }
 .token.italic { font-style: italic; }
+
+/* The hidden attribute wins over any display rule, so the page's script can hide an
+   element whose style gives it a display, such as the flex bars below. */
+[hidden] { display: none !important; }
+
+/* Grow controls, after GitHub: a light blue bar above the diff with the enclosing
+   declaration (or, once grown, the lines shown) and an icon to grow upwards; the same bar
+   below with an icon to grow downwards; and in the header an icon for the whole file. A
+   grown line that another hunk changed shows as that hunk's diff does, and leads there on
+   click. */
+button.icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 20px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+}
+button.icon:hover { color: #fff; background: var(--accent); }
+/* The bars' icons sit in the chevron's column: the chevron is 16px wide after the header's
+   .85rem padding, an icon button is 22px, so the bars pad 3px less. */
+/* A bar brought back into view after a step stops short of the window's edge, clear of
+   the progress bar along the bottom. */
+.card .grow, .card .ctx { scroll-margin: 1.5rem 0; }
+.card .grow { background: var(--accent-soft); padding: .25rem 0 .25rem calc(.85rem - 3px); display: flex; align-items: center; }
+.card .ctx:has(button.icon) { padding-left: calc(.85rem - 3px); display: flex; align-items: center; gap: .45rem; }
+.card .ctx .label { position: relative; top: 1px; }
+.card .ctx:has(button.icon)::before { content: none; }
+.card .ctx:has(button.icon) { background: var(--accent-soft); color: var(--muted); border-bottom: none; }
+figcaption .chev { display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: .3rem; transition: transform .15s; }
+figcaption .chev svg { display: block; }
+figure.hunk.collapsed figcaption .chev { transform: rotate(-90deg); }
+figure.hunk.collapsed > .card > .grow,
+figure.hunk.collapsed figcaption button.all { display: none; }
+pre.diff .ln.elsewhere { cursor: pointer; }

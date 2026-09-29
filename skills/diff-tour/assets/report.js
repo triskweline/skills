@@ -61,6 +61,28 @@
 
   /* Collapsing is a separate, unpersisted state: the path in a hunk's header toggles it,
      marking sets it, jumping to a hunk clears it. */
+  /* Octicon-like icons, drawn in the text colour. */
+  var ICONS = {
+    up: '<path d="M8 2 4.5 5.5h2.25V9h2.5V5.5h2.25z"/><path d="M2 12.5h2M5.5 12.5h2M9 12.5h2M12.5 12.5h1.5" stroke="currentColor" stroke-width="1.5"/>',
+    down: '<path d="M8 14l3.5-3.5H9.25V7h-2.5v3.5H4.5z"/><path d="M2 3.5h2M5.5 3.5h2M9 3.5h2M12.5 3.5h1.5" stroke="currentColor" stroke-width="1.5"/>',
+    all: '<path d="M8 1 5 4h2v2.5h2V4h2zM8 15l3-3H9V9.5H7V12H5z"/><path d="M2 8h2M5.5 8h2M9 8h2M12.5 8h1.5" stroke="currentColor" stroke-width="1.5"/>',
+    fold: '<path d="M8 6.5 5 3.5h2V1h2v2.5h2zM8 9.5l3 3H9V15H7v-2.5H5z"/><path d="M2 8h2M5.5 8h2M9 8h2M12.5 8h1.5" stroke="currentColor" stroke-width="1.5"/>',
+    chev: '<path d="M4.5 6 8 9.5 11.5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
+  function icon(name) {
+    return '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">' + ICONS[name] + '</svg>';
+  }
+  function iconButton(name, label, onClick) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'icon ' + name;
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.innerHTML = icon(name);
+    b.addEventListener('click', function (e) { e.stopPropagation(); onClick(); });
+    return b;
+  }
+
   function collapse(fig, on) {
     fig.classList.toggle('collapsed', on);
     var ctl = fig.querySelector('[aria-expanded]');
@@ -113,6 +135,7 @@
     fig.classList.toggle('seen', stored(fig));
     var hit = fig.querySelector('figcaption .where');
     if (hit) {
+      hit.insertAdjacentHTML('afterbegin', '<span class="chev">' + icon('chev') + '</span>');
       hit.tabIndex = 0;
       hit.setAttribute('role', 'button');
       hit.setAttribute('aria-expanded', 'true');
@@ -509,6 +532,143 @@
   } else {
     blocks.forEach(light);
   }
+
+  /* ---- grow buttons: a hunk can show more of its file above and below, like on
+     GitHub. The assembler embeds each changed file once, as it is at the toured tip, and
+     gives every hunk its range in it (data-from, data-to). Grown lines join the hunk's
+     own diff as unchanged lines, inserted as new line elements before or after the
+     existing ones, so the focus and dim marks on those keep their places. A grown line
+     that another hunk changed is marked, since it shows the new code as if unchanged. ---- */
+  var sources = {};
+  [].forEach.call(document.querySelectorAll('script[type="embedded-source-file"]'), function (tag) {
+    var text = JSON.parse(tag.textContent), lines = text.split('\n');
+    if (lines.length && lines[lines.length - 1] === '') lines.pop();
+    /* Other hunks' changes, placed in the new file: which lines they added, and which
+       removed lines stood before a given line. */
+    var added = {}, removed = {};
+    JSON.parse(tag.getAttribute('data-changes') || '[]').forEach(function (c) {
+      if (c[1] === '+') added[c[0]] = c[3];
+      else (removed[c[0]] = removed[c[0]] || []).push([c[2], c[3]]);
+    });
+    sources[tag.getAttribute('data-path')] = { lines: lines, added: added, removed: removed };
+  });
+  var STEP = 20;
+
+  function grownLines(code, texts) {
+    var pre = document.createElement('pre'), tmp = document.createElement('code');
+    pre.className = code.parentNode.className;
+    tmp.className = code.className.replace(/\bhighlighted\b/, '');
+    tmp.textContent = texts.join('\n') + '\n';
+    pre.appendChild(tmp);
+    if (window.Prism) { try { Prism.highlightElement(tmp); } catch (e) {} }
+    wrapLines(tmp);
+    return [].slice.call(tmp.querySelectorAll(':scope > .ln'));
+  }
+
+  function grow(fig, up, all) {
+    var code = fig.querySelector('pre.diff > code'), src = sources[fig.getAttribute('data-path')];
+    if (!code || !src) return;
+    light(code);
+    var from = +fig.getAttribute('data-from'), to = +fig.getAttribute('data-to');
+    var a, b;
+    if (up) { b = from - 1; a = all ? 1 : Math.max(1, b - STEP + 1); }
+    else { a = to + 1; b = all ? src.lines.length : Math.min(src.lines.length, a + STEP - 1); }
+    if (a > b) return;
+    /* Lines another hunk changed show as that hunk's diff shows them: added lines with
+       a plus, removed lines put back with a minus where they stood. */
+    var own = fig.id.replace(/-\d+$/, ''), texts = [], owners = [];
+    function other(id) { return id && id !== own ? id : null; }
+    for (var n = a; n <= b; n++) {
+      (src.removed[n] || []).forEach(function (r) {
+        if (other(r[1])) { texts.push('-' + r[0]); owners.push(r[1]); }
+      });
+      var by = other(src.added[n]);
+      texts.push((by ? '+' : ' ') + src.lines[n - 1]);
+      owners.push(by);
+    }
+    if (b === src.lines.length) (src.removed[b + 1] || []).forEach(function (r) {
+      if (other(r[1])) { texts.push('-' + r[0]); owners.push(r[1]); }
+    });
+    var lns = grownLines(code, texts);
+    lns.forEach(function (ln, i) {
+      ln.classList.add('grown');
+      if (!owners[i]) return;
+      ln.classList.add('elsewhere');
+      ln.title = 'Changed in another hunk; click to go there';
+      ln.addEventListener('click', function () { location.hash = '#' + owners[i]; });
+    });
+    var anchor = up ? code.firstChild : null;
+    lns.forEach(function (ln) { code.insertBefore(ln, anchor); });
+    if (up) fig.setAttribute('data-from', a); else fig.setAttribute('data-to', b);
+    paintGrow(fig);
+  }
+
+  function paintGrow(fig) {
+    var src = sources[fig.getAttribute('data-path')];
+    var from = +fig.getAttribute('data-from'), to = +fig.getAttribute('data-to');
+    var above = from - 1, below = src.lines.length - to;
+    /* A bar with nothing left to show goes away: the top one once line 1 is shown, the
+       bottom one once the last line is. */
+    fig.querySelector('.ctx').hidden = above <= 0;
+    fig.querySelector('.grow.down').hidden = below <= 0;
+    /* The header button shows the whole file, or, once the whole file is shown, returns
+       the hunk to its own lines. It only disappears when the hunk is the whole file. */
+    var all = fig.querySelector('figcaption button.all');
+    var from0 = +fig.getAttribute('data-from0'), to0 = +fig.getAttribute('data-to0');
+    all.hidden = from0 <= 1 && to0 >= src.lines.length;
+    var full = above <= 0 && below <= 0;
+    var label = full ? 'Show only the changed lines' : 'Show the whole file';
+    all.innerHTML = icon(full ? 'fold' : 'all');
+    all.title = label;
+    all.setAttribute('aria-label', label);
+    /* The bar names the declaration until the hunk has grown; from then on it names the
+       lines it shows, which is what a reader who grew it wants to know. */
+    var bar = fig.querySelector('.ctx .label');
+    bar.textContent = fig.getAttribute('data-grown') ? 'Lines ' + from + '–' + to : fig.getAttribute('data-decl');
+  }
+
+  [].forEach.call(document.querySelectorAll('figure.hunk[data-path]'), function (fig) {
+    var pre = fig.querySelector('pre.diff'), ctx = fig.querySelector('.ctx');
+    if (!pre || !ctx || !sources[fig.getAttribute('data-path')]) return;
+    function step(up, all) { fig.setAttribute('data-grown', '1'); grow(fig, up, all); }
+    /* The hunk's own range and declaration, to return to. */
+    fig.setAttribute('data-from0', fig.getAttribute('data-from'));
+    fig.setAttribute('data-to0', fig.getAttribute('data-to'));
+    fig.setAttribute('data-decl', fig.querySelector('.ctx .label').textContent);
+    function shrink() {
+      [].forEach.call(fig.querySelectorAll('pre.diff > code > .ln.grown'), function (ln) { ln.remove(); });
+      fig.setAttribute('data-from', fig.getAttribute('data-from0'));
+      fig.setAttribute('data-to', fig.getAttribute('data-to0'));
+      fig.removeAttribute('data-grown');
+      paintGrow(fig);
+    }
+    /* After a step, the bar the reader clicked stays in reach for the next one; once it
+       has gone, because nothing is left in that direction, the line it reached does. */
+    function keep(bar, line) {
+      var target = bar.hidden ? line() : bar;
+      /* Instantly: during a smooth scroll the icon would slide away from the pointer. */
+      if (target) target.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    }
+    function lines() { return fig.querySelectorAll('pre.diff > code > .ln'); }
+    ctx.insertBefore(iconButton('up', 'Show ' + STEP + ' more lines above', function () {
+      step(true, false);
+      keep(ctx, function () { return lines()[0]; });
+    }), ctx.firstChild);
+    var bar = document.createElement('div');
+    bar.className = 'grow down';
+    bar.appendChild(iconButton('down', 'Show ' + STEP + ' more lines below', function () {
+      step(false, false);
+      keep(bar, function () { var l = lines(); return l[l.length - 1]; });
+    }));
+    pre.parentNode.insertBefore(bar, pre.nextSibling);
+    var cap = fig.querySelector('figcaption'), where = cap && cap.querySelector('.where');
+    if (where) where.parentNode.insertBefore(iconButton('all', 'Show the whole file', function () {
+      var src = sources[fig.getAttribute('data-path')];
+      if (+fig.getAttribute('data-from') <= 1 && +fig.getAttribute('data-to') >= src.lines.length) { shrink(); return; }
+      collapse(fig, false); step(true, true); step(false, true);
+    }), where.nextSibling);
+    paintGrow(fig);
+  });
 
   /* Jumping to a hunk should highlight it even if it is far below the fold, and open
      it if it was collapsed. */

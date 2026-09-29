@@ -97,7 +97,7 @@ The tour is *not* printed to this session. It is one self-contained HTML file, o
 
 The file is assembled from **fragments**: each worker writes a plain HTML fragment for its topic into its own directory, the orchestrator writes the opening fragment with the tour summary, and a script lays them out. Nobody ever re-reads a fragment, and nobody ever types out a diff hunk: fragments name hunks by id, and the script splices the real diff bytes in when assembling.
 
-Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, puts a beat's prose beside its hunks in two columns, highlights the diffs, and adds viewed marks and a theme switch. From the level in each placeholder, the page's own JavaScript draws a **heat strip** per chapter in the sidebar, one coloured square per hunk in reading order, and gives the legend a **mark viewed** button for skip, read and note, so a reader can fold away whole levels and be left with fishy and hot.
+Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, puts a beat's prose beside its hunks in two columns, highlights the diffs, lets the reader grow a hunk's context from the file at the toured tip, and adds viewed marks and a theme switch. From the level in each placeholder, the page's own JavaScript draws a **heat strip** per chapter in the sidebar, one coloured square per hunk in reading order, and gives the legend a **mark viewed** button for skip, read and note, so a reader can fold away whole levels and be left with fishy and hot.
 
 ## The helper script
 

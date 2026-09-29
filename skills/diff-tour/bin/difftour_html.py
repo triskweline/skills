@@ -17,6 +17,7 @@ Standard library only. Works on Python 3.10+.
 import datetime
 import hashlib
 import html
+import json
 import os
 import re
 import subprocess
@@ -464,6 +465,82 @@ def _binary(h):
     return 'GIT binary patch' in head or '\nBinary files ' in head
 
 
+# ------------------------------------------------------------------ grow buttons
+# A reader can grow a hunk's context, like on GitHub. The lines outside a hunk are
+# unchanged, so the file at the toured tip holds exactly what a grow button reveals: the
+# assembler embeds every changed file once, and each hunk carries its range in it.
+
+NEW_RANGE = re.compile(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@')
+SOURCE_MAX = 1024 * 1024      # a larger file is not embedded; its hunks cannot grow
+_SOURCES = {}                 # path -> file text, set by render()
+
+
+def new_range(h):
+    """The hunk's lines in the new file, (first, last), 1-based and inclusive. A hunk that
+    only deletes shows no new lines: (n + 1, n), which still says where it sits."""
+    m = NEW_RANGE.match(h.body[0]) if h.body else None
+    if not m:
+        return None
+    start, count = int(m.group(1)), int(m.group(2)) if m.group(2) is not None else 1
+    return (start, start + count - 1) if count else (start + 1, start)
+
+
+def growable(h):
+    """Only a changed text file has lines around its hunks; an added or deleted file's one
+    hunk is the whole file already."""
+    return bool(h.body) and not _binary(h) and _kind(h) in ('changed', 'moved', 'mode')
+
+
+def source_files(hunks, root):
+    """{path: text} for every growable file, read from `root`, the toured code."""
+    out = {}
+    for h in hunks:
+        if h.path in out or not growable(h):
+            continue
+        path = os.path.join(root, h.path)
+        try:
+            if os.path.getsize(path) > SOURCE_MAX:
+                continue
+            with open(path, encoding='utf-8', errors='replace') as f:
+                out[h.path] = f.read()
+        except OSError:
+            continue
+    return out
+
+
+def changed_lines(h):
+    """The hunk's added and removed lines, placed in the new file: [n, '+', null, id] for
+    an added line n, [n, '-', text, id] for a removed line that stood before new line n.
+    Context lines are left out: they are in the file already."""
+    m = NEW_RANGE.match(h.body[0]) if h.body else None
+    if not m:
+        return []
+    start, count = int(m.group(1)), int(m.group(2)) if m.group(2) is not None else 1
+    n, out = (start if count else start + 1), []
+    for line in h.body[1:]:
+        if line.startswith('+'):
+            out.append([n, '+', None, h.id])
+            n += 1
+        elif line.startswith('-'):
+            out.append([n, '-', line[1:], h.id])
+        elif not line.startswith('\\'):
+            n += 1
+    return out
+
+
+def embedded_sources(hunks, sources):
+    """One tag per file: its text as a JSON string, and the changed lines of all its
+    hunks, so lines grown into another hunk's region show as that hunk's diff does. `<\/`
+    is JSON's own escape for `</`, so no file content can end the tag."""
+    tags = []
+    for path in sorted(sources):
+        changes = [c for h in hunks if h.path == path and growable(h) for c in changed_lines(h)]
+        tags.append('<script type="embedded-source-file" data-path="%s" data-changes="%s">%s</script>'
+                    % (html.escape(path, quote=True), html.escape(json.dumps(changes), quote=True),
+                       json.dumps(sources[path]).replace('</', '<\\/')))
+    return '\n'.join(tags)
+
+
 def _kind(h):
     """How the file changed: added, deleted, moved, mode, or changed. Independent of
     whether it is binary; a binary file can be any of these."""
@@ -528,6 +605,9 @@ def figure(h, ident, level, reason, note='', ranges=None):
     attrs = ''
     if reason:
         attrs += ' data-reason="%s"' % html.escape(reason, quote=True)
+    grow = new_range(h) if h.path in _SOURCES else None
+    if grow:
+        attrs += ' data-path="%s" data-from="%d" data-to="%d"' % (html.escape(h.path, quote=True), grow[0], grow[1])
     for mark in ('focus', 'dim'):
         if ranges and ranges.get(mark):
             attrs += ' data-%s="%s"' % (mark, ','.join('%d-%d' % r for r in ranges[mark]))
@@ -547,8 +627,9 @@ def figure(h, ident, level, reason, note='', ranges=None):
         # is code and stays in the code column, set apart so it reads as "somewhere
         # above", not as the line before the first context line.
         m = re.match(r'@@ [^@]*@@ ?(.*)$', h.body[0])
-        if m and m.group(1).strip():
-            out.append('<div class="ctx">%s</div>' % html.escape(m.group(1).rstrip()))
+        decl = m.group(1).rstrip() if m and m.group(1).strip() else ''
+        if decl or grow:
+            out.append('<div class="ctx"><span class="label">%s</span></div>' % html.escape(decl))
         out.append('<pre class="diff"><code class="language-diff-%s diff-highlight">%s\n</code></pre>'
                    % (language_of(h.path, h.body), html.escape('\n'.join(h.body[1:]))))
     else:
@@ -633,8 +714,11 @@ def _read(name):
         return f.read()
 
 
-def render(hunks, texts, git_args, out_path=''):
-    """-> (page html, report dict with placed / missing / unknown / duplicate ids)."""
+def render(hunks, texts, git_args, out_path='', sources=None):
+    """-> (page html, report dict with placed / missing / unknown / duplicate ids).
+    `sources` is {path: text} of the toured files, for the grow buttons."""
+    _SOURCES.clear()
+    _SOURCES.update(sources or {})
     title, summary, chapters = parse_fragments(texts)
     by_id = dict((h.id, h) for h in hunks)
     seen, unknown, dupes, mark_problems = {}, [], [], []
@@ -700,7 +784,9 @@ def render(hunks, texts, git_args, out_path=''):
     page = re.sub(r'<!--\s*\n  diff tour — the page shell.*?-->\n', '', page, count=1, flags=re.S)
     page = _swap(page, 'PRISM', '\n<script>%s</script>\n' % prism_bundle())
     page = _swap(page, 'CSS', '\n<style>\n%s</style>\n' % _read('report.css'))
-    page = _swap(page, 'JS', '\n<script>\n%s</script>\n' % _read('report.js'))
+    # The embedded files come first: report.js reads them when it runs.
+    sources_html = embedded_sources(hunks, _SOURCES) + '\n' if _SOURCES else ''
+    page = _swap(page, 'JS', '\n%s<script>\n%s</script>\n' % (sources_html, _read('report.js')))
     page = _swap(page, 'REPORT', '\n' + '\n\n'.join(head + body) + '\n')
     plain = html.escape(re.sub(r'<[^>]+>', '', title))
     page = _swap(page, 'NAVTITLE', plain)

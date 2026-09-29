@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for bin/difftour.py. Run from the skill directory: python3 tests/test_difftour.py"""
 
+import json
 import os
 import re
 import shutil
@@ -227,7 +228,7 @@ class Repo(RepoCase):
         code, out, err = hunks(self.dir, '--assemble', out_path, '--', 'HEAD', '--', 'm.py', '++', frag)
         self.assertEqual(code, 0, err)
         page = read(out_path)
-        self.assertIn('<div class="ctx">def alpha():</div>\n<pre class="diff">', page)
+        self.assertIn('<div class="ctx"><span class="label">def alpha():</span></div>\n<pre class="diff">', page)
         # A hunk with no sentence still opens with its badge.
         self.assertIn('<div class="note"><p><span class="lvl">read</span></p></div>', page)
         # The @@ line itself is not shown; the diff starts with the first context line.
@@ -238,9 +239,9 @@ class Repo(RepoCase):
         page, out, err = self.assemble('<h2>A</h2><!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertNotIn('@@ -1,3', page)
         h1 = re.search(r'<figure class="hunk lvl-plain" id="h1".*?</figure>', page, re.S).group(0)
-        self.assertNotIn('<div class="ctx">', h1)
+        self.assertIn('<div class="ctx"><span class="label"></span></div>', h1)   # a growable hunk gets the bar without a declaration
         h2 = re.search(r'<figure class="hunk lvl-plain" id="h2".*?</figure>', page, re.S).group(0)
-        self.assertIn('<div class="ctx">line6</div>', h2)
+        self.assertIn('<div class="ctx"><span class="label">line6</span></div>', h2)
 
     def test_each_tour_gets_its_own_uid_for_viewed_marks(self):
         frag = os.path.join(self.dir, 'f.html')
@@ -602,6 +603,50 @@ class Setup(RepoCase):
         self.assertEqual(facts['ARGS'], '--untracked -- HEAD')
         self.assertIn('5 hunks', facts['DIFF'])
         shutil.rmtree(facts['WORK'])
+
+    def test_changed_files_are_embedded_once_for_the_grow_buttons(self):
+        d = self.dir
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'second')
+        self.write('a.py', 'line1\nCHANGED <b>&\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10 tail\n</script>\n')
+        sh(d, 'git', 'add', '.')
+        sh(d, 'git', 'commit', '-q', '-m', 'third')
+        self.write('a.py', 'edited later in the working tree\n')
+        code, facts, out, err = setup(d, 'HEAD')
+        self.assertEqual(code, 0, err)
+        work = facts['WORK']
+        with open(os.path.join(work, 'topic-01', 'fragment.html'), 'w') as f:
+            f.write('<h2>A</h2><!-- hunk h1 --><p>S.</p>')
+        out_path = os.path.join(work, 'diff-tour.html')
+        r = sh(d, sys.executable, SCRIPT, '--assemble', out_path, *facts['ARGS'].split(), '++', work)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        page = read(out_path)
+        tags = re.findall(r'<script type="embedded-source-file" data-path="a\.py" data-changes="([^"]*)">(.*?)</script>', page, re.S)
+        self.assertEqual(len(tags), 1)                                # once per file
+        text = json.loads(tags[0][1])
+        self.assertIn('line10 tail\n</script>', text)                 # the toured tip, not the working tree
+        self.assertNotIn('</script>', tags[0][1])                     # escaped inside the tag
+        self.assertRegex(page, r'id="h1" [^>]*data-path="a\.py" data-from="\d+" data-to="\d+"')
+        self.assertLess(page.index('type="embedded-source-file"'), page.index('function grow('))   # read by report.js
+        shutil.rmtree(work)
+
+    def test_changed_lines_are_placed_in_the_new_file(self):
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour_html
+        class H:
+            id = 'h3'
+            body = ['@@ -10,4 +10,4 @@', ' keep', '-old one', '-old two', '+new', ' keep', '\\ No newline at end of file']
+        self.assertEqual(difftour_html.changed_lines(H()),
+                         [[11, '-', 'old one', 'h3'], [11, '-', 'old two', 'h3'], [11, '+', None, 'h3']])
+        class D:
+            id = 'h4'
+            body = ['@@ -5,2 +4,0 @@', '-gone', '-gone too']            # a pure deletion after new line 4
+        self.assertEqual(difftour_html.changed_lines(D()), [[5, '-', 'gone', 'h4'], [5, '-', 'gone too', 'h4']])
+
+    def test_a_commit_tour_without_its_copy_embeds_nothing(self):
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour
+        self.assertEqual(difftour.grow_sources(os.path.join(self.dir, 'x', 'diff-tour.html'), [], ['a..b']), {})
 
     def test_a_commit_tour_reads_a_copy_of_its_tip_and_assemble_removes_only_that(self):
         d = self.dir
