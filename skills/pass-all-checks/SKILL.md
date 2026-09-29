@@ -1,11 +1,23 @@
 ---
 name: pass-all-checks
-description: Confirm a change hasn't broken any current or past feature by running every check the repo has, which means enumerating its test runners and linters first (from CI config and project docs, so no linter is forgotten), then running the whole suite by the fastest route (local, parallel, or CI) and fixing failures yourself. This is the slow, exhaustive check for the whole codebase. Use after a non-trivial change before considering it done, when the user asks you to run the tests, run the suite, run linters, or check that nothing is broken, or when you need to find out which test and lint commands a project uses.
+description: Confirm a change hasn't broken any current or past feature by running every check the repo has, which means enumerating its test runners and linters first (from CI config and project docs, so no linter is forgotten), then running the whole suite by the fastest route (CI, parallel, or local) and fixing failures yourself. This is the slow, exhaustive check for the whole codebase. Use after a non-trivial change before considering it done, when the user asks you to run the tests, run the suite, run linters, or check that nothing is broken, or when you need to find out which test and lint commands a project uses.
 ---
 
 # Pass all checks
 
 Run the repo's entire test suite and all linters, and fix any failures. This is a full, exhaustive check of the whole codebase — covering current and past features, not just what you changed — so it is often slow. Be smart about choosing the fastest method to start tests.
+
+## Decide the test route first
+
+Before you run anything, decide how the full suite will run, and get any permission that route needs now. The human may step away as soon as you start, expecting a finished verification pass when they return. A question asked after the linters goes unanswered.
+
+This decision takes a minute: look at the suite size (E2E or feature tests, number of test files), whether there is CI (`.github/workflows/`, `.gitlab-ci.yml`), and what starts a pipeline there. Some projects run pipelines on every branch push; others run them only for merge or pull requests (`workflow: rules` in `.gitlab-ci.yml`, `on: pull_request` in GitHub Actions).
+
+- **Large suite with CI:** the suite will run on CI. If your instructions require permission to push or to open a merge request, ask for it now, in one question, in the format your instructions prescribe. Ask only for what starts a pipeline. Show the exact title and description of a merge request you will open, because an approval to post text covers only the text shown, and open it as a draft.
+- **Permission already granted**, e.g. by a skill that asked for them before an autonomous run, or earlier in the session: don't ask again.
+- **Small suite, no CI, or permission declined:** plan a local run.
+
+Then continue with the checks below without further questions. If a permission you expected turns out to be missing later and no human answers, run the suite locally rather than wait.
 
 ## Enumerate every check
 
@@ -67,11 +79,13 @@ Luckily, there are ways to shorten the wait:
 - If the repo is hosted on GitHub, you may be able to create a pull request and monitor CI there. Check `git remote -v` for a github.com remote. CI config is usually in `.github/workflows/`. Also check if the `gh` CLI tool is configured to work with the remote (using `gh pr list`).
 - If the repo is hosted on GitLab, you may be able to create a merge request and monitor CI there. Check `git remote -v` for a gitlab.com or code.makandra.de (self-hosted GitLab) remote. CI config is usually in `.gitlab-ci.yml`. Check if the `glab` CLI tool is configured to work with the remote (using `glab mr list`).
 
-Running a large, full test suite via CI is generally favorable over using `parallel_tests`.
+**Prefer CI for a large suite.** Running one locally can make the human's machine unusable for as long as it runs. Needing permission to push or to open a merge request is never a reason to pick a local run instead: that permission is settled in *Decide the test route first*.
+
+Run a large suite locally only when there is no CI, or when the human declined the push. Then use parallel processes, but leave cores free (e.g. half of them), and tell the human the run will load their machine.
 
 ### Start the test run
 
-Now start the full test suite, using the fastest route you discovered earlier (local, parallel, or CI).
+Now start the full test suite, using the route you decided on at the start (CI, parallel, or local).
 
 Make sure you see the full output of the test suite, so you get a full list of eventual failures.
 Avoid running test suites with `head` or `tail`, as this might cut off vital information and require another slow run just to discover what's wrong.
@@ -82,10 +96,12 @@ Check failures from the test run.
 
 Try to address test failures autonomously, and only involve the human when you run into true blockers that you cannot resolve on your own (e.g. E2E tests fail to start at all and you don't know why).
 
-If the test suite mostly passed, and you only encountered individual failures, verify fixes by re-running only those specs locally.
+If the test suite mostly passed, and you only encountered individual failures, verify fixes by re-running only those specs locally. That is cheap, even for a suite that ran on CI.
 When a large part of the full suite failed, address all failures in a batch edit, then re-run the entire suite.
 Large-scale failures are often caused by bugs in factories or shared test setup, which can affect a large number of tests.
 
+A pushed branch that you later rewrite, e.g. by squashing commits, needs a force-push. That is a separate permission: the first push does not cover it.
+
 ## Begin your work
 
-Now enumerate every check the project runs, find the fastest way to run the test suite, then make sure all tests and linters pass.
+Now decide the test route and settle its permissions, enumerate every check the project runs, then make sure all tests and linters pass.
