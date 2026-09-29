@@ -52,6 +52,7 @@
 
   --seen: #2c2;
   --badge: #6a737d;
+  --cref-glow: 50%;   /* how much white the concept references' gradient mixes in */
 
   --nav-w: clamp(200px, 20vw, 400px);
 }
@@ -103,6 +104,7 @@
   --l4-ink: #ff5c7a;
   --fishy: var(--l3);
   --badge: #55606b;
+  --cref-glow: 11%;
   }
 }
 :root[data-theme="dark"] {
@@ -147,6 +149,7 @@
   --l4-ink: #ff5c7a;
   --fishy: var(--l3);
   --badge: #55606b;
+  --cref-glow: 11%;
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
@@ -699,3 +702,36 @@ figure.hunk.collapsed figcaption .chev { transform: rotate(-90deg); }
 figure.hunk.collapsed > .card > .grow,
 figure.hunk.collapsed figcaption button.all { display: none; }
 pre.diff .ln.elsewhere { cursor: pointer; }
+
+/* Key concepts: a faint dotted underline on every reference, in the reference's own
+   colour, so it fades with a dimmed line. A click opens the chapter's popover for it,
+   tethered below the reference, or above it when there is no room. */
+.cref {
+  text-decoration: underline dotted 1px;
+  text-decoration-color: color-mix(in srgb, currentColor 60%, transparent);
+  background: linear-gradient(to top, color-mix(in srgb, white var(--cref-glow), transparent), transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.cref:hover { text-decoration-color: currentColor; }
+.concept[popover] {
+  position-anchor: --concept;
+  position-area: block-end span-inline-end;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+  margin: 6px 0;
+  width: max-content; max-width: min(26rem, calc(100vw - 32px));
+  padding: .6rem .8rem;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); color: var(--ink);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+  font: 0.9rem/1.5 var(--sans); text-align: left; white-space: normal;
+}
+.concept[popover] p { margin: 0; }
+.concept[popover] p.name { margin-bottom: .3rem; font-weight: 600; }
+.concept[popover] p.name code { font: 600 0.92em/1.4 var(--mono); }
+.concept[popover] p.path { margin-top: .3rem; font: 0.7rem/1.4 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.concept[popover] p:not(.name) code {
+  font: 0.86em/1.4 var(--mono);
+  background: var(--panel-2); border: 1px solid var(--line-2);
+  border-radius: 4px; padding: .1em .3em;
+}

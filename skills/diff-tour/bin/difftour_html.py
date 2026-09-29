@@ -149,6 +149,7 @@ MARK = re.compile(r'<!--\s*(focus|dim)(?:\s*@\s*(\d+))?\s*:((?:(?!<!--).)*?)-->'
 SENTINEL = re.compile(r'<!--mark:(\d+)-->')
 _MARKS = {}      # sentinel number -> (kind, hint, block), or ('invalid', None, message)
 _PROBLEMS = []   # mark problems found where no hunk can own them (the intro fragment)
+_CONCEPT_PROBLEMS = []   # concepts comments found outside any chapter
 
 
 def _extract_marks(text):
@@ -327,7 +328,78 @@ def _trim(dims, focused):
     return trimmed, cut
 
 
+# A chapter's key concepts: `<!-- concepts: ... -->`, one "`Name`: explanation" per line.
+# The page underlines the name wherever it stands in the chapter's code and code spans,
+# and a click opens the explanation.
+CONCEPTS = re.compile(r'<!--\s*concepts\s*:(.*?)-->', re.S | re.I)
+CONCEPT_LINE = re.compile(r'^\s*`?([^\s`]+?)`?(?:\s*\(\s*`?([^\s`()]+)`?\s*\))?\s*:\s+(.*)$')
+
+# Languages whose files can refer to each other's names. A concept is underlined only in
+# files of its own family: a Ruby method in Ruby and in the templates that call it, never
+# in a stylesheet that happens to use the same word.
+FAMILIES = [
+    {'ruby', 'erb', 'haml'},
+    {'javascript', 'jsx', 'typescript', 'tsx', 'coffeescript'},
+    {'css', 'scss', 'less'},
+    {'markup', 'erb', 'haml', 'handlebars', 'twig', 'liquid'},
+    {'c', 'cpp'},
+]
+
+
+EXTENSION = re.compile(r'^\.?[A-Za-z0-9]+$')
+
+
+def where_defined(where):
+    """A concept's parenthesis holds its defining file's path, or only a file extension
+    when the path is not worth finding. -> (the path or None, a path to derive the
+    language from)."""
+    if EXTENSION.match(where) and (where.startswith('.') or where.lower() in BY_SUFFIX):
+        return None, 'x.' + where.lstrip('.')
+    return where, where
+
+
+def family(path):
+    """-> the languages a concept defined in `path` is underlined in."""
+    lang = language_of(path, [])
+    langs = {lang}
+    for f in FAMILIES:
+        if lang in f:
+            langs |= f
+    return langs
+
+
+def _concepts(raw):
+    """-> (raw without concept comments, [(name, explanation)], problems)."""
+    found, problems = [], []
+    for block in CONCEPTS.findall(raw):
+        for line in block.strip().splitlines():
+            if not line.strip():
+                continue
+            m = CONCEPT_LINE.match(line)
+            if m:
+                found.append([m.group(1), m.group(3).strip(), m.group(2)])
+            elif found and line[:1].isspace():
+                found[-1][1] += ' ' + line.strip()   # an indented line continues the explanation
+            else:
+                problems.append('a concepts line has no "name: explanation" form and was ignored: %s' % line.strip()[:60])
+    concepts, seen = [], set()
+    for name, text, path in found:
+        if name not in seen and text:
+            seen.add(name)
+            concepts.append((name, text, path))
+            if not path:
+                problems.append('concept `%s` names no file extension, so it is underlined in files of every language' % name)
+    return CONCEPTS.sub('', raw), concepts, problems
+
+
+def concept_pattern(name):
+    """A name matches as a whole identifier, as the page's matcher does."""
+    return re.compile(r'(?<![\w$])%s(?![\w$])' % re.escape(name))
+
+
 def _chapter(title, raw):
+    raw, concepts, concept_problems = _concepts(raw)
+    problems = []
     parts = H3.split(raw)
     beats = []
     intro = parts[0]
@@ -340,8 +412,10 @@ def _chapter(title, raw):
     for i in range(1, len(parts), 2):
         beats.append(_beat(parts[i], parts[i + 1]))
     intro, strays = _take_marks(intro)
-    problems = ['a focus/dim comment stood before any placeholder and was ignored'] if strays else []
-    return {'title': _title(title), 'intro': _prose(intro), 'beats': beats, 'problems': problems}
+    if strays:
+        problems.append('a focus/dim comment stood before any placeholder and was ignored')
+    return {'title': _title(title), 'intro': _prose(intro), 'beats': beats, 'problems': problems,
+            'concepts': concepts, 'concept_problems': concept_problems}
 
 
 # Fixed lines under the intro's fixed headings, emitted here so they read identically on
@@ -431,8 +505,14 @@ def parse_fragments(texts):
     title, summary, chapters = '', [], []
     _MARKS.clear()
     del _PROBLEMS[:]
+    del _CONCEPT_PROBLEMS[:]
     for text in texts:
         text = _extract_marks(WRAPPERS.sub('', text))
+        m = H2.search(text)
+        head = text[:m.start()] if m else text
+        if CONCEPTS.search(head) and not PLACEHOLDER.search(head):
+            _CONCEPT_PROBLEMS.append('a concepts comment stood outside any chapter and was ignored')
+            text = CONCEPTS.sub('', head) + text[len(head):]
         m = H1.search(text)
         if m:
             # The fragment with the <h1> is the intro. Everything else in it is the tour
@@ -722,6 +802,7 @@ def render(hunks, texts, git_args, out_path='', sources=None):
     title, summary, chapters = parse_fragments(texts)
     by_id = dict((h.id, h) for h in hunks)
     seen, unknown, dupes, mark_problems = {}, [], [], []
+    concept_problems = list(_CONCEPT_PROBLEMS)
 
     def fig(hid, level, reason, note='', marks=()):
         if hid is None:
@@ -749,6 +830,10 @@ def render(hunks, texts, git_args, out_path='', sources=None):
             body.append('<div class="intro">%s</div>' % ch['intro'])
         for beat in ch['beats']:
             body.append(_beat_html(beat, fig))
+        concepts, problems = chapter_concepts(ch, by_id, n)
+        concept_problems.extend(problems)
+        if concepts:
+            body.append(concepts)
         body.append('</section>')
 
     missing = [h for h in hunks if h.id not in seen]
@@ -793,7 +878,42 @@ def render(hunks, texts, git_args, out_path='', sources=None):
     page = re.sub(r'<title>.*?</title>', lambda m: '<title>%s</title>' % plain, page, count=1)
     page = page.replace('data-uid="fixture"', 'data-uid="%s"' % uid, 1)
     return page, {'placed': placed, 'missing': missing, 'unknown': unknown, 'dupes': dupes,
-                  'marks': mark_problems}
+                  'marks': mark_problems, 'concepts': concept_problems}
+
+
+CODE_SPAN = re.compile(r'<code\b[^>]*>(.*?)</code>|`([^`]+)`', re.S | re.I)
+
+
+def chapter_concepts(ch, by_id, n):
+    """-> (the chapter's concept popovers, problems). A concept whose name stands nowhere
+    in the chapter's hunks or code spans would underline nothing; it is dropped."""
+    problems = list(ch.get('concept_problems', []))
+    if not ch.get('concepts'):
+        return '', problems
+    code = []   # (language, text) of each hunk
+    prose = [ch['intro']]
+    for beat in ch['beats']:
+        prose.append(beat['say'])
+        for hid, level, reason, note, marks in beat['items']:
+            prose += [note, reason]
+            if hid in by_id:
+                h = by_id[hid]
+                code.append((language_of(h.path, h.body), '\n'.join(l[1:] for l in h.body[1:])))
+    spans = '\n'.join(html.unescape(a or b) for text in prose for a, b in CODE_SPAN.findall(text or ''))
+    out = []
+    for name, text, where in ch['concepts']:
+        path, typed = where_defined(where) if where else (None, None)
+        langs = family(typed) if typed else None
+        haystack = '\n'.join([spans] + [t for lang, t in code if langs is None or lang in langs])
+        if not concept_pattern(name).search(haystack):
+            problems.append('concept `%s` in chapter %d stands nowhere in its hunks or code spans and was dropped' % (name, n))
+            continue
+        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', html.escape(text))
+        attrs = ' data-langs="%s"' % ' '.join(sorted(langs)) if langs else ''
+        path = '<p class="path">%s</p>' % html.escape(path) if path else ''
+        out.append('<div class="concept" popover id="concept-%d-%d" data-name="%s"%s><p class="name"><code>%s</code></p><p>%s</p>%s</div>'
+                   % (n, len(out) + 1, html.escape(name, quote=True), attrs, html.escape(name), text, path))
+    return ('<div class="concepts">%s</div>' % ''.join(out) if out else ''), problems
 
 
 def _beat_html(beat, fig):

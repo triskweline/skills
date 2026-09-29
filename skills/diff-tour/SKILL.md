@@ -97,7 +97,7 @@ The tour is *not* printed to this session. It is one self-contained HTML file, o
 
 The file is assembled from **fragments**: each worker writes a plain HTML fragment for its topic into its own directory, the orchestrator writes the opening fragment with the tour summary, and a script lays them out. Nobody ever re-reads a fragment, and nobody ever types out a diff hunk: fragments name hunks by id, and the script splices the real diff bytes in when assembling.
 
-Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, puts a beat's prose beside its hunks in two columns, highlights the diffs, lets the reader grow a hunk's context from the file at the toured tip, and adds viewed marks and a theme switch. From the level in each placeholder, the page's own JavaScript draws a **heat strip** per chapter in the sidebar, one coloured square per hunk in reading order, and gives the legend a **mark viewed** button for skip, read and note, so a reader can fold away whole levels and be left with fishy and hot.
+Everything that makes the page pleasant is mechanical and costs no agent tokens: the script numbers the chapters, puts a beat's prose beside its hunks in two columns, highlights the diffs, lets the reader grow a hunk's context from the file at the toured tip, underlines each chapter's key concepts and opens their explanations, and adds viewed marks and a theme switch. From the level in each placeholder, the page's own JavaScript draws a **heat strip** per chapter in the sidebar, one coloured square per hunk in reading order, and gives the legend a **mark viewed** button for skip, read and note, so a reader can fold away whole levels and be left with fishy and hot.
 
 ## The helper script
 
@@ -136,6 +136,7 @@ Tour # The entire tour report, one HTML file
 Topic # One cohesive topic or "body of work" in the diff range. One fragment file.
 + title: string
 + summary: html      # one paragraph, see "Narrate for a reader who zooms" in Part 5
++ concepts: Concept[]  # key concepts, see "Explain the key concepts" in Part 5
 + beat_ideas: string[]  # drafted by the orchestrator, refined by the worker
 + beats: Beat[]
 + topic_hunks: HunkId[]
@@ -145,6 +146,11 @@ Beat # One narration beat within a topic
 + title: string
 + prose: html        # always present
 + beat_hunks: Hunk[]
+
+Concept # One key concept of a topic; the page underlines its name and explains it on click
++ name: string       # exactly as it stands in the code
++ defined_in: string # the defining file's extension, or its path when known; the language scopes the underlines
++ explanation: text  # a sentence or a short paragraph
 
 Hunk # One annotated diff hunk
 + id: string                 # h17, minted by the script
@@ -469,7 +475,7 @@ The steps below are in the order you do them. Read them once, then work.
 
 ## Explore your topic's concepts
 
-**This step is an investment.** Before you form beats, list your doubts about your topic, such as how a concept works in this repository, why the change does something, or whether the code does what its names and tests claim. The orchestrator's reading is in your context already; do not repeat it. Then check your doubts, one call each, the one that would mislead the reader most first, reading under `SRC`. Keep going while ungrounded doubt remains and your **worker budget** of 3 tool calls lasts; stop early only when nothing ungrounded is left. When there are more doubts than calls, check the most dangerous ones and state the rest as doubts in your prose.
+**This step is an investment.** Before you form beats, list your doubts about your topic, such as how a concept works in this repository or what a key concept you will explain is for, why the change does something, or whether the code does what its names and tests claim. The orchestrator's reading is in your context already; do not repeat it. Then check your doubts, one call each, the one that would mislead the reader most first, reading under `SRC`. Keep going while ungrounded doubt remains and your **worker budget** of 3 tool calls lasts; stop early only when nothing ungrounded is left. When there are more doubts than calls, check the most dangerous ones and state the rest as doubts in your prose.
 
 You already have every hunk in context from the numbered diff; never spend a call re-reading it. Once you start forming beats, you make no more calls.
 
@@ -591,6 +597,31 @@ A focus inside a dim run is fine: the script cuts the dim around the focused lin
 
 Quoting the lines is all it takes in nearly every case. Only when the very same lines could stand twice in the hunk, a lone `end` or `raise`, a repeated generated line, add `@N` with the line number of your block's first line, counting from 1 at the line below `@@`: in the hunk above `end` is line 8, so `<!-- focus @8: end -->`. Count carefully; the script uses the number only to choose between the matches and takes the nearest. Never quote more lines than you mean to mark: a mark covers exactly the lines quoted.
 
+## Explain the key concepts
+
+A reader new to this application meets names in the diff they do not know, and on a long tour forgets the ones an earlier chapter explained. So each chapter carries short explanations of its key concepts: the page underlines every occurrence of a concept's name in the chapter's hunks and code spans, and a click on it opens the explanation.
+
+Pick a concept when a reader who does not know it would understand a hunk of this chapter faster with its explanation. Assume the reader knows the language and the framework, but not this application. Pick in three buckets, each with a ceiling of eight:
+
+- **New**: classes, modules, methods, functions and constants the diff introduces in another chapter. One whose definition is in your own chapter is not a concept to explain: the reader sees the definition there.
+- **App**: existing concepts of this application the change leans on. First look for names whose meaning here differs from what they suggest, such as a `current` scope that means *not yet ended* rather than *today*, or an `archive!` that also emails the owner: those are the names a newcomer misreads. Then the least obvious of the rest.
+- **Outside the app**: obscure corners of the language, the framework or a library that a competent programmer may well not know. A library concept earns its place like any other, never because it is easy to explain.
+
+Skip a name that already tells a competent outsider what it is, such as `User`, `Invoice` or `Order#paid?`, unless the application gives it a surprising meaning: an explanation that tells the reader nothing new is the noise to avoid. Skip the standard library and the common framework API. Skip a name that is not distinctive: the page underlines every occurrence of it, so `call`, `save` or `name` would underline unrelated code. When a name is not distinctive, leave the concept out; a missing explanation costs the reader less than a misleading underline.
+
+**Concept explanation**: a sentence or a short paragraph, at most 40 words, saying what the concept is for in this application. No signature, and not what this change does to it; the prose says that. Explain New and App concepts only from what you have seen in the diff or read under `SRC`; a concept you cannot explain from those, leave out. For Outside the app, your knowledge of the ecosystem is enough.
+
+Write the concepts as one comment directly after the chapter summary, one concept per line: the name in backticks exactly as it stands in the code, since that is what the page matches, then in parentheses where it is defined. That is always at least the file extension, such as `.rb`: the page underlines a concept only in files of that language and in code spans, so a Ruby method is not underlined where a stylesheet uses the same word. When you already know the path of the defining file, give the path instead; the popup shows it. Never spend a call or much thought on finding a path, least of all for a library or the standard library.
+
+```html
+<!-- concepts:
+`PublishPolicy` (app/policies/publish_policy.rb): Decides whether an editor may publish a page, from their role and the page's workflow state.
+`Tenant.current` (.rb): The tenant of the running request, set by a middleware from the subdomain; `nil` in jobs and the console.
+-->
+```
+
+Plain text, no HTML, no `--` inside; a code name in the explanation goes in backticks. A chapter with no key concept has no comment.
+
 ## Write the topic fragment
 
 Write the whole topic as one HTML fragment to the path you were given. One `Write`, no re-reading. The content of every paragraph follows *Narrate for a reader who zooms*; the placeholders follow *Give each hunk a heat level*. This is the shape:
@@ -598,6 +629,9 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 ```html
 <h2>Topic title</h2>
 <p>Chapter summary.</p>
+<!-- concepts:
+`ConceptName` (.rb or path/to/defining_file.rb): What it is for, in a sentence.
+-->
 
 <h3>Beat title</h3>
 <p>Beat prose.</p>
@@ -622,7 +656,7 @@ Write the whole topic as one HTML fragment to the path you were given. One `Writ
 ...
 ```
 
-A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, hunk placeholders, and the focus and dim comments described in *Mark lines inside a hunk*. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
+A fragment holds only `<h2>`, `<h3>`, `<p>`, `<code>`, links of the form `<a href="#topic-N">` or `<a href="#hNN">`, hunk placeholders, the focus and dim comments described in *Mark lines inside a hunk*, and the concepts comment described in *Explain the key concepts*. No numbers in headings, no `<section>`, no ids, no styling, nothing else: the script numbers chapters by fragment order and builds the sidebar, and anything you add there is stripped or, worse, disagrees with it.
 
 - **Never type out a diff.** Put the placeholder where the hunk belongs. The assembler replaces it with the real, escaped, highlighted diff and its `path:line`. Typing the hunk yourself is slower, and a `<` in the code would break the page. The only diff text in a fragment is the few lines quoted inside a focus or dim comment, which the script uses only to find the range.
 - Every hunk id you were given appears exactly once as a placeholder.

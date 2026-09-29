@@ -509,6 +509,92 @@
   /* The legend's example hunk is static, so its faded lines get their hover here. */
   [].forEach.call(document.querySelectorAll('.marks-demo .ln.dim'), hoverDim);
 
+  /* ---- key concepts: each chapter carries popovers explaining the names its worker
+     picked. Every occurrence of such a name in the chapter's code and code spans gets a
+     faint underline, and a click opens the explanation tethered to it. A name matches
+     only as a whole identifier, a longer name wins over a shorter one inside it, and in code
+     only in files of the concept's own language family. ---- */
+  var conceptsBy = new Map();
+  [].forEach.call(document.querySelectorAll('section.chapter'), function (ch) {
+    var pops = [].slice.call(ch.querySelectorAll('.concepts > [popover]'));
+    if (pops.length) conceptsBy.set(ch, { pops: pops, byLang: {} });
+  });
+  /* The pattern for one chapter and one language: the concepts whose family holds the
+     language, or all of them for prose, which has none. */
+  function conceptsFor(ch, lang) {
+    var c = ch && conceptsBy.get(ch);
+    if (!c) return null;
+    var key = lang || '';
+    if (!(key in c.byLang)) {
+      var byName = {};
+      c.pops.forEach(function (p) {
+        var langs = p.getAttribute('data-langs');
+        if (!lang || !langs || langs.split(' ').indexOf(lang) >= 0) byName[p.getAttribute('data-name')] = p;
+      });
+      var names = Object.keys(byName).sort(function (a, b) { return b.length - a.length; });
+      var alt = names.map(function (n) { return n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|');
+      var re = null;
+      try { if (names.length) re = new RegExp('(?<![\\w$])(?:' + alt + ')(?![\\w$])', 'g'); } catch (e) {}
+      c.byLang[key] = re && { byName: byName, re: re };
+    }
+    return c.byLang[key];
+  }
+
+  /* Wraps every match under `root` in .cref spans. A match can run across several text
+     nodes, as Prism splits `Foo::Bar` into tokens; each piece gets its own span. */
+  function underline(root, ch) {
+    var lang = /\blanguage-diff-(\S+)/.exec(root.className), c = conceptsFor(ch, lang ? lang[1] : '');
+    if (!c) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [], text = '', t;
+    while ((t = walker.nextNode())) {
+      if (t.parentNode.closest('.cref')) continue;
+      nodes.push({ node: t, at: text.length });
+      text += t.nodeValue;
+    }
+    var hits = [], m;
+    c.re.lastIndex = 0;
+    while ((m = c.re.exec(text))) hits.push([m.index, m.index + m[0].length, c.byName[m[0]]]);
+    /* Back to front, so splitting a node never moves the offsets still to come. */
+    for (var i = hits.length - 1; i >= 0; i--) {
+      for (var j = nodes.length - 1; j >= 0; j--) {
+        var nd = nodes[j], a = Math.max(hits[i][0], nd.at), b = Math.min(hits[i][1], nd.at + nd.node.nodeValue.length);
+        if (a >= b) continue;
+        var piece = nd.node;
+        if (b - nd.at < piece.nodeValue.length) piece.splitText(b - nd.at);
+        if (a > nd.at) piece = piece.splitText(a - nd.at);
+        var span = document.createElement('span');
+        span.className = 'cref';
+        span.setAttribute('data-concept', hits[i][2].id);
+        piece.parentNode.insertBefore(span, piece);
+        span.appendChild(piece);
+      }
+    }
+  }
+
+  /* One anchor at a time: the clicked reference carries the anchor name the popovers are
+     positioned against. Where showPopover takes a source, that also tethers it. */
+  var anchored = null;
+  document.addEventListener('click', function (e) {
+    var ref = e.target.closest && e.target.closest('.cref');
+    if (!ref) return;
+    var pop = document.getElementById(ref.getAttribute('data-concept'));
+    if (!pop) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (pop.matches(':popover-open') && anchored === ref) { pop.hidePopover(); return; }
+    if (anchored) anchored.style.anchorName = '';
+    anchored = ref;
+    ref.style.anchorName = '--concept';
+    if (pop.matches(':popover-open')) pop.hidePopover();
+    try { pop.showPopover({ source: ref }); } catch (err) { try { pop.showPopover(); } catch (err2) {} }
+  }, true);
+  [].forEach.call(document.querySelectorAll('section.chapter'), function (ch) {
+    if (!conceptsBy.has(ch)) return;
+    [].forEach.call(ch.querySelectorAll('code'), function (code) {
+      if (!code.closest('pre, .concepts')) underline(code, ch);
+    });
+  });
+
   function light(el) {
     if (el.classList.contains('highlighted')) return;
     el.classList.add('highlighted');
@@ -516,6 +602,7 @@
       try { Prism.highlightElement(el); } catch (e) {}
     }
     wrapLines(el);
+    underline(el, el.closest('section.chapter'));
     var fig = el.closest('figure.hunk');
     if (fig) markLines(fig, el);
   }
@@ -562,6 +649,7 @@
     pre.appendChild(tmp);
     if (window.Prism) { try { Prism.highlightElement(tmp); } catch (e) {} }
     wrapLines(tmp);
+    underline(tmp, code.closest('section.chapter'));
     return [].slice.call(tmp.querySelectorAll(':scope > .ln'));
   }
 

@@ -455,6 +455,62 @@ class Repo(RepoCase):
             '<!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
         self.assertIn('<b>Decide:</b> <code>premium_plan?</code> now also covers &lt;wire&gt; transfers. Keep it?', page)
 
+    def test_a_chapter_carries_the_concepts_its_code_or_code_spans_name(self):
+        page, out, err = self.assemble(
+            '<h1>T</h1><!-- concepts:\n`Nowhere`: outside any chapter\n-->',
+            '<h2>A</h2><p>Uses <code>Tally</code>.</p>\n<!-- concepts:\n'
+            '`CHANGED` (`lib/a.py`): The marker for <b> lines, see `line3`.\n'
+            '  It wraps onto a second line.\n'
+            '`CHANGED`: a second explanation of the same name\n'
+            '`Tally`: Named only in the prose.\n'
+            '`Ghost`: Named nowhere.\n'
+            'no colon here\n-->\n'
+            '<!-- hunk h1 --><!-- hunk h2 -->',
+            '<h2>B</h2><!-- hunk h3 --><!-- hunk h4 -->')
+        report = page.split('<!--REPORT-->')[1].split('<!--/REPORT-->')[0]
+        self.assertNotIn('concepts:', report)
+        self.assertIn('<div class="concept" popover id="concept-1-1" data-name="CHANGED" data-langs="python"><p class="name"><code>CHANGED</code></p>'
+                      '<p>The marker for &lt;b&gt; lines, see <code>line3</code>. It wraps onto a second line.</p><p class="path">lib/a.py</p></div>', page)
+        self.assertIn('id="concept-1-2" data-name="Tally"', page)
+        self.assertNotIn('second explanation', page)
+        self.assertNotIn('data-name="Ghost"', page)
+        # The concepts sit in their own chapter's section, and the other chapter has none.
+        self.assertLess(page.index('id="concept-1-1"'), page.index('id="topic-2"'))
+        self.assertEqual(page.count('class="concepts"'), 1)
+        self.assertIn('concept: concept `Ghost` in chapter 1 stands nowhere in its hunks or code spans and was dropped', err)
+        self.assertIn('concept: a concepts comment stood outside any chapter and was ignored', err)
+        self.assertIn('concept: a concepts line has no "name: explanation" form and was ignored: no colon here', err)
+        self.assertIn('concept: concept `Tally` names no file extension, so it is underlined in files of every language', err)
+        self.assertNotIn('concept `CHANGED` names no file', err)
+
+    def test_a_concept_counts_only_in_files_of_its_language_family(self):
+        page, out, err = self.assemble(
+            '<h2>A</h2><!-- concepts:\n'
+            '`hello` (app/greeter.rb): A Ruby name, while hello stands only in a text file.\n'
+            '`world` (notes.txt): A plain-text name.\n'
+            '`line3` (.py): Only an extension.\n'
+            '`line7` (py): An extension without its dot.\n-->'
+            '<!-- hunk h1 --><!-- hunk h2 --><!-- hunk h3 --><!-- hunk h4 -->')
+        self.assertIn('concept `hello` in chapter 1 stands nowhere in its hunks or code spans and was dropped', err)
+        self.assertIn('data-name="world" data-langs="none"><p class="name"><code>world</code></p><p>A plain-text name.</p><p class="path">notes.txt</p></div>', page)
+        self.assertIn('data-name="line3" data-langs="python"><p class="name"><code>line3</code></p><p>Only an extension.</p></div>', page)
+        self.assertIn('data-name="line7" data-langs="python"><p class="name"><code>line7</code></p><p>An extension without its dot.</p></div>', page)
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour_html
+        self.assertEqual(difftour_html.family('app/models/user.rb'), {'ruby', 'erb', 'haml'})
+        self.assertIn('ruby', difftour_html.family('app/views/users/show.html.erb'))
+        self.assertIn('markup', difftour_html.family('app/views/users/show.html.erb'))
+        self.assertEqual(difftour_html.family('app/assets/site.scss'), {'css', 'scss', 'less'})
+
+    def test_a_concept_name_matches_only_as_a_whole_identifier(self):
+        sys.path.insert(0, os.path.join(SKILL, 'bin'))
+        import difftour_html
+        m = difftour_html.concept_pattern
+        self.assertTrue(m('Tenant.current').search('x = Tenant.current || y'))
+        self.assertTrue(m('publish!').search('page.publish!'))
+        self.assertFalse(m('Tenant').search('MyTenant.find'))
+        self.assertFalse(m('Tenant').search('Tenants.all'))
+
     def test_a_gap_tail_takes_the_first_match_below_the_head(self):
         sys.path.insert(0, os.path.join(SKILL, 'bin'))
         import difftour_html

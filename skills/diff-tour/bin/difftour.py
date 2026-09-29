@@ -254,6 +254,8 @@ def assemble(out_path, hunks, fragments, git_args):
                          % (len(dupes), ' '.join(dupes)))
     for problem in report.get('marks', []):
         sys.stderr.write('line mark: %s\n' % problem)
+    for problem in report.get('concepts', []):
+        sys.stderr.write('concept: %s\n' % problem)
     # A file:// URL, not a path: terminals make it clickable, and the orchestrator hands
     # this line to the human verbatim.
     from urllib.request import pathname2url
