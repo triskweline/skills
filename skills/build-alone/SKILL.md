@@ -48,7 +48,11 @@ Include one more question in that bundle, for trimming with `/trim-code`:
 
 Without a clear answer, use (a). With (b), skip the trimming step below.
 
+The full test suite at the end (`/pass-all-checks`) usually runs on CI. Before you ask your bundle, check whether the project has CI and a large suite, as `/pass-all-checks` describes under *Decide the test route first*. If so, include in the bundle whatever starts a pipeline there: pushing the feature branch, and opening a draft merge request with the exact title and description you would use. Don't leave this for the end: by then the human is away, and the run would either stall or fall back to hours of local tests.
+
 If during your run you discover more permissions are needed, postpone the affected actions and finish the part of your work you already have permission for. Don't get around a missing permission by other means, and don't complicate your work just to avoid an action it needs. When you can no longer continue, accept the interruption and ask for another permission batch.
+
+The final test run is the exception: if a permission it needs is missing at the end, don't stop to ask, because the human is away. Run the full suite locally in parallel instead, and say in your hand-off that it ran locally and why. A loaded machine the human is not using is the lesser harm, compared with returning to an unverified change.
 
 Non-trivial requirements should be implemented in a feature branch, using the `/work-in-branch` skill.
 
