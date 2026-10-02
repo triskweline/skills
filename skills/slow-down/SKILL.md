@@ -29,7 +29,9 @@ Give each topic a name, and a short abstract:
 - Your instinctive take on the topic as a whole: how you would approach it, how important you feel it is, or both. This will address several items broadly, and that is fine. A topic is major when it is technically challenging, when it is a one-way door (hard to reverse) or when many other decisions flow from it. A topic is minor when there is a probable answer you just want to align on with the human.
 - Every item in the topic, as its number and a short title (two to five words).
 
-Mark the items you have a strong and confident lean on with 🤖 and your decision in one line, e.g. `7 Inconsistent error class names, 🤖 rename to FooError everywhere`. The human may accept these without discussing them.
+Mark the items you have a strong and confident lean on with 🤖 and your decision in one line, in italics, e.g. `7 Inconsistent error class names, *🤖 rename to FooError everywhere*`. The human may accept these without discussing them.
+
+Open the overview with one sentence that counts the items and topics and explains the 🤖 mark, e.g. "There are five items in three topics. 🤖 marks my strong leans, which you can choose to auto-accept."
 
 End the overview by naming the item you'll start with, and wait for a go. Offer two keywords: "go" walks through every item, the 🤖 items included; "auto" accepts all 🤖 decisions and starts with the first remaining item. The human can also accept some 🤖 decisions by number. Accepting them must be the human's conscious choice: never treat "go" as accepting them. The human may first ask for changes or more orientation, but will usually just say go.
 
