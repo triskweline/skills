@@ -163,6 +163,24 @@ of the install command, which takes any number of skill names.
 
 </details>
 
+### 🐢 [`/slow-down`](skills/slow-down/SKILL.md)
+
+> Walks you through a pile of open questions or findings the agent raised faster than you can
+> answer them. Opens with an overview of the topics and offers to settle the items it is
+> confident about, then takes one item at a time with context, options and a recommendation,
+> and waits for your choice before moving on.
+
+<details>
+<summary>Install this skill</summary>
+
+> ```bash
+> npx skills add triskweline/skills --global --skill slow-down
+> ```
+>
+> Drop `--global` to install into the current project instead of your user account.
+
+</details>
+
 ### 💎 [`/effective-rails-testing`](skills/effective-rails-testing/SKILL.md)
 
 > Decides what kind of test to write for a change in a Ruby on Rails app: unit specs for logic,
