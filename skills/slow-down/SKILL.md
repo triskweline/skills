@@ -31,7 +31,7 @@ Give each topic a name, and a short abstract:
 
 Mark the items you have a strong and confident lean on with 🤖 and your decision in one line, e.g. `7 Inconsistent error class names, 🤖 rename to FooError everywhere`. The human may accept these without discussing them.
 
-End the overview by naming the item you'll start with, and wait for a go. Tell the human that "go" walks through every item, the 🤖 items included, and that they can accept the 🤖 decisions by saying so (all of them, or some by number). Accepting them must be the human's conscious choice: never treat "go" as accepting them. The human may first ask for changes or more orientation, but will usually just say go.
+End the overview by naming the item you'll start with, and wait for a go. Offer two keywords: "go" walks through every item, the 🤖 items included; "auto" accepts all 🤖 decisions and starts with the first remaining item. The human can also accept some 🤖 decisions by number. Accepting them must be the human's conscious choice: never treat "go" as accepting them. The human may first ask for changes or more orientation, but will usually just say go.
 
 You decide the order; the human does not need to sign off on it. Take items that others depend on, and important items, first, even if that breaks the numbering sequence.
 
