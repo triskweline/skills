@@ -84,3 +84,7 @@ In long discussions, occasionally print a longer progress note: what is behind u
 Don't make changes until all items are settled.
 
 When all items are settled, print a short list of every decision, marking accepted 🤖 decisions as such and including deferred and dropped items, and ask whether to apply them.
+
+If applying the decisions raises new items, they still belong to this list. Give them the next free numbers and go through them the same way, then print the final list again.
+
+The skill ends when the list is closed. If another list of open items comes up later in the session, go back to your default behavior. You may mention in passing that the human could slow down again, but don't ask about it or wait for an answer.
