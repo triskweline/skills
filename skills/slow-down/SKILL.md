@@ -1,16 +1,15 @@
 ---
 name: slow-down
 description: >-
-  Walks the user one item at a time through a pile of open questions, decisions or findings
-  that the agent raised faster than the user can answer them. Opens with an overview of the
-  topics and offers to settle the items it is confident about itself, then presents each
-  remaining item with enough context to decide, a few options and a recommendation, and
-  waits for the user's choice before moving on. Use when the agent has left the user with
-  several things to settle (review findings it did not dare to apply, follow-up questions at
-  the end of a task, a list of trade-offs it flagged) and the user says "slow down", "one at
-  a time", "let's go through these" or "I can't answer all of this at once". Works through
-  the items already on the table instead of searching for more, and settles them without
-  writing an implementation plan.
+  Slows down a conversation where the agent raised more open questions, decisions or
+  findings than the user can take in at once. Goes through them one item at a time, each
+  explained in plain language with plenty of context, a few clear options and a
+  recommendation, and waits for the user's choice before moving on. Use when the agent has
+  left the user with several things to settle (review findings it did not dare to apply,
+  follow-up questions at the end of a task, trade-offs it flagged) and the user says "slow
+  down", "one at a time", "let's go through these" or "I can't answer all of this at once".
+  Works through the items already on the table instead of searching for more, and settles
+  them without writing an implementation plan.
 ---
 
 # Slow down

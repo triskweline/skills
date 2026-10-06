@@ -165,10 +165,10 @@ of the install command, which takes any number of skill names.
 
 ### 🐢 [`/slow-down`](skills/slow-down/SKILL.md)
 
-> Walks you through a pile of open questions or findings the agent raised faster than you can
-> answer them. Opens with an overview of the topics and offers to settle the items it is
-> confident about, then takes one item at a time with context, options and a recommendation,
-> and waits for your choice before moving on.
+> Slows down a conversation where the agent raised more open questions or findings than you
+> can take in at once. Goes through them one item at a time, each explained in plain language
+> with plenty of context, a few clear options and a recommendation, and waits for your choice
+> before moving on.
 
 <details>
 <summary>Install this skill</summary>
