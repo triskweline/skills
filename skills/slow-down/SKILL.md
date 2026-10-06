@@ -65,9 +65,13 @@ When you present the next item, print:
 
 Scale the presentation to the item, but always give more context than the message that raised it. A small finding can be short; save concept explanations and before/after examples for items the human couldn't judge without opening the code.
 
-Use plain language. Avoid jargon.
-
 Ask in prose, not through a multiple-choice widget (like `AskUserQuestion`).
+
+## Plain language
+
+Use plain language. Let a relaxed version of ASD-STE100 Simplified Technical English set the tone: you may occasionally bend a rule or add a word to its vocabulary.
+
+Jargon, concept aliases and made-up words need a definition within the current item's discussion.
 
 ## How the human makes decisions
 
