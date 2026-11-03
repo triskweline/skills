@@ -1,0 +1,7 @@
+{
+  "name": "dradis",
+  "displayName": "DRADIS",
+  "version": "0.1.0",
+  "description": "Shows what waits for the user in each session: agents keep a small dradis file per session, the status line renders it",
+  "author": { "name": "Henning Koch" }
+}

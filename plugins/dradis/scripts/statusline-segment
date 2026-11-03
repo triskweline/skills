@@ -1,0 +1,33 @@
+#!/bin/bash
+# Renders the session's dradis file as one status line row: a bright bar per `now` item, muted bars for
+# the first three `later` items, then " +N " for the rest. Reads the status line JSON on stdin and
+# prints nothing when there is nothing to show. Usage from a status line script:
+#   dradis_line=$(printf '%s' "$input" | ~/.claude/skills/dradis/scripts/statusline-segment)
+session_id=$(jq -r '.session_id // empty')
+dradis_file="$HOME/.claude/dradis/$session_id.txt"
+[ -n "$session_id" ] && [ -s "$dradis_file" ] || exit 0
+
+now_style='\033[97;48;5;25m'                      # white on blue
+later_style='\033[38;2;168;184;204;48;2;44;62;87m' # grey-blue on slate blue
+reset='\033[00m'
+max_later=3
+
+line=""
+later_part=""
+later=0
+while read -r state slug _ || [ -n "$state" ]; do
+  case "$state" in
+    now) line+="$(printf "${now_style} %s ${reset} " "$slug")" ;;
+    later)
+      later=$(( later + 1 ))
+      if [ "$later" -le "$max_later" ]; then
+        later_part+="$(printf "${later_style} %s ${reset} " "$slug")"
+      fi
+      ;;
+  esac
+done < "$dradis_file"
+line+="$later_part"
+if [ "$later" -gt "$max_later" ]; then
+  line+="$(printf "${later_style} +%d ${reset}" $(( later - max_later )))"
+fi
+printf '%s' "${line% }"
